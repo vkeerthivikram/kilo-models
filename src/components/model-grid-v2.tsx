@@ -12,6 +12,8 @@ interface ModelGridProps {
   onSelectModel: (model: Model) => void;
   isComparedModels?: Model[];
   onToggleCompare?: (model: Model) => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function formatPrice(price: string | undefined): string {
@@ -28,7 +30,23 @@ function formatContext(ctx: number): string {
   return ctx.toString();
 }
 
-export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare }: ModelGridProps) {
+export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare, hasMore, onLoadMore }: ModelGridProps) {
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!hasMore || !onLoadMore || !sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, onLoadMore]);
+
   if (models.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -46,7 +64,6 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
   if (viewMode === "list") {
     return (
       <div className="rounded-2xl border bg-card overflow-hidden">
-        {/* Table Header */}
         <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-3 bg-muted/40 border-b text-[10px] font-semibold text-muted-foreground tracking-widest uppercase">
           <div>Model</div>
           <div className="text-right">Input</div>
@@ -54,7 +71,6 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
           <div className="text-right hidden sm:block">Context</div>
           <div className="text-right hidden md:block">Capabilities</div>
         </div>
-        {/* Table Rows */}
         {models.map((model, i) => (
           <div
             key={model.id}
@@ -99,21 +115,33 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
             </div>
           </div>
         ))}
+        {hasMore && (
+          <div ref={sentinelRef} className="flex items-center justify-center py-4">
+            <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {models.map((model, i) => (
-        <div
-          key={model.id}
-          style={{ animationDelay: `${i * 20}ms` }}
-          className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-        >
-          <ModelCard model={model} onSelect={onSelectModel} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {models.map((model, i) => (
+          <div
+            key={model.id}
+            style={{ animationDelay: `${i * 20}ms` }}
+            className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+          >
+            <ModelCard model={model} onSelect={onSelectModel} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} />
+          </div>
+        ))}
+      </div>
+      {hasMore && (
+        <div ref={sentinelRef} className="flex items-center justify-center py-4">
+          <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
         </div>
-      ))}
+      )}
     </div>
   );
 }
