@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Instrument_Serif, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { THEMES } from "@/lib/themes";
@@ -43,8 +44,6 @@ export const metadata: Metadata = {
   },
 };
 
-// Inline script that runs before paint to apply the saved color theme class,
-// preventing a flash of the default theme on first load.
 const colorThemeScript = `
 (function() {
   var validThemes = [${THEMES.map((t) => `'${t.id}'`).join(",")}];
@@ -66,19 +65,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        { }
         <script dangerouslySetInnerHTML={{ __html: colorThemeScript }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${dmSans.variable} font-sans antialiased min-h-screen flex flex-col`}
       >
         <ThemeProvider>
-          <TooltipProvider delay={300}>
-            {children}
-          </TooltipProvider>
+          <NuqsAdapter>
+            <TooltipProvider delay={300}>
+              {children}
+            </TooltipProvider>
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>
   );
 }
-

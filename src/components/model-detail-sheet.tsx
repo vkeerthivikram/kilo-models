@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Model } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,15 @@ import {
   Layers,
   Maximize2,
   Settings2,
+  Heart,
 } from "lucide-react";
 
 interface ModelDetailSheetProps {
   model: Model | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 function formatPrice(price: string | undefined): string {
@@ -66,7 +70,7 @@ const PriceRow = ({ label, value, icon: Icon }: { label: string; value: string |
   );
 };
 
-export function ModelDetailSheet({ model, open, onOpenChange }: ModelDetailSheetProps) {
+export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onToggleFavorite }: ModelDetailSheetProps) {
   const [copied, setCopied] = React.useState(false);
 
   if (!model) return null;
@@ -91,9 +95,28 @@ export function ModelDetailSheet({ model, open, onOpenChange }: ModelDetailSheet
               <SheetTitle className="text-xl leading-tight">{model.name}</SheetTitle>
               <p className="text-xs text-muted-foreground font-mono">{model.id}</p>
             </div>
-            {model.isFree && (
-              <Badge className="bg-emerald-500/10 text-emerald-600 shrink-0">Free</Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {model.isFree && (
+                <Badge className="bg-emerald-500/10 text-emerald-600 shrink-0">Free</Badge>
+              )}
+              {onToggleFavorite && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite()
+                  }}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    isFavorite
+                      ? "text-red-500 bg-red-500/10"
+                      : "bg-muted/50 text-muted-foreground border border-transparent hover:border-red-500/20 hover:text-red-500"
+                  )}
+                  title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                  <Heart className={cn("h-4 w-4", isFavorite ? "fill-current" : "")} />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

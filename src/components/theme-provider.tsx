@@ -30,16 +30,15 @@ function applyColorTheme(theme: ColorTheme) {
 }
 
 function ColorThemeProvider({ children }: { children: React.ReactNode }) {
-  const [colorTheme, setColorThemeState] = React.useState<ColorTheme>(DEFAULT_COLOR_THEME);
-
-  // On mount, read from localStorage and apply
-  React.useEffect(() => {
+  const [colorTheme, setColorThemeState] = React.useState<ColorTheme>(() => {
+    if (typeof window === "undefined") return DEFAULT_COLOR_THEME;
     const stored = localStorage.getItem(COLOR_THEME_KEY) as ColorTheme | null;
-    const initial =
-      stored && THEMES.some((t) => t.id === stored) ? stored : DEFAULT_COLOR_THEME;
-    setColorThemeState(initial);
-    applyColorTheme(initial);
-  }, []);
+    return stored && THEMES.some((t) => t.id === stored) ? stored : DEFAULT_COLOR_THEME;
+  });
+
+  React.useEffect(() => {
+    applyColorTheme(colorTheme);
+  }, [colorTheme]);
 
   const setColorTheme = React.useCallback((theme: ColorTheme) => {
     setColorThemeState(theme);
