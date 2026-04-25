@@ -13,7 +13,6 @@ import {
   Shield,
   Sparkles,
   Wrench,
-  ChevronRight,
   Scale,
   Heart,
 } from "lucide-react";
@@ -145,7 +144,14 @@ export function ModelCard({ model, isCompared, onToggleCompare, isFavorite, onTo
             >
               <Heart className={cn("h-4 w-4", isFavorite ? "fill-current" : "")} />
             </button>
-            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+            <Link
+              href={`/models/${encodeURIComponent(model.id)}`}
+              onClick={(e) => e.stopPropagation()}
+              className="p-2 rounded-lg bg-muted/50 text-muted-foreground border border-transparent hover:border-primary/20 hover:text-primary transition-all"
+              title="View details"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
 

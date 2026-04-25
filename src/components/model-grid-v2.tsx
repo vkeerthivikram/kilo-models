@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Model, ViewMode } from "@/lib/types";
 import { ModelCard } from "./model-card-v2";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ function formatContext(ctx: number): string {
 }
 
 export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite, hasMore, onLoadMore }: ModelGridProps) {
+  const router = useRouter();
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -77,7 +79,7 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
           <div
             key={model.id}
             className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-muted/20 cursor-pointer transition-colors items-center"
-            onClick={() => onSelectModel(model)}
+            onClick={() => router.push(`/models/${encodeURIComponent(model.id)}`)}
             style={{ animationDelay: `${i * 15}ms` }}
           >
             <div className="min-w-0">
