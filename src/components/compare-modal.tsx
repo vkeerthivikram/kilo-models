@@ -107,6 +107,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
                   size="icon-xs"
                   onClick={() => onRemove(model)}
                   className="self-start"
+                  title="Remove from comparison"
                 >
                   <X className="h-3 w-3" />
                 </Button>
