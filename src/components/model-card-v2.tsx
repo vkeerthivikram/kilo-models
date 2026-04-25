@@ -122,6 +122,21 @@ export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavo
               <Scale className="h-4 w-4" />
               <span className="text-xs font-medium sr-only">{isCompared ? "Remove" : "Compare"}</span>
             </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite?.();
+              }}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                isFavorite
+                  ? "text-red-500 bg-red-500/10"
+                  : "bg-muted/50 text-muted-foreground border border-transparent hover:border-red-500/20 hover:text-red-500"
+              )}
+              title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart className={cn("h-4 w-4", isFavorite ? "fill-current" : "")} />
+            </button>
             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </div>
         </div>
