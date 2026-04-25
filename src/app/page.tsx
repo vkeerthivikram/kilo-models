@@ -1,16 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Model, ViewMode } from "@/lib/types";
+import { Model } from "@/lib/types";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ModelCard } from "@/components/model-card-v2";
+import { ThemeSelector } from "@/components/theme-selector";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { ModelDetailSheet } from "@/components/model-detail-sheet";
 import { ModelGrid } from "@/components/model-grid-v2";
 import { CompareTray } from "@/components/compare-tray";
 import { CompareModal } from "@/components/compare-modal";
+import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, ALL_PROVIDERS } from "@/hooks/use-model-filters";
+import { useFavorites } from "@/hooks/use-favorites";
 import {
   Search,
   LayoutGrid,
@@ -20,48 +25,39 @@ import {
   Filter,
   X,
   ChevronDown,
+  Heart,
 } from "lucide-react";
-
-interface Filters {
-  search: string;
-  freeOnly: boolean;
-  inputModalities: string[];
-  outputModalities: string[];
-  providers: string[];
-  hasReasoning: boolean;
-  hasTools: boolean;
-}
-
-const DEFAULT_FILTERS: Filters = {
-  search: "",
-  freeOnly: false,
-  inputModalities: [],
-  outputModalities: [],
-  providers: [],
-  hasReasoning: false,
-  hasTools: false,
-};
-
-const INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
-const OUTPUT_MODALITIES = ["text", "image", "audio"];
-const ALL_PROVIDERS = [
-  "ai21","aion-labs","alfredpros","alibaba","allenai","alpindale","amazon",
-  "anthropic","bytedance","cohere","deepseek","google","gryphe","ibm-granite",
-  "inclusionai","kilo-auto","meta-llama","microsoft","mistralai","moonshotai",
-  "nvidia","openai","openrouter","perplexity","qwen","rekaai","stepfun",
-  "tencent","x-ai","z-ai"
-];
 
 export default function Home() {
   const [models, setModels] = React.useState<Model[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [filters, setFilters] = React.useState<Filters>(DEFAULT_FILTERS);
-  const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [selectedModel, setSelectedModel] = React.useState<Model | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [providersOpen, setProvidersOpen] = React.useState(false);
   const [comparedModels, setComparedModels] = React.useState<Model[]>([]);
   const [compareModalOpen, setCompareModalOpen] = React.useState(false);
+
+  const {
+    search,
+    free,
+    inputModalities,
+    outputModalities,
+    providers,
+    reasoning,
+    tools,
+    view,
+    setSearch,
+    setFree,
+    setInputModalities,
+    setOutputModalities,
+    setProviders,
+    setReasoning,
+    setTools,
+    setView,
+    clearFilters,
+    activeFilterCount,
+    filteredModels,
+  } = useModelFilters(models);
 
   React.useEffect(() => {
     async function fetchModels() {
@@ -79,70 +75,31 @@ export default function Home() {
     fetchModels();
   }, []);
 
-  const filteredModels = React.useMemo(() => {
-    return models.filter((model) => {
-      if (filters.search) {
-        const search = filters.search.toLowerCase();
-        if (
-          !model.name.toLowerCase().includes(search) &&
-          !model.id.toLowerCase().includes(search) &&
-          !model.description.toLowerCase().includes(search)
-        )
-          return false;
-      }
-      if (filters.freeOnly && !model.isFree) return false;
-      if (filters.inputModalities.length > 0) {
-        const mods = model.architecture?.input_modalities ?? [];
-        if (!filters.inputModalities.some((m) => mods.includes(m))) return false;
-      }
-      if (filters.outputModalities.length > 0) {
-        const mods = model.architecture?.output_modalities ?? [];
-        if (!filters.outputModalities.some((m) => mods.includes(m))) return false;
-      }
-      if (filters.providers.length > 0) {
-        const p = model.id.split("/")[0];
-        if (!filters.providers.includes(p)) return false;
-      }
-      if (filters.hasReasoning) {
-        const params = model.supported_parameters ?? [];
-        if (!params.includes("reasoning") && !params.includes("include_reasoning"))
-          return false;
-      }
-      if (filters.hasTools) {
-        const params = model.supported_parameters ?? [];
-        if (!params.includes("tools")) return false;
-      }
-      return true;
-    });
-  }, [models, filters]);
-
-  const activeFilterCount =
-    (filters.freeOnly ? 1 : 0) +
-    filters.inputModalities.length +
-    filters.outputModalities.length +
-    filters.providers.length +
-    (filters.hasReasoning ? 1 : 0) +
-    (filters.hasTools ? 1 : 0);
-
   const toggleModality = (type: "input" | "output", mod: string) => {
     const key = type === "input" ? "inputModalities" : "outputModalities";
-    const current = filters[key];
+    const current = key === "input" ? inputModalities : outputModalities;
     if (current.includes(mod)) {
-      setFilters({ ...filters, [key]: current.filter((m) => m !== mod) });
+      if (key === "input") {
+        setInputModalities(current.filter((m) => m !== mod));
+      } else {
+        setOutputModalities(current.filter((m) => m !== mod));
+      }
     } else {
-      setFilters({ ...filters, [key]: [...current, mod] });
+      if (key === "input") {
+        setInputModalities([...current, mod]);
+      } else {
+        setOutputModalities([...current, mod]);
+      }
     }
   };
 
   const toggleProvider = (p: string) => {
-    if (filters.providers.includes(p)) {
-      setFilters({ ...filters, providers: filters.providers.filter((x) => x !== p) });
+    if (providers.includes(p)) {
+      setProviders(providers.filter((x) => x !== p));
     } else {
-      setFilters({ ...filters, providers: [...filters.providers, p] });
+      setProviders([...providers, p]);
     }
   };
-
-  const clearFilters = () => setFilters(DEFAULT_FILTERS);
 
   const handleSelectModel = (model: Model) => {
     setSelectedModel(model);
@@ -226,25 +183,25 @@ export default function Home() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search models..."
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 h-11 rounded-xl bg-background/80 border-primary/10 focus:border-primary/30"
             />
           </div>
 
           <div className="flex items-center border rounded-xl p-1 bg-background/80">
             <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              variant={view === "grid" ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setViewMode("grid")}
+              onClick={() => setView("grid")}
               className="h-8 px-2.5"
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
             <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
+              variant={view === "list" ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setViewMode("list")}
+              onClick={() => setView("list")}
               className="h-8 px-2.5"
             >
               <List className="h-4 w-4" />
@@ -257,9 +214,9 @@ export default function Home() {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Free toggle */}
             <Button
-              variant={filters.freeOnly ? "default" : "outline"}
+              variant={free ? "default" : "outline"}
               size="sm"
-              onClick={() => setFilters({ ...filters, freeOnly: !filters.freeOnly })}
+              onClick={() => setFree(!free)}
               className="h-8 rounded-lg text-xs font-medium"
             >
               Free Only
@@ -269,7 +226,7 @@ export default function Home() {
             {INPUT_MODALITIES.map((mod) => (
               <Button
                 key={mod}
-                variant={filters.inputModalities.includes(mod) ? "default" : "outline"}
+                variant={inputModalities.includes(mod) ? "default" : "outline"}
                 size="sm"
                 onClick={() => toggleModality("input", mod)}
                 className="h-8 rounded-lg text-xs capitalize"
@@ -282,7 +239,7 @@ export default function Home() {
             {OUTPUT_MODALITIES.map((mod) => (
               <Button
                 key={mod}
-                variant={filters.outputModalities.includes(mod) ? "default" : "outline"}
+                variant={outputModalities.includes(mod) ? "default" : "outline"}
                 size="sm"
                 onClick={() => toggleModality("output", mod)}
                 className="h-8 rounded-lg text-xs capitalize"
@@ -293,17 +250,17 @@ export default function Home() {
 
             {/* Capabilities */}
             <Button
-              variant={filters.hasReasoning ? "default" : "outline"}
+              variant={reasoning ? "default" : "outline"}
               size="sm"
-              onClick={() => setFilters({ ...filters, hasReasoning: !filters.hasReasoning })}
+              onClick={() => setReasoning(!reasoning)}
               className="h-8 rounded-lg text-xs"
             >
               Reasoning
             </Button>
             <Button
-              variant={filters.hasTools ? "default" : "outline"}
+              variant={tools ? "default" : "outline"}
               size="sm"
-              onClick={() => setFilters({ ...filters, hasTools: !filters.hasTools })}
+              onClick={() => setTools(!tools)}
               className="h-8 rounded-lg text-xs"
             >
               Tools
@@ -312,15 +269,15 @@ export default function Home() {
             {/* Providers dropdown */}
             <div className="relative">
               <Button
-                variant={filters.providers.length > 0 ? "default" : "outline"}
+                variant={providers.length > 0 ? "default" : "outline"}
                 size="sm"
                 onClick={() => setProvidersOpen(!providersOpen)}
                 className="h-8 rounded-lg text-xs"
               >
                 Providers
-                {filters.providers.length > 0 && (
+                {providers.length > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                    {filters.providers.length}
+                    {providers.length}
                   </Badge>
                 )}
                 <ChevronDown className="ml-1 h-3 w-3" />
@@ -336,7 +293,7 @@ export default function Home() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setFilters({ ...filters, providers: [] })}
+                        onClick={() => setProviders([])}
                         className="h-6 text-xs"
                       >
                         Clear
@@ -346,7 +303,7 @@ export default function Home() {
                       {ALL_PROVIDERS.map((p) => (
                         <Badge
                           key={p}
-                          variant={filters.providers.includes(p) ? "default" : "outline"}
+                          variant={providers.includes(p) ? "default" : "outline"}
                           className="cursor-pointer text-xs capitalize"
                           onClick={() => toggleProvider(p)}
                         >
@@ -384,7 +341,7 @@ export default function Home() {
         ) : (
           <ModelGrid
             models={filteredModels}
-            viewMode={viewMode}
+            viewMode={view}
             onSelectModel={handleSelectModel}
             isComparedModels={comparedModels}
             onToggleCompare={handleToggleCompare}
