@@ -20,7 +20,6 @@ export function SimilarModels({ models }: Props) {
           <Link key={model.id} href={`/models/${encodeURIComponent(model.id)}`}>
             <ModelCard
               model={model}
-              onSelect={() => {}}
               isCompared={false}
               onToggleCompare={() => {}}
             />

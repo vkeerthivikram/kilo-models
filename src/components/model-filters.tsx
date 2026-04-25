@@ -61,53 +61,24 @@ interface ModelFiltersProps {
 const ALL_INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
 const ALL_OUTPUT_MODALITIES = ["text", "image", "audio"];
 
-export function ModelFilters({
+interface FilterContentProps {
+  filters: Filters;
+  inputModalities: string[];
+  outputModalities: string[];
+  providers: string[];
+  toggleArrayItem: <K extends "inputModalities" | "outputModalities" | "providers">(key: K, item: string) => void;
+  updateFilter: <K extends keyof Filters>(key: K, value: Filters[K]) => void;
+}
+
+const FilterContent = React.memo(function FilterContent({
   filters,
-  onFiltersChange,
   inputModalities,
   outputModalities,
   providers,
-  resultCount,
-  totalCount,
-}: ModelFiltersProps) {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-
-  const updateFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
-    onFiltersChange({ ...filters, [key]: value });
-  };
-
-  const toggleArrayItem = <K extends "inputModalities" | "outputModalities" | "providers">(
-    key: K,
-    item: string
-  ) => {
-    const current = filters[key];
-    const updated = current.includes(item)
-      ? current.filter((i) => i !== item)
-      : [...current, item];
-    updateFilter(key, updated);
-  };
-
-  const activeFilterCount =
-    (filters.freeOnly ? 1 : 0) +
-    filters.inputModalities.length +
-    filters.outputModalities.length +
-    filters.providers.length +
-    (filters.hasReasoning ? 1 : 0) +
-    (filters.hasTools ? 1 : 0);
-
-  const clearFilters = () => {
-    onFiltersChange({
-      search: "",
-      freeOnly: false,
-      inputModalities: [],
-      outputModalities: [],
-      providers: [],
-      hasReasoning: false,
-      hasTools: false,
-    });
-  };
-
-  const FilterContent = () => (
+  toggleArrayItem,
+  updateFilter,
+}: FilterContentProps) {
+  return (
     <div className="space-y-6">
       <div className="space-y-2">
         <label className="text-sm font-medium">Free Only</label>
@@ -216,6 +187,53 @@ export function ModelFilters({
       </div>
     </div>
   );
+});
+
+export function ModelFilters({
+  filters,
+  onFiltersChange,
+  inputModalities,
+  outputModalities,
+  providers,
+  resultCount,
+  totalCount,
+}: ModelFiltersProps) {
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const updateFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
+    onFiltersChange({ ...filters, [key]: value });
+  };
+
+  const toggleArrayItem = <K extends "inputModalities" | "outputModalities" | "providers">(
+    key: K,
+    item: string
+  ) => {
+    const current = filters[key];
+    const updated = current.includes(item)
+      ? current.filter((i) => i !== item)
+      : [...current, item];
+    updateFilter(key, updated);
+  };
+
+  const activeFilterCount =
+    (filters.freeOnly ? 1 : 0) +
+    filters.inputModalities.length +
+    filters.outputModalities.length +
+    filters.providers.length +
+    (filters.hasReasoning ? 1 : 0) +
+    (filters.hasTools ? 1 : 0);
+
+  const clearFilters = () => {
+    onFiltersChange({
+      search: "",
+      freeOnly: false,
+      inputModalities: [],
+      outputModalities: [],
+      providers: [],
+      hasReasoning: false,
+      hasTools: false,
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -246,7 +264,14 @@ export function ModelFilters({
       </div>
 
       <div className="hidden lg:block border rounded-lg p-4">
-        <FilterContent />
+        <FilterContent
+          filters={filters}
+          inputModalities={inputModalities}
+          outputModalities={outputModalities}
+          providers={providers}
+          toggleArrayItem={toggleArrayItem}
+          updateFilter={updateFilter}
+        />
       </div>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -258,7 +283,14 @@ export function ModelFilters({
             </SheetDescription>
           </SheetHeader>
           <div className="mt-6">
-            <FilterContent />
+            <FilterContent
+              filters={filters}
+              inputModalities={inputModalities}
+              outputModalities={outputModalities}
+              providers={providers}
+              toggleArrayItem={toggleArrayItem}
+              updateFilter={updateFilter}
+            />
           </div>
         </SheetContent>
       </Sheet>

@@ -5,6 +5,16 @@ import { Model } from "@/lib/types";
 
 const STORAGE_KEY = "kilo-models-favorites";
 
+function getInitialFavorites(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
 interface UseFavoritesResult {
   favorites: string[];
   isFavorite: (id: string) => boolean;
@@ -13,14 +23,7 @@ interface UseFavoritesResult {
 }
 
 export function useFavorites(): UseFavoritesResult {
-  const [favorites, setFavorites] = React.useState<string[]>([]);
-
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setFavorites(JSON.parse(stored));
-    } catch {}
-  }, []);
+  const [favorites, setFavorites] = React.useState<string[]>(getInitialFavorites);
 
   React.useEffect(() => {
     const handler = (e: StorageEvent) => {

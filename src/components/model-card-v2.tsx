@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Model } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Hash,
-  Zap,
   Shield,
   Sparkles,
   Wrench,
@@ -20,7 +20,6 @@ import {
 
 interface ModelCardProps {
   model: Model;
-  onSelect: (model: Model) => void;
   isCompared?: boolean;
   onToggleCompare?: (model: Model) => void;
   isFavorite?: boolean;
@@ -70,7 +69,7 @@ const MODALITY_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
+export function ModelCard({ model, isCompared, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
   const inputMods = model.architecture?.input_modalities ?? [];
   const outputMods = model.architecture?.output_modalities ?? [];
   const hasReasoning = (model.supported_parameters ?? []).some(
@@ -81,17 +80,24 @@ export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavo
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 border-primary/5 hover:border-primary/20 bg-card/80 backdrop-blur-sm",
+        "group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 border-primary/5 hover:border-primary/20 bg-card/80 backdrop-blur-sm",
         isCompared && "border-primary/50 bg-primary/5"
       )}
-      onClick={() => onSelect(model)}
     >
       {/* Accent bar */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      <div className="p-5 space-y-4">
+      {/* Navigation link covers the card — action buttons sit above via z-index */}
+      <Link
+        href={`/models/${encodeURIComponent(model.id)}`}
+        className="absolute inset-0 z-0"
+        aria-label={`View ${model.name} details`}
+      />
+
+      {/* Action buttons layer above the link */}
+      <div className="relative z-10">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 p-5 pb-0">
           <div className="flex-1 min-w-0">
             <h3 className="font-heading text-lg leading-tight truncate group-hover:text-primary transition-colors">
               {model.name}
@@ -108,6 +114,7 @@ export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavo
             )}
             <button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onToggleCompare?.(model);
               }}
@@ -124,6 +131,7 @@ export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavo
             </button>
             <button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onToggleFavorite?.();
               }}
@@ -141,98 +149,101 @@ export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavo
           </div>
         </div>
 
-        {/* Description */}
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-          {model.description}
-        </p>
+        {/* Rest of content */}
+        <div className="p-5 space-y-4">
+          {/* Description */}
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+            {model.description}
+          </p>
 
-        {/* Price & Context */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
-              <ArrowUpRight className="h-3 w-3" />
-              Input
+          {/* Price & Context */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+                <ArrowUpRight className="h-3 w-3" />
+                Input
+              </div>
+              <span className="text-sm font-semibold font-heading">
+                {formatPrice(model.pricing?.prompt)}
+              </span>
             </div>
-            <span className="text-sm font-semibold font-heading">
-              {formatPrice(model.pricing?.prompt)}
-            </span>
-          </div>
-          <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
-              <ArrowDownRight className="h-3 w-3" />
-              Output
+            <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+                <ArrowDownRight className="h-3 w-3" />
+                Output
+              </div>
+              <span className="text-sm font-semibold font-heading">
+                {formatPrice(model.pricing?.completion)}
+              </span>
             </div>
-            <span className="text-sm font-semibold font-heading">
-              {formatPrice(model.pricing?.completion)}
-            </span>
-          </div>
-          <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
-              <Hash className="h-3 w-3" />
-              Context
+            <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+                <Hash className="h-3 w-3" />
+                Context
+              </div>
+              <span className="text-sm font-semibold font-heading">
+                {formatContext(model.context_length)}
+              </span>
             </div>
-            <span className="text-sm font-semibold font-heading">
-              {formatContext(model.context_length)}
-            </span>
           </div>
-        </div>
 
-        {/* Modalities */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-bold text-muted-foreground tracking-widest uppercase">
-              In
-            </span>
-            <div className="flex items-center gap-1">
-              {inputMods.map((m) => (
-                <div
-                  key={m}
-                  className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center"
-                  title={`Input: ${m}`}
-                >
-                  {MODALITY_ICONS[m] ?? m[0].toUpperCase()}
-                </div>
-              ))}
+          {/* Modalities */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold text-muted-foreground tracking-widest uppercase">
+                In
+              </span>
+              <div className="flex items-center gap-1">
+                {inputMods.map((m) => (
+                  <div
+                    key={m}
+                    className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center"
+                    title={`Input: ${m}`}
+                  >
+                    {MODALITY_ICONS[m] ?? m[0].toUpperCase()}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold text-muted-foreground tracking-widest uppercase">
+                Out
+              </span>
+              <div className="flex items-center gap-1">
+                {outputMods.map((m) => (
+                  <div
+                    key={m}
+                    className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center"
+                    title={`Output: ${m}`}
+                  >
+                    {MODALITY_ICONS[m] ?? m[0].toUpperCase()}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-bold text-muted-foreground tracking-widest uppercase">
-              Out
-            </span>
-            <div className="flex items-center gap-1">
-              {outputMods.map((m) => (
-                <div
-                  key={m}
-                  className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center"
-                  title={`Output: ${m}`}
-                >
-                  {MODALITY_ICONS[m] ?? m[0].toUpperCase()}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Capabilities */}
-        <div className="flex items-center gap-2">
-          {hasReasoning && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-medium">
-              <Sparkles className="h-3 w-3" />
-              Reasoning
-            </div>
-          )}
-          {hasTools && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 text-[10px] font-medium">
-              <Wrench className="h-3 w-3" />
-              Tools
-            </div>
-          )}
-          {model.top_provider?.is_moderated && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-orange-500/10 text-orange-600 text-[10px] font-medium">
-              <Shield className="h-3 w-3" />
-              Moderated
-            </div>
-          )}
+          {/* Capabilities */}
+          <div className="flex items-center gap-2">
+            {hasReasoning && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 text-amber-600 text-[10px] font-medium">
+                <Sparkles className="h-3 w-3" />
+                Reasoning
+              </div>
+            )}
+            {hasTools && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 text-[10px] font-medium">
+                <Wrench className="h-3 w-3" />
+                Tools
+              </div>
+            )}
+            {model.top_provider?.is_moderated && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-orange-500/10 text-orange-600 text-[10px] font-medium">
+                <Shield className="h-3 w-3" />
+                Moderated
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Card>

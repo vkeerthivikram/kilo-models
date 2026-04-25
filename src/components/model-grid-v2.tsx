@@ -135,7 +135,7 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
             style={{ animationDelay: `${i * 20}ms` }}
             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
-            <ModelCard model={model} onSelect={onSelectModel} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} isFavorite={isFavoriteModel?.(model.id)} onToggleFavorite={() => onToggleFavorite?.(model.id)} />
+            <ModelCard model={model} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} isFavorite={isFavoriteModel?.(model.id)} onToggleFavorite={() => onToggleFavorite?.(model.id)} />
           </div>
         ))}
       </div>

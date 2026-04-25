@@ -4,7 +4,7 @@ import * as React from "react";
 import { Suspense } from "react";
 import { Model, ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ModelCard } from "@/components/model-card-v2";
+
 import { ThemeSelector } from "@/components/theme-selector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,7 @@ const ALL_PROVIDERS = [
   "tencent","x-ai","z-ai"
 ];
 
-function ModelExplorer({ models }: { models: Model[] }) {
+function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
   const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [selectedModel, setSelectedModel] = React.useState<Model | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
@@ -73,7 +73,7 @@ function ModelExplorer({ models }: { models: Model[] }) {
 
   const { favorites: favoriteIds, isFavorite: isFavoriteFn, toggleFavorite: toggleFavoriteFn } = useFavorites();
 
-  const loading = models.length === 0;
+
 
   const toggleModality = (type: "input" | "output", mod: string) => {
     if (type === "input") {
@@ -134,13 +134,11 @@ function ModelExplorer({ models }: { models: Model[] }) {
   return (
     <>
       <div className="flex items-center gap-3">
-        {!loading && (
-          <div className="hidden sm:flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Showing</span>
-            <span className="font-semibold text-foreground font-heading">{sortedModels.length}</span>
-            <span className="text-muted-foreground">of {models.length}</span>
-          </div>
-        )}
+        <div className="hidden sm:flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Showing</span>
+          <span className="font-semibold text-foreground font-heading">{sortedModels.length}</span>
+          <span className="text-muted-foreground">of {models.length}</span>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -293,7 +291,7 @@ function ModelExplorer({ models }: { models: Model[] }) {
         </div>
       </div>
 
-      {loading ? (
+      {models.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="rounded-2xl border bg-card animate-pulse h-64" />
@@ -395,7 +393,7 @@ export default function Home() {
         </div>
 
         <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /></div>}>
-          <ModelExplorer models={models} />
+          <ModelExplorer models={models} loading={loading} />
         </Suspense>
       </main>
 

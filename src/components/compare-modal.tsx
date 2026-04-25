@@ -5,7 +5,11 @@ import { Model } from "@/lib/types";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { PricingBarChart } from "@/components/pricing-bar-chart";
+import { CapabilityRadarChart } from "@/components/capability-radar-chart";
+import { CompareCostTable } from "@/components/compare-cost-table";
 import {
   X,
   GitCompare,
@@ -20,6 +24,9 @@ import {
   Plus,
   Calendar,
   Building2,
+  BarChart3,
+  Calculator,
+  List,
 } from "lucide-react";
 
 interface CompareModalProps {
@@ -155,6 +162,159 @@ function ModelColumnHeader({ model, onRemove }: { model: Model; onRemove: () => 
   );
 }
 
+function OverviewTab({ models, onRemove }: { models: Model[]; onRemove: (m: Model) => void }) {
+  return (
+    <div className="min-w-max">
+      {/* Sticky Column Headers */}
+      <div className="sticky top-0 z-20 flex bg-background border-b shadow-sm">
+        <div className="w-48 shrink-0 p-4 flex items-center">
+          <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Attribute
+          </span>
+        </div>
+        {models.map((model) => (
+          <ModelColumnHeader
+            key={model.id}
+            model={model}
+            onRemove={() => onRemove(model)}
+          />
+        ))}
+      </div>
+
+      {/* Pricing Section */}
+      <SectionHeader
+        icon={<DollarSign className="h-4 w-4" />}
+        label="Pricing"
+      />
+      <CompareRow
+        label="Input (per 1K)"
+        values={models.map((m) => formatPrice(m.pricing?.prompt))}
+        icon={<ArrowUpRight className="h-4 w-4" />}
+        highlight
+      />
+      <CompareRow
+        label="Output (per 1K)"
+        values={models.map((m) => formatPrice(m.pricing?.completion))}
+        icon={<ArrowDownRight className="h-4 w-4" />}
+        highlight
+      />
+
+      {/* Context & Limits Section */}
+      <SectionHeader
+        icon={<Layers className="h-4 w-4" />}
+        label="Context & Limits"
+      />
+      <CompareRow
+        label="Context Window"
+        values={models.map((m) => formatContext(m.context_length))}
+        icon={<Hash className="h-4 w-4" />}
+        highlight
+      />
+      <CompareRow
+        label="Max Completion"
+        values={models.map((m) =>
+          m.top_provider?.max_completion_tokens
+            ? `${m.top_provider.max_completion_tokens.toLocaleString()} tokens`
+            : "—"
+        )}
+        icon={<Maximize2Icon className="h-4 w-4" />}
+      />
+
+      {/* Modalities Section */}
+      <SectionHeader
+        icon={<Cpu className="h-4 w-4" />}
+        label="Modalities"
+      />
+      <CompareRow
+        label="Input"
+        values={models.map((m) => (m.architecture?.input_modalities ?? []).join(", ") || "—")}
+      />
+      <CompareRow
+        label="Output"
+        values={models.map((m) => (m.architecture?.output_modalities ?? []).join(", ") || "—")}
+      />
+
+      {/* Capabilities Section */}
+      <SectionHeader
+        icon={<Sparkles className="h-4 w-4" />}
+        label="Capabilities"
+      />
+      <div className="flex items-center gap-4 py-2.5 px-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground w-44 shrink-0">
+          <Sparkles className="h-4 w-4" />
+          Features
+        </div>
+        {models.map((m) => {
+          const hasReasoning = (m.supported_parameters ?? []).some(
+            (p) => p === "reasoning" || p === "include_reasoning"
+          );
+          const hasTools = (m.supported_parameters ?? []).includes("tools");
+          const isModerated = m.top_provider?.is_moderated;
+
+          return (
+            <div key={m.id} className="flex-1 flex flex-wrap gap-1.5">
+              <CapabilityBadge type="reasoning" enabled={hasReasoning} />
+              <CapabilityBadge type="tools" enabled={hasTools} />
+              <CapabilityBadge type="moderated" enabled={isModerated} />
+              {!hasReasoning && !hasTools && !isModerated && (
+                <span className="text-xs text-muted-foreground">—</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Additional Info Section */}
+      <SectionHeader
+        icon={<Settings2 className="h-4 w-4" />}
+        label="Additional Info"
+      />
+      <CompareRow
+        label="Tokenizer"
+        values={models.map((m) => m.architecture?.tokenizer ?? "—")}
+        icon={<Settings2 className="h-4 w-4" />}
+      />
+      <CompareRow
+        label="Released"
+        values={models.map((m) => formatDate(m.created))}
+        icon={<Calendar className="h-4 w-4" />}
+      />
+
+      {/* Description Section */}
+      <SectionHeader
+        icon={<Cpu className="h-4 w-4" />}
+        label="Description"
+      />
+      <div className="flex items-start gap-4 py-3 px-4">
+        <div className="flex items-start gap-2 text-sm text-muted-foreground w-44 shrink-0 pt-1">
+          <Cpu className="h-4 w-4 mt-0.5" />
+          About
+        </div>
+        {models.map((m) => (
+          <div key={m.id} className="flex-1 text-sm leading-relaxed text-muted-foreground">
+            {m.description}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartsTab({ models }: { models: Model[] }) {
+  return (
+    <div className="space-y-8 p-6">
+      <div>
+        <h3 className="font-heading text-base mb-4">Pricing Comparison</h3>
+        <PricingBarChart models={models} />
+      </div>
+      <div>
+        <h3 className="font-heading text-base mb-4">Capability Radar</h3>
+        <CapabilityRadarChart models={models} />
+      </div>
+    </div>
+  );
+}
+
 export function CompareModal({ models, open, onOpenChange, onRemove }: CompareModalProps) {
   if (models.length === 0) return null;
 
@@ -185,142 +345,37 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
           </div>
         </div>
 
-        {/* Comparison Table */}
-        <div className="flex-1 overflow-auto">
-          <div className="min-w-max">
-            {/* Sticky Column Headers */}
-            <div className="sticky top-0 z-20 flex bg-background border-b shadow-sm">
-              <div className="w-48 shrink-0 p-4 flex items-center">
-                <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Attribute
-                </span>
-              </div>
-              {models.map((model) => (
-                <ModelColumnHeader
-                  key={model.id}
-                  model={model}
-                  onRemove={() => onRemove(model)}
-                />
-              ))}
-            </div>
-
-            {/* Pricing Section */}
-            <SectionHeader
-              icon={<DollarSign className="h-4 w-4" />}
-              label="Pricing"
-            />
-            <CompareRow
-              label="Input (per 1K)"
-              values={models.map((m) => formatPrice(m.pricing?.prompt))}
-              icon={<ArrowUpRight className="h-4 w-4" />}
-              highlight
-            />
-            <CompareRow
-              label="Output (per 1K)"
-              values={models.map((m) => formatPrice(m.pricing?.completion))}
-              icon={<ArrowDownRight className="h-4 w-4" />}
-              highlight
-            />
-
-            {/* Context & Limits Section */}
-            <SectionHeader
-              icon={<Layers className="h-4 w-4" />}
-              label="Context & Limits"
-            />
-            <CompareRow
-              label="Context Window"
-              values={models.map((m) => formatContext(m.context_length))}
-              icon={<Hash className="h-4 w-4" />}
-              highlight
-            />
-            <CompareRow
-              label="Max Completion"
-              values={models.map((m) =>
-                m.top_provider?.max_completion_tokens
-                  ? `${m.top_provider.max_completion_tokens.toLocaleString()} tokens`
-                  : "—"
-              )}
-              icon={<Maximize2Icon className="h-4 w-4" />}
-            />
-
-            {/* Modalities Section */}
-            <SectionHeader
-              icon={<Cpu className="h-4 w-4" />}
-              label="Modalities"
-            />
-            <CompareRow
-              label="Input"
-              values={models.map((m) => (m.architecture?.input_modalities ?? []).join(", ") || "—")}
-            />
-            <CompareRow
-              label="Output"
-              values={models.map((m) => (m.architecture?.output_modalities ?? []).join(", ") || "—")}
-            />
-
-            {/* Capabilities Section */}
-            <SectionHeader
-              icon={<Sparkles className="h-4 w-4" />}
-              label="Capabilities"
-            />
-            <div className="flex items-center gap-4 py-2.5 px-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground w-44 shrink-0">
-                <Sparkles className="h-4 w-4" />
-                Features
-              </div>
-              {models.map((m) => {
-                const hasReasoning = (m.supported_parameters ?? []).some(
-                  (p) => p === "reasoning" || p === "include_reasoning"
-                );
-                const hasTools = (m.supported_parameters ?? []).includes("tools");
-                const isModerated = m.top_provider?.is_moderated;
-
-                return (
-                  <div key={m.id} className="flex-1 flex flex-wrap gap-1.5">
-                    <CapabilityBadge type="reasoning" enabled={hasReasoning} />
-                    <CapabilityBadge type="tools" enabled={hasTools} />
-                    <CapabilityBadge type="moderated" enabled={isModerated} />
-                    {!hasReasoning && !hasTools && !isModerated && (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Additional Info Section */}
-            <SectionHeader
-              icon={<Settings2 className="h-4 w-4" />}
-              label="Additional Info"
-            />
-            <CompareRow
-              label="Tokenizer"
-              values={models.map((m) => m.architecture?.tokenizer ?? "—")}
-              icon={<Settings2 className="h-4 w-4" />}
-            />
-            <CompareRow
-              label="Released"
-              values={models.map((m) => formatDate(m.created))}
-              icon={<Calendar className="h-4 w-4" />}
-            />
-
-            {/* Description Section */}
-            <SectionHeader
-              icon={<Cpu className="h-4 w-4" />}
-              label="Description"
-            />
-            <div className="flex items-start gap-4 py-3 px-4">
-              <div className="flex items-start gap-2 text-sm text-muted-foreground w-44 shrink-0 pt-1">
-                <Cpu className="h-4 w-4 mt-0.5" />
-                About
-              </div>
-              {models.map((m) => (
-                <div key={m.id} className="flex-1 text-sm leading-relaxed text-muted-foreground">
-                  {m.description}
-                </div>
-              ))}
-            </div>
+        {/* Tabs */}
+        <Tabs defaultValue="overview" className="flex-1 flex flex-col">
+          <div className="px-6 pt-4">
+            <TabsList>
+              <TabsTrigger value="overview">
+                <List className="h-4 w-4 mr-1.5" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="charts">
+                <BarChart3 className="h-4 w-4 mr-1.5" />
+                Charts
+              </TabsTrigger>
+              <TabsTrigger value="calculator">
+                <Calculator className="h-4 w-4 mr-1.5" />
+                Cost Calculator
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </div>
+
+          <TabsContent value="overview" className="flex-1 overflow-auto">
+            <OverviewTab models={models} onRemove={onRemove} />
+          </TabsContent>
+
+          <TabsContent value="charts" className="flex-1 overflow-auto">
+            <ChartsTab models={models} />
+          </TabsContent>
+
+          <TabsContent value="calculator" className="flex-1 overflow-auto p-6">
+            <CompareCostTable models={models} />
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
   );
