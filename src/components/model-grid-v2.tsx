@@ -10,6 +10,8 @@ interface ModelGridProps {
   models: Model[];
   viewMode: ViewMode;
   onSelectModel: (model: Model) => void;
+  isComparedModels?: Model[];
+  onToggleCompare?: (model: Model) => void;
 }
 
 function formatPrice(price: string | undefined): string {
@@ -26,7 +28,7 @@ function formatContext(ctx: number): string {
   return ctx.toString();
 }
 
-export function ModelGrid({ models, viewMode, onSelectModel }: ModelGridProps) {
+export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare }: ModelGridProps) {
   if (models.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -109,7 +111,7 @@ export function ModelGrid({ models, viewMode, onSelectModel }: ModelGridProps) {
           style={{ animationDelay: `${i * 20}ms` }}
           className="animate-in fade-in slide-in-from-bottom-4 duration-500"
         >
-          <ModelCard model={model} onSelect={onSelectModel} />
+          <ModelCard model={model} onSelect={onSelectModel} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} />
         </div>
       ))}
     </div>

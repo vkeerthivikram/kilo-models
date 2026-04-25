@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { ModelCard } from "@/components/model-card-v2";
 import { ModelDetailSheet } from "@/components/model-detail-sheet";
 import { ModelGrid } from "@/components/model-grid-v2";
+import { CompareTray } from "@/components/compare-tray";
+import { CompareModal } from "@/components/compare-modal";
 import {
   Search,
   LayoutGrid,
@@ -58,6 +60,8 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = React.useState<Model | null>(null);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [providersOpen, setProvidersOpen] = React.useState(false);
+  const [comparedModels, setComparedModels] = React.useState<Model[]>([]);
+  const [compareModalOpen, setCompareModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     async function fetchModels() {
@@ -143,6 +147,19 @@ export default function Home() {
   const handleSelectModel = (model: Model) => {
     setSelectedModel(model);
     setSheetOpen(true);
+  };
+
+  const handleToggleCompare = (model: Model) => {
+    setComparedModels((prev) => {
+      const exists = prev.some((m) => m.id === model.id);
+      if (exists) {
+        return prev.filter((m) => m.id !== model.id);
+      }
+      if (prev.length >= 10) {
+        return prev;
+      }
+      return [...prev, model];
+    });
   };
 
   return (
@@ -369,6 +386,8 @@ export default function Home() {
             models={filteredModels}
             viewMode={viewMode}
             onSelectModel={handleSelectModel}
+            isComparedModels={comparedModels}
+            onToggleCompare={handleToggleCompare}
           />
         )}
       </main>
@@ -400,6 +419,19 @@ export default function Home() {
         model={selectedModel}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+      />
+
+      <CompareTray
+        models={comparedModels}
+        onRemove={handleToggleCompare}
+        onOpen={() => setCompareModalOpen(true)}
+      />
+
+      <CompareModal
+        models={comparedModels}
+        open={compareModalOpen}
+        onOpenChange={setCompareModalOpen}
+        onRemove={handleToggleCompare}
       />
     </div>
   );
