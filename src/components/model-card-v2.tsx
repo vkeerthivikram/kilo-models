@@ -15,6 +15,7 @@ import {
   Wrench,
   ChevronRight,
   Scale,
+  Heart,
 } from "lucide-react";
 
 interface ModelCardProps {
@@ -22,6 +23,8 @@ interface ModelCardProps {
   onSelect: (model: Model) => void;
   isCompared?: boolean;
   onToggleCompare?: (model: Model) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 function formatPrice(price: string | undefined): string {
@@ -67,7 +70,7 @@ const MODALITY_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export function ModelCard({ model, onSelect, isCompared, onToggleCompare }: ModelCardProps) {
+export function ModelCard({ model, onSelect, isCompared, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
   const inputMods = model.architecture?.input_modalities ?? [];
   const outputMods = model.architecture?.output_modalities ?? [];
   const hasReasoning = (model.supported_parameters ?? []).some(
