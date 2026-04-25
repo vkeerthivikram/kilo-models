@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import { Model, ViewMode } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { ModelCard } from "@/components/model-card-v2";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,8 @@ function ModelExplorer({ models }: { models: Model[] }) {
     paginatedModels,
     hasMore,
   } = useModelFilters(models);
+
+  const { favorites: favoriteIds, isFavorite: isFavoriteFn, toggleFavorite: toggleFavoriteFn } = useFavorites();
 
   const loading = models.length === 0;
 
@@ -224,6 +227,21 @@ function ModelExplorer({ models }: { models: Model[] }) {
             Tools
           </Button>
 
+          <Button
+            variant={fav ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFav(!fav)}
+            className="h-8 rounded-lg text-xs"
+          >
+            <Heart className={cn("h-3.5 w-3.5 mr-1.5", fav ? "fill-current" : "")} />
+            Favorites
+            {favoriteIds.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                {favoriteIds.length}
+              </Badge>
+            )}
+          </Button>
+
           <div className="relative">
             <Button
               variant={providers.length > 0 ? "default" : "outline"}
@@ -288,12 +306,20 @@ function ModelExplorer({ models }: { models: Model[] }) {
           onSelectModel={handleSelectModel}
           isComparedModels={comparedModels}
           onToggleCompare={handleToggleCompare}
+          isFavoriteModel={isFavoriteFn}
+          onToggleFavorite={toggleFavoriteFn}
           hasMore={hasMore}
           onLoadMore={handleLoadMore}
         />
       )}
 
-      <ModelDetailSheet model={selectedModel} open={sheetOpen} onOpenChange={setSheetOpen} />
+      <ModelDetailSheet
+        model={selectedModel}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        isFavorite={selectedModel ? isFavoriteFn(selectedModel.id) : false}
+        onToggleFavorite={() => selectedModel && toggleFavoriteFn(selectedModel.id)}
+      />
 
       <CompareTray models={comparedModels} onRemove={handleToggleCompare} onOpen={() => setCompareModalOpen(true)} />
 

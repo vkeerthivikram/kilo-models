@@ -12,6 +12,8 @@ interface ModelGridProps {
   onSelectModel: (model: Model) => void;
   isComparedModels?: Model[];
   onToggleCompare?: (model: Model) => void;
+  isFavoriteModel?: (id: string) => boolean;
+  onToggleFavorite?: (id: string) => void;
   hasMore?: boolean;
   onLoadMore?: () => void;
 }
@@ -30,7 +32,7 @@ function formatContext(ctx: number): string {
   return ctx.toString();
 }
 
-export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare, hasMore, onLoadMore }: ModelGridProps) {
+export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite, hasMore, onLoadMore }: ModelGridProps) {
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -133,7 +135,7 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
             style={{ animationDelay: `${i * 20}ms` }}
             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
           >
-            <ModelCard model={model} onSelect={onSelectModel} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} />
+            <ModelCard model={model} onSelect={onSelectModel} isCompared={isComparedModels?.some((m) => m.id === model.id)} onToggleCompare={onToggleCompare} isFavorite={isFavoriteModel?.(model.id)} onToggleFavorite={() => onToggleFavorite?.(model.id)} />
           </div>
         ))}
       </div>
