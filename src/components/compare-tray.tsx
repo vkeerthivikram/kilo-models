@@ -43,7 +43,8 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
             ))}
           </div>
         </div>
-        <Button onClick={onOpen} size="sm" className="shrink-0">
+        <Button onClick={onOpen} size="sm" className="shrink-0 gap-2">
+          <GitCompare className="h-4 w-4" />
           Open Compare
         </Button>
       </div>

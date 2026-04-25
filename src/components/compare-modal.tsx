@@ -54,8 +54,8 @@ interface CompareRowProps {
 function CompareRow({ label, values, icon }: CompareRowProps) {
   const same = allSame(values);
   return (
-    <div className={cn("grid gap-4 py-3 px-4", same && "opacity-50")}>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+    <div className={cn("flex items-center gap-4 py-3 px-4", same && "opacity-50")}>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground w-48 shrink-0">
         {icon}
         {label}
       </div>

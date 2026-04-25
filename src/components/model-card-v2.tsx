@@ -109,14 +109,15 @@ export function ModelCard({ model, onSelect, isCompared, onToggleCompare }: Mode
                 onToggleCompare?.(model);
               }}
               className={cn(
-                "p-1.5 rounded-md transition-all",
+                "p-2 rounded-lg transition-all flex items-center gap-1.5",
                 isCompared
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-muted text-muted-foreground"
+                  ? "bg-primary/10 text-primary border border-primary/30"
+                  : "bg-muted/50 text-muted-foreground border border-transparent hover:border-primary/20 hover:text-primary"
               )}
               title={isCompared ? "Remove from compare" : "Add to compare"}
             >
               <Scale className="h-4 w-4" />
+              <span className="text-xs font-medium sr-only">{isCompared ? "Remove" : "Compare"}</span>
             </button>
             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </div>
