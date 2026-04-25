@@ -32,6 +32,8 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
               >
                 <span className="max-w-[120px] truncate">{model.name}</span>
                 <button
+                  type="button"
+                  aria-label={`Remove ${model.name} from comparison`}
                   onClick={() => onRemove(model)}
                   className="hover:bg-muted rounded-sm p-0.5"
                 >
