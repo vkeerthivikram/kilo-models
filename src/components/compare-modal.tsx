@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Model } from "@/lib/types";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -16,14 +17,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Hash,
-  Sparkles,
-  Cpu,
-  DollarSign,
-  Layers,
-  Settings2,
   Plus,
-  Calendar,
-  Building2,
   BarChart3,
   Calculator,
   List,
@@ -63,47 +57,57 @@ function getProvider(model: Model): string {
   return model.id.split("/")[0];
 }
 
-function allSame(values: string[]): boolean {
-  return values.every((v) => v === values[0]);
-}
-
 interface CompareRowProps {
   label: string;
   values: string[];
+  numericValues?: number[];
   icon?: React.ReactNode;
-  highlight?: boolean;
+  higherIsBetter?: boolean;
 }
 
-function CompareRow({ label, values, icon, highlight }: CompareRowProps) {
-  const same = allSame(values);
+function CompareRow({ label, values, numericValues, icon, higherIsBetter = false }: CompareRowProps) {
+  const bestIndex = numericValues
+    ? numericValues.reduce((best, val, i, arr) => {
+        if (val === 0) return best;
+        const currentBetter = higherIsBetter ? val > arr[best] : val < arr[best];
+        return currentBetter ? i : best;
+      }, -1)
+    : -1;
+
   return (
-    <div
-      className={cn(
-        "flex items-center gap-4 py-2.5 px-4 transition-colors",
-        same && "opacity-50",
-        highlight && !same && "bg-amber-500/5 border-l-2 border-amber-500"
-      )}
-    >
-      <div className="flex items-center gap-2 text-sm text-muted-foreground w-44 shrink-0">
+    <div className="grid gap-3 py-3 px-4 hover:bg-muted/30 transition-colors rounded-lg">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
         {icon}
         {label}
       </div>
-      {values.map((v, i) => (
-        <div key={i} className="text-sm font-medium font-mono flex-1">
-          {v}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b">
-      {icon}
-      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        {label}
-      </span>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {values.map((v, i) => {
+          const isBest = i === bestIndex;
+          const isNumeric = numericValues && numericValues[i] > 0;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "rounded-lg border p-3 transition-all",
+                isBest && isNumeric
+                  ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                  : "border-border/50 bg-card/50"
+              )}
+            >
+              <div className="text-xs text-muted-foreground mb-1">Model {i + 1}</div>
+              <div className={cn(
+                "text-sm font-semibold font-mono",
+                isBest && isNumeric ? "text-primary" : "text-foreground"
+              )}>
+                {v}
+              </div>
+              {isBest && isNumeric && (
+                <div className="text-[10px] text-primary font-medium mt-1">Best</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -126,176 +130,128 @@ function CapabilityBadge({ type, enabled }: { type: "reasoning" | "tools" | "mod
   );
 }
 
-function ModelColumnHeader({ model, onRemove }: { model: Model; onRemove: () => void }) {
-  const provider = getProvider(model);
-
-  return (
-    <div className="p-4 bg-card/50 border-b flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-heading text-base font-semibold truncate">{model.name}</h3>
-          <p className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={onRemove}
-          className="shrink-0 hover:bg-destructive/10 hover:text-destructive"
-          title="Remove from comparison"
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <Badge variant="outline" className="text-[10px] capitalize">
-          <Building2 className="h-3 w-3 mr-1" />
-          {provider}
-        </Badge>
-        {model.isFree && (
-          <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] font-semibold">
-            Free
-          </Badge>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function OverviewTab({ models, onRemove }: { models: Model[]; onRemove: (m: Model) => void }) {
+  const router = useRouter();
+  const inputPrices = models.map((m) => parseFloat(m.pricing?.prompt ?? "0") || 0);
+  const outputPrices = models.map((m) => parseFloat(m.pricing?.completion ?? "0") || 0);
+  const contexts = models.map((m) => m.context_length || 0);
+  const maxCompletions = models.map((m) => m.top_provider?.max_completion_tokens || 0);
+
   return (
-    <div className="min-w-max">
-      {/* Sticky Column Headers */}
-      <div className="sticky top-0 z-20 flex bg-background border-b shadow-sm">
-        <div className="w-48 shrink-0 p-4 flex items-center">
-          <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Attribute
-          </span>
-        </div>
-        {models.map((model) => (
-          <ModelColumnHeader
-            key={model.id}
-            model={model}
-            onRemove={() => onRemove(model)}
-          />
-        ))}
-      </div>
-
-      {/* Pricing Section */}
-      <SectionHeader
-        icon={<DollarSign className="h-4 w-4" />}
-        label="Pricing"
-      />
-      <CompareRow
-        label="Input (per 1K)"
-        values={models.map((m) => formatPrice(m.pricing?.prompt))}
-        icon={<ArrowUpRight className="h-4 w-4" />}
-        highlight
-      />
-      <CompareRow
-        label="Output (per 1K)"
-        values={models.map((m) => formatPrice(m.pricing?.completion))}
-        icon={<ArrowDownRight className="h-4 w-4" />}
-        highlight
-      />
-
-      {/* Context & Limits Section */}
-      <SectionHeader
-        icon={<Layers className="h-4 w-4" />}
-        label="Context & Limits"
-      />
-      <CompareRow
-        label="Context Window"
-        values={models.map((m) => formatContext(m.context_length))}
-        icon={<Hash className="h-4 w-4" />}
-        highlight
-      />
-      <CompareRow
-        label="Max Completion"
-        values={models.map((m) =>
-          m.top_provider?.max_completion_tokens
-            ? `${m.top_provider.max_completion_tokens.toLocaleString()} tokens`
-            : "—"
-        )}
-        icon={<Maximize2Icon className="h-4 w-4" />}
-      />
-
-      {/* Modalities Section */}
-      <SectionHeader
-        icon={<Cpu className="h-4 w-4" />}
-        label="Modalities"
-      />
-      <CompareRow
-        label="Input"
-        values={models.map((m) => (m.architecture?.input_modalities ?? []).join(", ") || "—")}
-      />
-      <CompareRow
-        label="Output"
-        values={models.map((m) => (m.architecture?.output_modalities ?? []).join(", ") || "—")}
-      />
-
-      {/* Capabilities Section */}
-      <SectionHeader
-        icon={<Sparkles className="h-4 w-4" />}
-        label="Capabilities"
-      />
-      <div className="flex items-center gap-4 py-2.5 px-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground w-44 shrink-0">
-          <Sparkles className="h-4 w-4" />
-          Features
-        </div>
-        {models.map((m) => {
-          const hasReasoning = (m.supported_parameters ?? []).some(
+    <div className="p-6">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {models.map((model) => {
+          const provider = getProvider(model);
+          const hasReasoning = (model.supported_parameters ?? []).some(
             (p) => p === "reasoning" || p === "include_reasoning"
           );
-          const hasTools = (m.supported_parameters ?? []).includes("tools");
-          const isModerated = m.top_provider?.is_moderated;
+          const hasTools = (model.supported_parameters ?? []).includes("tools");
+          const isModerated = model.top_provider?.is_moderated;
 
           return (
-            <div key={m.id} className="flex-1 flex flex-wrap gap-1.5">
-              <CapabilityBadge type="reasoning" enabled={hasReasoning} />
-              <CapabilityBadge type="tools" enabled={hasTools} />
-              <CapabilityBadge type="moderated" enabled={isModerated} />
-              {!hasReasoning && !hasTools && !isModerated && (
-                <span className="text-xs text-muted-foreground">—</span>
-              )}
+            <div key={model.id} className="bg-card rounded-xl border shadow-sm overflow-hidden">
+              <div
+                className="p-4 border-b bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => router.push(`/models/${encodeURIComponent(model.id)}`)}
+              >
+                <h3 className="font-heading text-base font-semibold">{model.name}</h3>
+                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{provider}</p>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Input / 1K</div>
+                    <div className="text-sm font-bold font-mono">{formatPrice(model.pricing?.prompt)}</div>
+                  </div>
+                  <div className="text-center p-3 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Output / 1K</div>
+                    <div className="text-sm font-bold font-mono">{formatPrice(model.pricing?.completion)}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Context</div>
+                    <div className="text-sm font-bold">{formatContext(model.context_length)}</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Max Output</div>
+                    <div className="text-sm font-bold">
+                      {model.top_provider?.max_completion_tokens?.toLocaleString() ?? "—"}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Capabilities</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <CapabilityBadge type="reasoning" enabled={hasReasoning} />
+                    <CapabilityBadge type="tools" enabled={hasTools} />
+                    <CapabilityBadge type="moderated" enabled={isModerated} />
+                    {!hasReasoning && !hasTools && !isModerated && (
+                      <span className="text-xs text-muted-foreground">None</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  Released: {formatDate(model.created)}
+                </div>
+              </div>
+              <div className="px-4 pb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(model);
+                  }}
+                  className="w-full hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                >
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                  Remove
+                </Button>
+              </div>
             </div>
           );
         })}
       </div>
-
-      {/* Additional Info Section */}
-      <SectionHeader
-        icon={<Settings2 className="h-4 w-4" />}
-        label="Additional Info"
-      />
-      <CompareRow
-        label="Tokenizer"
-        values={models.map((m) => m.architecture?.tokenizer ?? "—")}
-        icon={<Settings2 className="h-4 w-4" />}
-      />
-      <CompareRow
-        label="Released"
-        values={models.map((m) => formatDate(m.created))}
-        icon={<Calendar className="h-4 w-4" />}
-      />
-
-      {/* Description Section */}
-      <SectionHeader
-        icon={<Cpu className="h-4 w-4" />}
-        label="Description"
-      />
-      <div className="flex items-start gap-4 py-3 px-4">
-        <div className="flex items-start gap-2 text-sm text-muted-foreground w-44 shrink-0 pt-1">
-          <Cpu className="h-4 w-4 mt-0.5" />
-          About
-        </div>
-        {models.map((m) => (
-          <div key={m.id} className="flex-1 text-sm leading-relaxed text-muted-foreground">
-            {m.description}
+      {models.length > 2 && (
+        <div className="mt-8">
+          <h3 className="font-heading text-base mb-4 px-1">Comparison Summary</h3>
+          <div className="bg-card rounded-xl border p-4 space-y-3">
+            <CompareRow
+              label="Input Pricing"
+              values={models.map((m) => formatPrice(m.pricing?.prompt))}
+              numericValues={inputPrices}
+              icon={<ArrowUpRight className="h-4 w-4" />}
+              higherIsBetter={false}
+            />
+            <CompareRow
+              label="Output Pricing"
+              values={models.map((m) => formatPrice(m.pricing?.completion))}
+              numericValues={outputPrices}
+              icon={<ArrowDownRight className="h-4 w-4" />}
+              higherIsBetter={false}
+            />
+            <CompareRow
+              label="Context Window"
+              values={models.map((m) => formatContext(m.context_length))}
+              numericValues={contexts}
+              icon={<Hash className="h-4 w-4" />}
+              higherIsBetter={true}
+            />
+            <CompareRow
+              label="Max Completion"
+              values={models.map((m) =>
+                m.top_provider?.max_completion_tokens
+                  ? `${m.top_provider.max_completion_tokens.toLocaleString()} tokens`
+                  : "—"
+              )}
+              numericValues={maxCompletions}
+              icon={<Maximize2Icon className="h-4 w-4" />}
+              higherIsBetter={true}
+            />
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
