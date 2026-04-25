@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Model } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
@@ -13,11 +14,14 @@ import {
   Sparkles,
   Wrench,
   ChevronRight,
+  Scale,
 } from "lucide-react";
 
 interface ModelCardProps {
   model: Model;
   onSelect: (model: Model) => void;
+  isCompared?: boolean;
+  onToggleCompare?: (model: Model) => void;
 }
 
 function formatPrice(price: string | undefined): string {
@@ -63,7 +67,7 @@ const MODALITY_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export function ModelCard({ model, onSelect }: ModelCardProps) {
+export function ModelCard({ model, onSelect, isCompared, onToggleCompare }: ModelCardProps) {
   const inputMods = model.architecture?.input_modalities ?? [];
   const outputMods = model.architecture?.output_modalities ?? [];
   const hasReasoning = (model.supported_parameters ?? []).some(
@@ -73,7 +77,10 @@ export function ModelCard({ model, onSelect }: ModelCardProps) {
 
   return (
     <Card
-      className="group relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 border-primary/5 hover:border-primary/20 bg-card/80 backdrop-blur-sm"
+      className={cn(
+        "group relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 border-primary/5 hover:border-primary/20 bg-card/80 backdrop-blur-sm",
+        isCompared && "border-primary/50 bg-primary/5"
+      )}
       onClick={() => onSelect(model)}
     >
       {/* Accent bar */}
@@ -96,6 +103,21 @@ export function ModelCard({ model, onSelect }: ModelCardProps) {
                 FREE
               </Badge>
             )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCompare?.(model);
+              }}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                isCompared
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted text-muted-foreground"
+              )}
+              title={isCompared ? "Remove from compare" : "Add to compare"}
+            >
+              <Scale className="h-4 w-4" />
+            </button>
             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </div>
         </div>
