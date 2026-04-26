@@ -278,7 +278,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full max-w-7xl mx-auto p-0 flex flex-col" side="top" showCloseButton={false}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-card/30">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b bg-card/30">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center">
               <GitCompare className="h-5 w-5 text-primary" />
@@ -303,7 +303,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
 
         {/* Tabs */}
         <Tabs defaultValue="overview" className="flex-1 flex flex-col">
-          <div className="px-6 pt-4">
+          <div className="px-4 sm:px-6 pt-4">
             <TabsList>
               <TabsTrigger value="overview">
                 <List className="h-4 w-4 mr-1.5" />

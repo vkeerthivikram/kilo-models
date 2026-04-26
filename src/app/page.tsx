@@ -134,46 +134,44 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
 
   return (
     <>
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 text-sm">
-          <span className="font-semibold text-foreground font-heading">{sortedModels.length}</span>
-          <span className="text-muted-foreground">{sortedModels.length === models.length ? "models" : `of ${models.length}`}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search models..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-11 rounded-xl bg-background/80 border-primary/10 focus:border-primary/30"
-          />
-        </div>
-        <SortDropdown value={sort} onChange={setSort} />
-
-        <div className="flex items-center border rounded-xl p-1 bg-background/80">
-          <Button
-            variant={viewMode === "grid" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            className="h-8 px-2.5"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-            className="h-8 px-2.5"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
       <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1 sm:max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search models..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-11 rounded-xl bg-background/80 border-primary/10 focus:border-primary/30"
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <SortDropdown value={sort} onChange={setSort} />
+            <div className="flex items-center border rounded-xl p-1 bg-background/80">
+              <Button
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="h-8 px-2.5"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="h-8 px-2.5"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 text-sm ml-auto">
+              <span className="font-semibold text-foreground font-heading">{sortedModels.length}</span>
+              <span className="text-muted-foreground">{sortedModels.length === models.length ? "models" : `of ${models.length}`}</span>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant={free ? "default" : "outline"}
@@ -257,7 +255,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             </Button>
 
             {providersOpen && (
-              <div className="absolute top-full left-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-xl border bg-popover p-3 shadow-xl z-50">
+              <div className="absolute top-full left-0 mt-2 w-72 max-w-[calc(100vw-2rem)] max-h-80 overflow-y-auto rounded-xl border bg-popover p-3 shadow-xl z-50">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">Select Providers</span>
