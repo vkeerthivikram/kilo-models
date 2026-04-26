@@ -6,6 +6,8 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import {
   buildColorThemeVariables,
   DEFAULT_COLOR_THEME,
+  getDefaultColorThemeForMode,
+  isThemeAvailableInMode,
   isValidColorTheme,
   THEMES,
   type ColorTheme,
@@ -55,17 +57,32 @@ function ColorThemeProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!resolvedTheme) return;
     const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
-    applyColorTheme(colorTheme, mode);
+    const effectiveTheme = isThemeAvailableInMode(colorTheme, mode)
+      ? colorTheme
+      : getDefaultColorThemeForMode(mode);
+
+    if (effectiveTheme !== colorTheme) {
+      setColorThemeState(effectiveTheme);
+      localStorage.setItem(COLOR_THEME_KEY, effectiveTheme);
+    }
+
+    applyColorTheme(effectiveTheme, mode);
   }, [colorTheme, resolvedTheme]);
 
   const setColorTheme = React.useCallback(
     (theme: ColorTheme) => {
-      setColorThemeState(theme);
-      localStorage.setItem(COLOR_THEME_KEY, theme);
+      let nextTheme = theme;
 
-      if (!resolvedTheme) return;
-      const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
-      applyColorTheme(theme, mode);
+      if (resolvedTheme) {
+        const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
+        nextTheme = isThemeAvailableInMode(theme, mode)
+          ? theme
+          : getDefaultColorThemeForMode(mode);
+        applyColorTheme(nextTheme, mode);
+      }
+
+      setColorThemeState(nextTheme);
+      localStorage.setItem(COLOR_THEME_KEY, nextTheme);
     },
     [resolvedTheme],
   );

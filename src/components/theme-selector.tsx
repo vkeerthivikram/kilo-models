@@ -9,15 +9,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { THEMES } from "@/lib/themes";
+import { getThemesForMode, type ThemeMode } from "@/lib/themes";
 import { Check, Laptop, Moon, Palette, Sun } from "lucide-react";
 
-function swatchGradient(light: string, dark: string) {
-  return `linear-gradient(135deg, ${light} 0 50%, ${dark} 50% 100%)`;
+function getModeSwatchColor(
+  swatch: { light: string; dark: string },
+  mode: ThemeMode,
+) {
+  return mode === "dark" ? swatch.dark : swatch.light;
 }
 
 export function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const { colorTheme, setColorTheme } = useColorTheme();
   const [mounted, setMounted] = React.useState(false);
 
@@ -33,16 +36,19 @@ export function ThemeSelector() {
     );
   }
 
-  const selectedTheme = THEMES.find((t) => t.id === colorTheme);
+  const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
+  const visibleThemes = getThemesForMode(mode);
+  const selectedTheme =
+    visibleThemes.find((t) => t.id === colorTheme) ?? visibleThemes[0];
   const selectedSwatch = selectedTheme
-    ? swatchGradient(selectedTheme.swatch.light, selectedTheme.swatch.dark)
-    : swatchGradient("#d4d4d8", "#18181b");
+    ? getModeSwatchColor(selectedTheme.swatch, mode)
+    : "#7c3aed";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center rounded-lg border border-input bg-background hover:bg-muted hover:text-foreground size-9 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
         <div className="relative h-4 w-4 overflow-hidden rounded-full border border-border/70">
-          <span className="absolute inset-0" style={{ background: selectedSwatch }} />
+          <span className="absolute inset-0" style={{ backgroundColor: selectedSwatch }} />
           <span
             className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full border border-background"
             style={{ backgroundColor: selectedTheme?.swatch.accent ?? "#7c3aed" }}
@@ -79,7 +85,7 @@ export function ThemeSelector() {
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-1">
           Color Theme
         </div>
-        {THEMES.map((t) => (
+        {visibleThemes.map((t) => (
           <DropdownMenuItem
             key={t.id}
             onClick={() => setColorTheme(t.id)}
@@ -88,7 +94,7 @@ export function ThemeSelector() {
             <span className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-border/70">
               <span
                 className="absolute inset-0"
-                style={{ background: swatchGradient(t.swatch.light, t.swatch.dark) }}
+                style={{ backgroundColor: getModeSwatchColor(t.swatch, mode) }}
               />
               <span
                 className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full border border-background"

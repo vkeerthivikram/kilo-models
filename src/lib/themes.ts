@@ -19,6 +19,8 @@ type ThemeOption = {
   swatch: ThemeSwatch;
 };
 
+const MODE_NEUTRAL_LUMINANCE_THRESHOLD = 0.06;
+
 export const DEFAULT_COLOR_THEME: ColorTheme = "oc-2";
 
 export const THEMES: readonly ThemeOption[] = KILOCODE_THEMES.map((theme) => ({
@@ -27,7 +29,9 @@ export const THEMES: readonly ThemeOption[] = KILOCODE_THEMES.map((theme) => ({
   swatch: {
     light: theme.light.palette.primary,
     dark: theme.dark.palette.primary,
-    accent: theme.dark.palette.accent ?? theme.dark.palette.info,
+    accent:
+      ("accent" in theme.dark.palette ? theme.dark.palette.accent : undefined) ??
+      theme.dark.palette.info,
   },
 }));
 
@@ -106,8 +110,38 @@ function readableText(background: string): string {
     : dark;
 }
 
+function variantMatchesMode(variant: ThemeVariant, mode: ThemeMode): boolean {
+  const lum = relativeLuminance(variant.palette.neutral);
+  if (lum == null) return true;
+
+  return mode === "light"
+    ? lum > MODE_NEUTRAL_LUMINANCE_THRESHOLD
+    : lum <= MODE_NEUTRAL_LUMINANCE_THRESHOLD;
+}
+
 export function isValidColorTheme(value: string): value is ColorTheme {
   return THEME_BY_ID.has(value as ColorTheme);
+}
+
+export function isThemeAvailableInMode(
+  themeId: ColorTheme,
+  mode: ThemeMode,
+): boolean {
+  const theme = getTheme(themeId);
+  return variantMatchesMode(getVariant(theme, mode), mode);
+}
+
+export function getThemesForMode(mode: ThemeMode): readonly ThemeOption[] {
+  return THEMES.filter((theme) => isThemeAvailableInMode(theme.id, mode));
+}
+
+export function getDefaultColorThemeForMode(mode: ThemeMode): ColorTheme {
+  if (isThemeAvailableInMode(DEFAULT_COLOR_THEME, mode)) {
+    return DEFAULT_COLOR_THEME;
+  }
+
+  const firstMatch = getThemesForMode(mode)[0];
+  return firstMatch?.id ?? DEFAULT_COLOR_THEME;
 }
 
 export function buildColorThemeVariables(
