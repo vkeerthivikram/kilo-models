@@ -22,6 +22,7 @@ import {
   ChevronDown,
   X,
   Heart,
+  Github,
 } from "lucide-react";
 import { useModelFilters } from "@/hooks/use-model-filters";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -415,7 +416,18 @@ export default function Home() {
             <p className="text-center text-muted-foreground/70">
               Unofficial fan project — not affiliated with or endorsed by Kilo AI
             </p>
-            <p className="font-heading italic">Built with Next.js + shadcn/ui</p>
+            <div className="flex items-center gap-3">
+              <p className="font-heading italic">Built with Next.js + shadcn/ui</p>
+              <a
+                href="https://github.com/vkeerthivikram/kilo-models"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="GitHub repository"
+              >
+                <Github className="h-4 w-4" />
+              </a>
+            </div>
           </div>
         </div>
       </footer>
