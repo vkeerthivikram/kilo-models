@@ -18,7 +18,6 @@ import {
   Search,
   LayoutGrid,
   List,
-  Bot,
   ChevronDown,
   X,
   Heart,
@@ -364,8 +363,9 @@ export default function Home() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/favicon.svg" alt="Kilo" className="h-6 w-6" />
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-background" />
             </div>
