@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import { Model, ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -366,7 +367,12 @@ export default function Home() {
 
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            aria-label="Go to home page"
+            title="Go to home page"
+            className="flex items-center gap-3"
+          >
             <div className="relative">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -378,7 +384,7 @@ export default function Home() {
               <h1 className="font-heading text-xl tracking-tight">Kilo Models</h1>
               <p className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase">AI Directory</p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-3">
             <ThemeSelector />
           </div>
