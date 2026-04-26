@@ -60,6 +60,12 @@ export function ModelPricingCard({ model }: Props) {
             <span className="font-medium">{formatPrice(p.internal_reasoning)}</span>
           </div>
         )}
+        {p?.request && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Per Request</span>
+            <span className="font-medium">{formatPrice(p.request)}</span>
+          </div>
+        )}
       </div>
     </Card>
   );

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Model } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 import { ModelSpecsCard } from "@/components/model-specs-card";
 import { ModelPricingCard } from "@/components/model-pricing-card";
 import { SimilarModels } from "@/components/similar-models";
@@ -93,8 +94,18 @@ export default async function ModelPage({ params }: Props) {
           <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-widest">
             {provider}
           </span>
-          <h1 className="font-heading text-4xl mt-1">{model.name}</h1>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            <h1 className="font-heading text-4xl">{model.name}</h1>
+            {model.isFree && (
+              <Badge variant="secondary" className="text-xs">Free</Badge>
+            )}
+          </div>
           <p className="text-muted-foreground mt-2 max-w-2xl">{model.description}</p>
+          {model.created && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Added {new Date(model.created * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

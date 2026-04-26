@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Model, ViewMode } from "@/lib/types";
 import { ModelCard } from "./model-card-v2";
 import { Badge } from "@/components/ui/badge";
-import { Cpu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Cpu, ChevronDown } from "lucide-react";
 
 interface ModelGridProps {
   models: Model[];
@@ -17,6 +18,7 @@ interface ModelGridProps {
   onToggleFavorite?: (id: string) => void;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  totalCount?: number;
 }
 
 function formatPrice(price: string | undefined): string {
@@ -33,23 +35,8 @@ function formatContext(ctx: number): string {
   return ctx.toString();
 }
 
-export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite, hasMore, onLoadMore }: ModelGridProps) {
+export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite, hasMore, onLoadMore, totalCount }: ModelGridProps) {
   const router = useRouter();
-  const sentinelRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    if (!hasMore || !onLoadMore || !sentinelRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          onLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [hasMore, onLoadMore]);
 
   if (models.length === 0) {
     return (
@@ -120,8 +107,14 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
           </div>
         ))}
         {hasMore && (
-          <div ref={sentinelRef} className="flex items-center justify-center py-4">
-            <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+          <div className="flex flex-col items-center gap-2 py-6 border-t">
+            <p className="text-xs text-muted-foreground">
+              Showing {models.length}{totalCount !== undefined ? ` of ${totalCount}` : ""} models
+            </p>
+            <Button variant="outline" size="sm" onClick={onLoadMore} className="gap-2">
+              <ChevronDown className="h-4 w-4" />
+              Load more
+            </Button>
           </div>
         )}
       </div>
@@ -142,8 +135,14 @@ export function ModelGrid({ models, viewMode, onSelectModel, isComparedModels, o
         ))}
       </div>
       {hasMore && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-4">
-          <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <div className="flex flex-col items-center gap-2 pt-4 pb-2">
+          <p className="text-xs text-muted-foreground">
+            Showing {models.length}{totalCount !== undefined ? ` of ${totalCount}` : ""} models
+          </p>
+          <Button variant="outline" size="sm" onClick={onLoadMore} className="gap-2">
+            <ChevronDown className="h-4 w-4" />
+            Load more
+          </Button>
         </div>
       )}
     </div>

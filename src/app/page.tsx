@@ -308,6 +308,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
           onToggleFavorite={toggleFavoriteFn}
           hasMore={hasMore}
           onLoadMore={handleLoadMore}
+          totalCount={sortedModels.length}
         />
       )}
 

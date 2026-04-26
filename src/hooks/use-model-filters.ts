@@ -202,8 +202,7 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
 
   const totalPages = Math.ceil(sortedModels.length / PAGE_SIZE);
   const paginatedModels = React.useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return sortedModels.slice(start, start + PAGE_SIZE);
+    return sortedModels.slice(0, page * PAGE_SIZE);
   }, [sortedModels, page]);
 
   const hasMore = page < totalPages;

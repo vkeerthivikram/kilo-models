@@ -68,6 +68,32 @@ export function ModelSpecsCard({ model }: Props) {
             ))}
           </div>
         </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Moderated</span>
+          <span className="font-medium">
+            {model.top_provider?.is_moderated ? "Yes" : "No"}
+          </span>
+        </div>
+        {model.opencode?.family && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Model Family</span>
+            <span className="font-medium font-mono text-xs">{model.opencode.family}</span>
+          </div>
+        )}
+        {model.opencode?.ai_sdk_provider && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">AI SDK Provider</span>
+            <span className="font-medium font-mono text-xs">{model.opencode.ai_sdk_provider}</span>
+          </div>
+        )}
+        {model.opencode?.prompt && (
+          <div>
+            <span className="text-muted-foreground text-sm">System Prompt</span>
+            <p className="mt-1.5 text-xs font-mono bg-muted rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words">
+              {model.opencode.prompt}
+            </p>
+          </div>
+        )}
       </div>
     </Card>
   );
