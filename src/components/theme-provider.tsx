@@ -1,13 +1,20 @@
 "use client";
 
 import * as React from "react";
+import { useTheme } from "next-themes";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { THEMES, type ColorTheme } from "@/lib/themes";
+import {
+  buildColorThemeVariables,
+  DEFAULT_COLOR_THEME,
+  isValidColorTheme,
+  THEMES,
+  type ColorTheme,
+  type ThemeMode,
+} from "@/lib/themes";
 
 // ── Color theme context ────────────────────────────────────────────────────
 
 const COLOR_THEME_KEY = "kilo-color-theme";
-const DEFAULT_COLOR_THEME: ColorTheme = "modern-minimal";
 
 type ColorThemeContextValue = {
   colorTheme: ColorTheme;
@@ -23,28 +30,45 @@ export function useColorTheme() {
   return React.useContext(ColorThemeContext);
 }
 
-function applyColorTheme(theme: ColorTheme) {
+function applyColorTheme(theme: ColorTheme, mode: ThemeMode) {
   const root = document.documentElement;
+  const vars = buildColorThemeVariables(theme, mode);
+
+  Object.entries(vars).forEach(([name, value]) => {
+    root.style.setProperty(name, value);
+  });
+
   THEMES.forEach((t) => root.classList.remove(t.id));
-  root.classList.add(theme);
+  root.setAttribute("data-kilo-theme", theme);
+  root.style.setProperty("color-scheme", mode);
 }
 
 function ColorThemeProvider({ children }: { children: React.ReactNode }) {
+  const { resolvedTheme } = useTheme();
+
   const [colorTheme, setColorThemeState] = React.useState<ColorTheme>(() => {
     if (typeof window === "undefined") return DEFAULT_COLOR_THEME;
-    const stored = localStorage.getItem(COLOR_THEME_KEY) as ColorTheme | null;
-    return stored && THEMES.some((t) => t.id === stored) ? stored : DEFAULT_COLOR_THEME;
+    const stored = localStorage.getItem(COLOR_THEME_KEY);
+    return stored && isValidColorTheme(stored) ? stored : DEFAULT_COLOR_THEME;
   });
 
   React.useEffect(() => {
-    applyColorTheme(colorTheme);
-  }, [colorTheme]);
+    if (!resolvedTheme) return;
+    const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
+    applyColorTheme(colorTheme, mode);
+  }, [colorTheme, resolvedTheme]);
 
-  const setColorTheme = React.useCallback((theme: ColorTheme) => {
-    setColorThemeState(theme);
-    localStorage.setItem(COLOR_THEME_KEY, theme);
-    applyColorTheme(theme);
-  }, []);
+  const setColorTheme = React.useCallback(
+    (theme: ColorTheme) => {
+      setColorThemeState(theme);
+      localStorage.setItem(COLOR_THEME_KEY, theme);
+
+      if (!resolvedTheme) return;
+      const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
+      applyColorTheme(theme, mode);
+    },
+    [resolvedTheme],
+  );
 
   return (
     <ColorThemeContext.Provider value={{ colorTheme, setColorTheme }}>
@@ -54,9 +78,8 @@ function ColorThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 // ── ThemeProvider ──────────────────────────────────────────────────────────
-// next-themes manages ONLY the "dark" class (dark/light/system mode).
-// ColorThemeProvider manages the color theme class (e.g. "modern-minimal").
-// The CSS uses `.dark.modern-minimal` so both classes must coexist on <html>.
+// next-themes manages light/dark/system mode classes.
+// ColorThemeProvider resolves and applies KiloCode color tokens.
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (

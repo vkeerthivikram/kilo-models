@@ -5,7 +5,6 @@ import "./globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { THEMES } from "@/lib/themes";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,8 +34,6 @@ export const metadata: Metadata = {
   description:
     "Browse and compare 300+ AI models from the Kilo network. Filter by modality, pricing, context length, and more.",
 };
-
-
 
 export default function RootLayout({
   children,
