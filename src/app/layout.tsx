@@ -44,18 +44,7 @@ export const metadata: Metadata = {
   },
 };
 
-const colorThemeScript = `
-(function() {
-  var validThemes = [${THEMES.map((t) => `'${t.id}'`).join(",")}];
-  try {
-    var stored = localStorage.getItem('kilo-color-theme');
-    var theme = stored && validThemes.indexOf(stored) !== -1 ? stored : 'modern-minimal';
-  } catch (e) {
-    var theme = 'modern-minimal';
-  }
-  document.documentElement.classList.add(theme);
-})();
-`.trim();
+
 
 export default function RootLayout({
   children,
@@ -64,10 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        { }
-        <script dangerouslySetInnerHTML={{ __html: colorThemeScript }} />
-      </head>
+      <head />
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${dmSans.variable} font-sans antialiased min-h-screen flex flex-col`}
       >

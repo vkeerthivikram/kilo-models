@@ -15,7 +15,11 @@ import { Sun, Moon, Monitor, Palette } from "lucide-react";
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
   const { colorTheme, setColorTheme } = useColorTheme();
-  const [mounted] = React.useState(() => false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
     return (
