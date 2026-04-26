@@ -276,7 +276,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full max-w-7xl mx-auto p-0 flex flex-col" side="top" showCloseButton={false}>
+      <SheetContent className="w-full h-[100dvh] max-w-7xl mx-auto p-0 flex flex-col overflow-hidden" side="top" showCloseButton={false}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b bg-card/30">
           <div className="flex items-center gap-3">
@@ -302,7 +302,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="overview" className="flex-1 flex flex-col">
+        <Tabs defaultValue="overview" className="flex-1 min-h-0 flex flex-col">
           <div className="px-4 sm:px-6 pt-4">
             <TabsList>
               <TabsTrigger value="overview">
@@ -320,15 +320,15 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="flex-1 overflow-auto">
+          <TabsContent value="overview" className="flex-1 min-h-0 overflow-y-auto">
             <OverviewTab models={models} onRemove={onRemove} />
           </TabsContent>
 
-          <TabsContent value="charts" className="flex-1 overflow-auto">
+          <TabsContent value="charts" className="flex-1 min-h-0 overflow-y-auto">
             <ChartsTab models={models} />
           </TabsContent>
 
-          <TabsContent value="calculator" className="flex-1 overflow-auto p-6">
+          <TabsContent value="calculator" className="flex-1 min-h-0 overflow-y-auto p-6">
             <CompareCostTable models={models} />
           </TabsContent>
         </Tabs>
