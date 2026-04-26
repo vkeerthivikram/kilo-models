@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ModelDetailSheet } from "@/components/model-detail-sheet";
 import { ModelGrid } from "@/components/model-grid-v2";
+import { Paginator } from "@/components/paginator";
 import { CompareTray } from "@/components/compare-tray";
 import { CompareModal } from "@/components/compare-modal";
 import { SortDropdown } from "@/components/sort-dropdown";
@@ -67,7 +68,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     activeFilterCount,
     sortedModels,
     paginatedModels,
-    hasMore,
+    totalPages,
   } = useModelFilters(models);
 
   const { favorites: favoriteIds, isFavorite: isFavoriteFn, toggleFavorite: toggleFavoriteFn } = useFavorites();
@@ -126,17 +127,17 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     });
   };
 
-  const handleLoadMore = () => {
-    setPage(page + 1);
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <>
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Showing</span>
           <span className="font-semibold text-foreground font-heading">{sortedModels.length}</span>
-          <span className="text-muted-foreground">of {models.length}</span>
+          <span className="text-muted-foreground">{sortedModels.length === models.length ? "models" : `of ${models.length}`}</span>
         </div>
       </div>
 
@@ -297,18 +298,24 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
           ))}
         </div>
       ) : (
-        <ModelGrid
-          models={paginatedModels}
-          viewMode={viewMode}
-          onSelectModel={handleSelectModel}
-          isComparedModels={comparedModels}
-          onToggleCompare={handleToggleCompare}
-          isFavoriteModel={isFavoriteFn}
-          onToggleFavorite={toggleFavoriteFn}
-          hasMore={hasMore}
-          onLoadMore={handleLoadMore}
-          totalCount={sortedModels.length}
-        />
+        <>
+          <ModelGrid
+            models={paginatedModels}
+            viewMode={viewMode}
+            onSelectModel={handleSelectModel}
+            isComparedModels={comparedModels}
+            onToggleCompare={handleToggleCompare}
+            isFavoriteModel={isFavoriteFn}
+            onToggleFavorite={toggleFavoriteFn}
+          />
+          <Paginator
+            page={page}
+            totalPages={totalPages}
+            totalCount={sortedModels.length}
+            pageSize={24}
+            onPageChange={handlePageChange}
+          />
+        </>
       )}
 
       <ModelDetailSheet
