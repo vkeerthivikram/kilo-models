@@ -276,7 +276,11 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full h-[100dvh] max-w-7xl mx-auto p-0 flex flex-col overflow-hidden" side="top" showCloseButton={false}>
+      <SheetContent
+        className="w-full data-[side=top]:!h-[100dvh] data-[side=top]:max-h-[100dvh] max-w-7xl mx-auto p-0 flex flex-col overflow-hidden"
+        side="top"
+        showCloseButton={false}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b bg-card/30">
           <div className="flex items-center gap-3">
