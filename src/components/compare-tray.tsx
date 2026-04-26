@@ -53,7 +53,7 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
                   type="button"
                   aria-label={`Remove ${model.name} from comparison`}
                   onClick={() => onRemove(model)}
-                  className="hover:bg-muted rounded-sm p-0.5 transition-colors"
+                  className="hover:bg-muted rounded-sm p-1 transition-colors active:scale-90 min-w-[24px] min-h-[24px] flex items-center justify-center"
                 >
                   <X className="h-3 w-3" />
                 </button>

@@ -106,7 +106,7 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                     onToggleFavorite()
                   }}
                   className={cn(
-                    "p-2 rounded-lg transition-all",
+                    "p-2 min-w-[44px] min-h-[44px] rounded-lg transition-all flex items-center justify-center active:scale-90",
                     isFavorite
                       ? "text-red-500 bg-red-500/10"
                       : "bg-muted/50 text-muted-foreground border border-transparent hover:border-red-500/20 hover:text-red-500"

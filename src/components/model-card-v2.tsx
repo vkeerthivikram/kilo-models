@@ -79,7 +79,7 @@ export function ModelCard({ model, isCompared, onToggleCompare, isFavorite, onTo
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 border-primary/5 hover:border-primary/20 bg-card/80 backdrop-blur-sm",
+        "group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 active:scale-[0.99] border-primary/5 hover:border-primary/20 bg-card/80 backdrop-blur-sm",
         isCompared && "border-primary/50 bg-primary/5"
       )}
     >
@@ -118,7 +118,7 @@ export function ModelCard({ model, isCompared, onToggleCompare, isFavorite, onTo
                 onToggleCompare?.(model);
               }}
               className={cn(
-                "p-2 rounded-lg transition-all flex items-center gap-1.5",
+                "p-2 min-w-[44px] min-h-[44px] rounded-lg transition-all flex items-center justify-center gap-1.5 active:scale-90",
                 isCompared
                   ? "bg-primary/10 text-primary border border-primary/30"
                   : "bg-muted/50 text-muted-foreground border border-transparent hover:border-primary/20 hover:text-primary"
@@ -135,7 +135,7 @@ export function ModelCard({ model, isCompared, onToggleCompare, isFavorite, onTo
                 onToggleFavorite?.();
               }}
               className={cn(
-                "p-2 rounded-lg transition-all",
+                "p-2 min-w-[44px] min-h-[44px] rounded-lg transition-all flex items-center justify-center active:scale-90",
                 isFavorite
                   ? "text-red-500 bg-red-500/10"
                   : "bg-muted/50 text-muted-foreground border border-transparent hover:border-red-500/20 hover:text-red-500"
@@ -147,7 +147,7 @@ export function ModelCard({ model, isCompared, onToggleCompare, isFavorite, onTo
             <Link
               href={`/models/${encodeURIComponent(model.id)}`}
               onClick={(e) => e.stopPropagation()}
-              className="p-2 rounded-lg bg-muted/50 text-muted-foreground border border-transparent hover:border-primary/20 hover:text-primary transition-all"
+              className="p-2 min-w-[44px] min-h-[44px] rounded-lg bg-muted/50 text-muted-foreground border border-transparent hover:border-primary/20 hover:text-primary transition-all flex items-center justify-center active:scale-90"
               title="View details"
             >
               <ArrowUpRight className="h-4 w-4" />
