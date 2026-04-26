@@ -407,6 +407,9 @@ export default function Home() {
                 api.kilo.ai
               </a>
             </p>
+            <p className="text-center text-muted-foreground/70">
+              Unofficial fan project — not affiliated with or endorsed by Kilo AI
+            </p>
             <p className="font-heading italic">Built with Next.js + shadcn/ui</p>
           </div>
         </div>
