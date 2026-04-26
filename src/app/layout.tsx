@@ -32,7 +32,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Kilo Models | AI Model Directory",
   description:
-    "Browse and compare 300+ AI models from the Kilo network. Filter by modality, pricing, context length, and more.",
+    "Browse and compare 300+ AI models from the Kilo Gateway. Filter by modality, pricing, context length, and more.",
 };
 
 export default function RootLayout({

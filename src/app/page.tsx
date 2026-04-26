@@ -400,7 +400,7 @@ export default function Home() {
             AI Models
           </h2>
           <p className="text-muted-foreground text-base leading-relaxed max-w-lg">
-            Explore models from the Kilo network. Filter by modality, pricing, context length, and capabilities.
+            Explore models from the Kilo Gateway. Filter by modality, pricing, context length, and capabilities.
           </p>
         </div>
 
