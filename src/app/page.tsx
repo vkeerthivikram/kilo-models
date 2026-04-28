@@ -23,6 +23,8 @@ import {
   ChevronDown,
   X,
   Heart,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import { useModelFilters } from "@/hooks/use-model-filters";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -185,24 +187,26 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
 
           {INPUT_MODALITIES.map((mod) => (
             <Button
-              key={mod}
+              key={`in-${mod}`}
               variant={inputModalities.includes(mod) ? "default" : "outline"}
               size="sm"
               onClick={() => toggleModality("input", mod)}
               className="h-8 rounded-lg text-xs capitalize"
             >
+              <ArrowUpRight className="h-3 w-3 mr-1" />
               {mod}
             </Button>
           ))}
 
           {OUTPUT_MODALITIES.map((mod) => (
             <Button
-              key={mod}
+              key={`out-${mod}`}
               variant={outputModalities.includes(mod) ? "default" : "outline"}
               size="sm"
               onClick={() => toggleModality("output", mod)}
               className="h-8 rounded-lg text-xs capitalize"
             >
+              <ArrowDownRight className="h-3 w-3 mr-1" />
               {mod}
             </Button>
           ))}
