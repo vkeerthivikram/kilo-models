@@ -90,7 +90,7 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
     shallow: false,
   });
 
-  const search = params.search ?? "";
+  const urlSearch = params.search ?? "";
   const sort = params.sort ?? "name-asc";
   const free = params.free ?? false;
   const inputModalities = params.inputModalities ?? [];
@@ -104,14 +104,24 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
 
   const PAGE_SIZE = 24;
 
-  const [searchDebounceTimer, setSearchDebounceTimer] = React.useState<NodeJS.Timeout | null>(null);
+  const [pendingSearch, setPendingSearch] = React.useState<string | null>(null);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const search = pendingSearch !== null ? pendingSearch : urlSearch;
 
   const setSearch = (v: string) => {
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    const timer = setTimeout(() => {
+    setPendingSearch(v);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPendingSearch(null);
       setParams({ search: v, page: 1 });
-    }, 300);
-    setSearchDebounceTimer(timer);
+    }, 400);
   };
   const setSort = (v: SortOption) => setParams({ sort: v, page: 1 });
   const setFree = (v: boolean) => setParams({ free: v, page: 1 });
@@ -124,7 +134,9 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
   const setPage = (v: number) => setParams({ page: v });
   const setFav = (v: boolean) => setParams({ fav: v, page: 1 });
 
-  const clearFilters = () =>
+  const clearFilters = () => {
+    setPendingSearch(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setParams({
       search: "",
       sort: "name-asc",
@@ -138,6 +150,7 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
       page: 1,
       fav: false,
     });
+  };
 
   const activeFilterCount =
     (free ? 1 : 0) +
