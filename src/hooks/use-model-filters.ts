@@ -104,7 +104,15 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
 
   const PAGE_SIZE = 24;
 
-  const setSearch = (v: string) => setParams({ search: v, page: 1 });
+  const [searchDebounceTimer, setSearchDebounceTimer] = React.useState<NodeJS.Timeout | null>(null);
+
+  const setSearch = (v: string) => {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    const timer = setTimeout(() => {
+      setParams({ search: v, page: 1 });
+    }, 300);
+    setSearchDebounceTimer(timer);
+  };
   const setSort = (v: SortOption) => setParams({ sort: v, page: 1 });
   const setFree = (v: boolean) => setParams({ free: v, page: 1 });
   const setInputModalities = (v: string[]) => setParams({ inputModalities: v, page: 1 });
