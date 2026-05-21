@@ -2638,6 +2638,295 @@ export const KILOCODE_THEMES = [
       }
     }
   }
+  ,
+  {
+    "id": "brume-snow",
+    "name": "Brume Snow",
+    "light": {
+      "palette": {
+        "neutral": "#f0f2fa",
+        "ink": "#1a2233",
+        "primary": "#2870a0",
+        "accent": "#1890b0",
+        "success": "#288848",
+        "warning": "#988830",
+        "error": "#983848",
+        "info": "#48a0c8",
+        "diffAdd": "#288848",
+        "diffDelete": "#983848"
+      },
+      "overrides": {
+        "syntax-comment": "#a8b0c4",
+        "syntax-keyword": "#6848a0",
+        "syntax-string": "#288848",
+        "syntax-primitive": "#2870a0",
+        "syntax-property": "#988830",
+        "syntax-constant": "#1890b0"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#f0f2fa",
+        "ink": "#1a2233",
+        "primary": "#2870a0",
+        "accent": "#1890b0",
+        "success": "#288848",
+        "warning": "#988830",
+        "error": "#983848",
+        "info": "#48a0c8",
+        "diffAdd": "#288848",
+        "diffDelete": "#983848"
+      },
+      "overrides": {
+        "syntax-comment": "#a8b0c4",
+        "syntax-keyword": "#6848a0",
+        "syntax-string": "#288848",
+        "syntax-primitive": "#2870a0",
+        "syntax-property": "#988830",
+        "syntax-constant": "#1890b0"
+      }
+    }
+  },
+  {
+    "id": "brume-fog",
+    "name": "Brume Fog",
+    "light": {
+      "palette": {
+        "neutral": "#d8e0f0",
+        "ink": "#1a2233",
+        "primary": "#3878a8",
+        "accent": "#3090b8",
+        "success": "#389858",
+        "warning": "#a89838",
+        "error": "#a84858",
+        "info": "#58a8c8",
+        "diffAdd": "#389858",
+        "diffDelete": "#a84858"
+      },
+      "overrides": {
+        "syntax-comment": "#8898b0",
+        "syntax-keyword": "#7858a0",
+        "syntax-string": "#389858",
+        "syntax-primitive": "#3878a8",
+        "syntax-property": "#a89838",
+        "syntax-constant": "#3090b8"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#d8e0f0",
+        "ink": "#1a2233",
+        "primary": "#3878a8",
+        "accent": "#3090b8",
+        "success": "#389858",
+        "warning": "#a89838",
+        "error": "#a84858",
+        "info": "#58a8c8",
+        "diffAdd": "#389858",
+        "diffDelete": "#a84858"
+      },
+      "overrides": {
+        "syntax-comment": "#8898b0",
+        "syntax-keyword": "#7858a0",
+        "syntax-string": "#389858",
+        "syntax-primitive": "#3878a8",
+        "syntax-property": "#a89838",
+        "syntax-constant": "#3090b8"
+      }
+    }
+  },
+  {
+    "id": "brume-haze",
+    "name": "Brume Haze",
+    "light": {
+      "palette": {
+        "neutral": "#5e6a88",
+        "ink": "#c8d0e0",
+        "primary": "#5088b0",
+        "accent": "#58b8d8",
+        "success": "#50a868",
+        "warning": "#c0a850",
+        "error": "#c06070",
+        "info": "#70b8d0",
+        "diffAdd": "#50a868",
+        "diffDelete": "#c06070"
+      },
+      "overrides": {
+        "syntax-comment": "#788098",
+        "syntax-keyword": "#9070a8",
+        "syntax-string": "#50a868",
+        "syntax-primitive": "#5088b0",
+        "syntax-property": "#c0a850",
+        "syntax-constant": "#58b8d8"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#303848",
+        "ink": "#c8d0e0",
+        "primary": "#5088b0",
+        "accent": "#58b8d8",
+        "success": "#50a868",
+        "warning": "#c0a850",
+        "error": "#c06070",
+        "info": "#70b8d0",
+        "diffAdd": "#50a868",
+        "diffDelete": "#c06070"
+      },
+      "overrides": {
+        "syntax-comment": "#788098",
+        "syntax-keyword": "#9070a8",
+        "syntax-string": "#50a868",
+        "syntax-primitive": "#5088b0",
+        "syntax-property": "#c0a850",
+        "syntax-constant": "#58b8d8"
+      }
+    }
+  },
+  {
+    "id": "brume-dusk",
+    "name": "Brume Dusk",
+    "light": {
+      "palette": {
+        "neutral": "#4e5a70",
+        "ink": "#c0c8d8",
+        "primary": "#5898b8",
+        "accent": "#68c0d8",
+        "success": "#48a060",
+        "warning": "#c0a848",
+        "error": "#c86070",
+        "info": "#78c0d8",
+        "diffAdd": "#48a060",
+        "diffDelete": "#c86070"
+      },
+      "overrides": {
+        "syntax-comment": "#707890",
+        "syntax-keyword": "#9878b0",
+        "syntax-string": "#48a060",
+        "syntax-primitive": "#5898b8",
+        "syntax-property": "#c0a848",
+        "syntax-constant": "#68c0d8"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#242c3a",
+        "ink": "#c0c8d8",
+        "primary": "#5898b8",
+        "accent": "#68c0d8",
+        "success": "#48a060",
+        "warning": "#c0a848",
+        "error": "#c86070",
+        "info": "#78c0d8",
+        "diffAdd": "#48a060",
+        "diffDelete": "#c86070"
+      },
+      "overrides": {
+        "syntax-comment": "#707890",
+        "syntax-keyword": "#9878b0",
+        "syntax-string": "#48a060",
+        "syntax-primitive": "#5898b8",
+        "syntax-property": "#c0a848",
+        "syntax-constant": "#68c0d8"
+      }
+    }
+  },
+  {
+    "id": "brume-mist",
+    "name": "Brume Mist",
+    "light": {
+      "palette": {
+        "neutral": "#3f4d65",
+        "ink": "#c8cdd8",
+        "primary": "#6fa0c8",
+        "accent": "#8ad0ea",
+        "success": "#68b078",
+        "warning": "#c8b060",
+        "error": "#c86878",
+        "info": "#98d0e8",
+        "diffAdd": "#68b078",
+        "diffDelete": "#c86878"
+      },
+      "overrides": {
+        "syntax-comment": "#788098",
+        "syntax-keyword": "#a088b8",
+        "syntax-string": "#68b078",
+        "syntax-primitive": "#6fa0c8",
+        "syntax-property": "#c8b060",
+        "syntax-constant": "#8ad0ea"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#1a2233",
+        "ink": "#c8cdd8",
+        "primary": "#6fa0c8",
+        "accent": "#8ad0ea",
+        "success": "#68b078",
+        "warning": "#c8b060",
+        "error": "#c86878",
+        "info": "#98d0e8",
+        "diffAdd": "#68b078",
+        "diffDelete": "#c86878"
+      },
+      "overrides": {
+        "syntax-comment": "#788098",
+        "syntax-keyword": "#a088b8",
+        "syntax-string": "#68b078",
+        "syntax-primitive": "#6fa0c8",
+        "syntax-property": "#c8b060",
+        "syntax-constant": "#8ad0ea"
+      }
+    }
+  },
+  {
+    "id": "brume-void",
+    "name": "Brume Void",
+    "light": {
+      "palette": {
+        "neutral": "#2e3a55",
+        "ink": "#b8c0d0",
+        "primary": "#78a8d0",
+        "accent": "#90d8f0",
+        "success": "#70b880",
+        "warning": "#d0b868",
+        "error": "#d07080",
+        "info": "#a0d8f0",
+        "diffAdd": "#70b880",
+        "diffDelete": "#d07080"
+      },
+      "overrides": {
+        "syntax-comment": "#6a7288",
+        "syntax-keyword": "#a890c0",
+        "syntax-string": "#70b880",
+        "syntax-primitive": "#78a8d0",
+        "syntax-property": "#d0b868",
+        "syntax-constant": "#90d8f0"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#0e1420",
+        "ink": "#b8c0d0",
+        "primary": "#78a8d0",
+        "accent": "#90d8f0",
+        "success": "#70b880",
+        "warning": "#d0b868",
+        "error": "#d07080",
+        "info": "#a0d8f0",
+        "diffAdd": "#70b880",
+        "diffDelete": "#d07080"
+      },
+      "overrides": {
+        "syntax-comment": "#6a7288",
+        "syntax-keyword": "#a890c0",
+        "syntax-string": "#70b880",
+        "syntax-primitive": "#78a8d0",
+        "syntax-property": "#d0b868",
+        "syntax-constant": "#90d8f0"
+      }
+    }
+  }
 ] as const satisfies readonly KiloThemeDefinition[];
 
 export const KILOCODE_THEME_IDS = KILOCODE_THEMES.map(t => t.id);
