@@ -2640,6 +2640,294 @@ export const KILOCODE_THEMES = [
   }
   ,
   {
+    "id": "one-light",
+    "name": "One Light",
+    "light": {
+      "palette": {
+        "neutral": "#fafafa",
+        "ink": "#383a42",
+        "primary": "#0184bc",
+        "accent": "#e45649",
+        "success": "#50a14f",
+        "warning": "#c18401",
+        "error": "#ca1243",
+        "info": "#0184bc",
+        "diffAdd": "#e9f0da",
+        "diffDelete": "#fae0e2"
+      },
+      "overrides": {
+        "syntax-comment": "#a0a1a7",
+        "syntax-keyword": "#e45649",
+        "syntax-string": "#50a14f",
+        "syntax-primitive": "#0184bc",
+        "syntax-property": "#c18401",
+        "syntax-constant": "#986801"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#fafafa",
+        "ink": "#383a42",
+        "primary": "#0184bc",
+        "accent": "#e45649",
+        "success": "#50a14f",
+        "warning": "#c18401",
+        "error": "#ca1243",
+        "info": "#0184bc",
+        "diffAdd": "#e9f0da",
+        "diffDelete": "#fae0e2"
+      },
+      "overrides": {
+        "syntax-comment": "#a0a1a7",
+        "syntax-keyword": "#e45649",
+        "syntax-string": "#50a14f",
+        "syntax-primitive": "#0184bc",
+        "syntax-property": "#c18401",
+        "syntax-constant": "#986801"
+      }
+    }
+  },
+  {
+    "id": "gruvbox-light",
+    "name": "Gruvbox Light",
+    "light": {
+      "palette": {
+        "neutral": "#fbf1c7",
+        "ink": "#3c3836",
+        "primary": "#076678",
+        "accent": "#8f3f71",
+        "success": "#79740e",
+        "warning": "#b57614",
+        "error": "#cc241d",
+        "info": "#427b58",
+        "diffAdd": "#d9e8a5",
+        "diffDelete": "#f9c0c4"
+      },
+      "overrides": {
+        "syntax-comment": "#928374",
+        "syntax-keyword": "#9d0006",
+        "syntax-string": "#79740e",
+        "syntax-primitive": "#076678",
+        "syntax-property": "#b57614",
+        "syntax-constant": "#8f3f71"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#fbf1c7",
+        "ink": "#3c3836",
+        "primary": "#076678",
+        "accent": "#8f3f71",
+        "success": "#79740e",
+        "warning": "#b57614",
+        "error": "#cc241d",
+        "info": "#427b58",
+        "diffAdd": "#d9e8a5",
+        "diffDelete": "#f9c0c4"
+      },
+      "overrides": {
+        "syntax-comment": "#928374",
+        "syntax-keyword": "#9d0006",
+        "syntax-string": "#79740e",
+        "syntax-primitive": "#076678",
+        "syntax-property": "#b57614",
+        "syntax-constant": "#8f3f71"
+      }
+    }
+  },
+  {
+    "id": "tokyonight-light",
+    "name": "Tokyo Night Light",
+    "light": {
+      "palette": {
+        "neutral": "#e1e2e7",
+        "ink": "#3760bf",
+        "primary": "#2e7de9",
+        "accent": "#9854f1",
+        "success": "#587539",
+        "warning": "#8c6c3e",
+        "error": "#c64343",
+        "info": "#007197",
+        "diffAdd": "#b6e3b9",
+        "diffDelete": "#f7b8c4"
+      },
+      "overrides": {
+        "syntax-comment": "#848cb8",
+        "syntax-keyword": "#9854f1",
+        "syntax-string": "#587539",
+        "syntax-primitive": "#2e7de9",
+        "syntax-property": "#007197",
+        "syntax-constant": "#b15c00"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#e1e2e7",
+        "ink": "#3760bf",
+        "primary": "#2e7de9",
+        "accent": "#9854f1",
+        "success": "#587539",
+        "warning": "#8c6c3e",
+        "error": "#c64343",
+        "info": "#007197",
+        "diffAdd": "#b6e3b9",
+        "diffDelete": "#f7b8c4"
+      },
+      "overrides": {
+        "syntax-comment": "#848cb8",
+        "syntax-keyword": "#9854f1",
+        "syntax-string": "#587539",
+        "syntax-primitive": "#2e7de9",
+        "syntax-property": "#007197",
+        "syntax-constant": "#b15c00"
+      }
+    }
+  },
+  {
+    "id": "papercolor-light",
+    "name": "Papercolor",
+    "light": {
+      "palette": {
+        "neutral": "#eeeeee",
+        "ink": "#444444",
+        "primary": "#0087cc",
+        "accent": "#d7005f",
+        "success": "#5faf00",
+        "warning": "#af5f00",
+        "error": "#d7005f",
+        "info": "#0087cc",
+        "diffAdd": "#d6f5d6",
+        "diffDelete": "#fad6e0"
+      },
+      "overrides": {
+        "syntax-comment": "#878787",
+        "syntax-keyword": "#d7005f",
+        "syntax-string": "#5faf00",
+        "syntax-primitive": "#0087cc",
+        "syntax-property": "#af5f00",
+        "syntax-constant": "#875faf"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#eeeeee",
+        "ink": "#444444",
+        "primary": "#0087cc",
+        "accent": "#d7005f",
+        "success": "#5faf00",
+        "warning": "#af5f00",
+        "error": "#d7005f",
+        "info": "#0087cc",
+        "diffAdd": "#d6f5d6",
+        "diffDelete": "#fad6e0"
+      },
+      "overrides": {
+        "syntax-comment": "#878787",
+        "syntax-keyword": "#d7005f",
+        "syntax-string": "#5faf00",
+        "syntax-primitive": "#0087cc",
+        "syntax-property": "#af5f00",
+        "syntax-constant": "#875faf"
+      }
+    }
+  },
+  {
+    "id": "rose-pine-dawn",
+    "name": "Rosé Pine Dawn",
+    "light": {
+      "palette": {
+        "neutral": "#faf4ed",
+        "ink": "#575279",
+        "primary": "#d7827e",
+        "accent": "#286983",
+        "success": "#56949f",
+        "warning": "#ea9d34",
+        "error": "#b4637a",
+        "info": "#286983",
+        "diffAdd": "#d8f8e5",
+        "diffDelete": "#f8d8db"
+      },
+      "overrides": {
+        "syntax-comment": "#9893a5",
+        "syntax-keyword": "#286983",
+        "syntax-string": "#56949f",
+        "syntax-primitive": "#907aa9",
+        "syntax-property": "#ea9d34",
+        "syntax-constant": "#d7827e"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#faf4ed",
+        "ink": "#575279",
+        "primary": "#d7827e",
+        "accent": "#286983",
+        "success": "#56949f",
+        "warning": "#ea9d34",
+        "error": "#b4637a",
+        "info": "#286983",
+        "diffAdd": "#d8f8e5",
+        "diffDelete": "#f8d8db"
+      },
+      "overrides": {
+        "syntax-comment": "#9893a5",
+        "syntax-keyword": "#286983",
+        "syntax-string": "#56949f",
+        "syntax-primitive": "#907aa9",
+        "syntax-property": "#ea9d34",
+        "syntax-constant": "#d7827e"
+      }
+    }
+  },
+  {
+    "id": "catppuccin-latte",
+    "name": "Catppuccin Latte",
+    "light": {
+      "palette": {
+        "neutral": "#eff1f5",
+        "ink": "#4c4f69",
+        "primary": "#1e66f5",
+        "accent": "#dd7878",
+        "success": "#40a02b",
+        "warning": "#df8e1d",
+        "error": "#d20f39",
+        "info": "#04a5e5",
+        "diffAdd": "#a6d189",
+        "diffDelete": "#e78284"
+      },
+      "overrides": {
+        "syntax-comment": "#8c8fa1",
+        "syntax-keyword": "#8839ef",
+        "syntax-string": "#40a02b",
+        "syntax-primitive": "#1e66f5",
+        "syntax-property": "#04a5e5",
+        "syntax-constant": "#fe640b"
+      }
+    },
+    "dark": {
+      "palette": {
+        "neutral": "#eff1f5",
+        "ink": "#4c4f69",
+        "primary": "#1e66f5",
+        "accent": "#dd7878",
+        "success": "#40a02b",
+        "warning": "#df8e1d",
+        "error": "#d20f39",
+        "info": "#04a5e5",
+        "diffAdd": "#a6d189",
+        "diffDelete": "#e78284"
+      },
+      "overrides": {
+        "syntax-comment": "#8c8fa1",
+        "syntax-keyword": "#8839ef",
+        "syntax-string": "#40a02b",
+        "syntax-primitive": "#1e66f5",
+        "syntax-property": "#04a5e5",
+        "syntax-constant": "#fe640b"
+      }
+    }
+  },
+  {
     "id": "brume-snow",
     "name": "Brume Snow",
     "light": {
@@ -2740,7 +3028,7 @@ export const KILOCODE_THEMES = [
     "name": "Brume Haze",
     "light": {
       "palette": {
-        "neutral": "#5e6a88",
+        "neutral": "#303848",
         "ink": "#c8d0e0",
         "primary": "#5088b0",
         "accent": "#58b8d8",
@@ -2788,7 +3076,7 @@ export const KILOCODE_THEMES = [
     "name": "Brume Dusk",
     "light": {
       "palette": {
-        "neutral": "#4e5a70",
+        "neutral": "#242c3a",
         "ink": "#c0c8d8",
         "primary": "#5898b8",
         "accent": "#68c0d8",
@@ -2836,7 +3124,7 @@ export const KILOCODE_THEMES = [
     "name": "Brume Mist",
     "light": {
       "palette": {
-        "neutral": "#3f4d65",
+        "neutral": "#1a2233",
         "ink": "#c8cdd8",
         "primary": "#6fa0c8",
         "accent": "#8ad0ea",
