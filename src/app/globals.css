@@ -1182,6 +1182,64 @@
   --sidebar-ring: oklch(0.68 0.12 195);
 }
 
+/* ===== BRUME — ICED GLASS EFFECT ===== */
+/* Applied to all 6 Brume variants via data-kilo-theme^="brume" */
+
+/* Cards */
+[data-kilo-theme^="brume"] .group.relative.overflow-hidden {
+  background: rgba(var(--brume-card-rgb), 0.35) !important;
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-color: rgba(var(--brume-border-rgb), 0.18) !important;
+  box-shadow: 0 2px 16px 0 rgba(0, 60, 100, 0.10), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+[data-kilo-theme^="brume"] .group.relative.overflow-hidden:hover {
+  background: rgba(var(--brume-card-rgb), 0.50) !important;
+  border-color: rgba(var(--brume-border-rgb), 0.35) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 80, 140, 0.18), inset 0 1px 0 rgba(255,255,255,0.14);
+}
+
+/* Light variants (snow, fog) — white-tinted glass */
+[data-kilo-theme="brume-snow"],
+[data-kilo-theme="brume-fog"] {
+  --brume-card-rgb: 200, 220, 240;
+  --brume-border-rgb: 24, 144, 176;
+}
+
+/* Mid variants (haze, dusk) */
+[data-kilo-theme="brume-haze"] {
+  --brume-card-rgb: 60, 80, 110;
+  --brume-border-rgb: 88, 184, 216;
+}
+[data-kilo-theme="brume-dusk"] {
+  --brume-card-rgb: 44, 60, 88;
+  --brume-border-rgb: 104, 192, 216;
+}
+
+/* Dark variants (mist, void) */
+[data-kilo-theme="brume-mist"] {
+  --brume-card-rgb: 34, 44, 63;
+  --brume-border-rgb: 138, 208, 234;
+}
+[data-kilo-theme="brume-void"] {
+  --brume-card-rgb: 20, 28, 46;
+  --brume-border-rgb: 144, 216, 240;
+}
+
+/* Header glass */
+[data-kilo-theme^="brume"] header,
+[data-kilo-theme^="brume"] .backdrop-blur-xl {
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+}
+
+/* Stat cells inside cards */
+[data-kilo-theme^="brume"] .rounded-lg.bg-muted\/50 {
+  background: rgba(var(--brume-border-rgb), 0.12) !important;
+  border: 1px solid rgba(var(--brume-border-rgb), 0.18);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
