@@ -38,6 +38,30 @@ export function ModelSpecsCard({ model }: Props) {
             {model.architecture?.tokenizer ?? "—"}
           </span>
         </div>
+        {model.architecture?.modality && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Modality Mapping</span>
+            <span className="font-medium font-mono text-xs">{model.architecture.modality}</span>
+          </div>
+        )}
+        {model.architecture?.instruct_type && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Instruct Type</span>
+            <span className="font-medium font-mono text-xs">{model.architecture.instruct_type}</span>
+          </div>
+        )}
+        {model.expiration_date && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Expires</span>
+            <span className="font-medium font-mono text-xs">{model.expiration_date}</span>
+          </div>
+        )}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">May Train on Prompts</span>
+          <span className={`font-medium ${model.mayTrainOnYourPrompts ? "text-amber-600" : "text-emerald-600"}`}>
+            {model.mayTrainOnYourPrompts ? "Yes" : "No"}
+          </span>
+        </div>
         <div>
           <span className="text-muted-foreground text-sm">Input Modalities</span>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -68,6 +92,38 @@ export function ModelSpecsCard({ model }: Props) {
             ))}
           </div>
         </div>
+        {model.default_parameters && model.default_parameters.length > 0 && (
+          <div>
+            <span className="text-muted-foreground text-sm">Default Parameters</span>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {model.default_parameters.map((p) => (
+                <Badge key={p} variant="outline" className="text-xs font-mono">
+                  {p}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {model.autoRouting?.models && model.autoRouting.models.length > 0 && (
+          <div>
+            <span className="text-muted-foreground text-sm">Auto-Routed Models</span>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {model.autoRouting.models.map((m) => (
+                <Badge key={m} variant="outline" className="text-xs font-mono">
+                  {m}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {model.terminalBench && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Terminal Bench Score</span>
+            <span className="font-medium font-mono text-xs text-emerald-600">
+              {(model.terminalBench.overallScore * 100).toFixed(1)}%
+            </span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Moderated</span>
           <span className="font-medium">
@@ -92,6 +148,38 @@ export function ModelSpecsCard({ model }: Props) {
             <p className="mt-1.5 text-xs font-mono bg-muted rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words">
               {model.opencode.prompt}
             </p>
+          </div>
+        )}
+        {model.opencode?.variants && Object.keys(model.opencode.variants).length > 0 && (
+          <div>
+            <span className="text-muted-foreground text-sm">SDK Variants</span>
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {Object.entries(model.opencode.variants).map(([name, cfg]) => (
+                <Badge key={name} variant="outline" className="text-xs font-mono">
+                  {name}
+                  {cfg?.reasoning?.enabled && ` · ${cfg.reasoning.effort ?? "default"}`}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {(model.canonical_slug || model.hugging_face_id) && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Canonical Slug</span>
+            <span className="font-medium font-mono text-xs">{model.canonical_slug ?? "—"}</span>
+          </div>
+        )}
+        {model.hugging_face_id && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Hugging Face</span>
+            <a
+              href={`https://huggingface.co/${model.hugging_face_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium font-mono text-xs text-primary hover:underline"
+            >
+              {model.hugging_face_id}
+            </a>
           </div>
         )}
       </div>

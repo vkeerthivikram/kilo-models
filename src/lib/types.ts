@@ -7,12 +7,47 @@ export interface ModelPricing {
   image?: string;
   web_search?: string;
   internal_reasoning?: string;
+  discount?: number;
 }
 
 export interface ModelArchitecture {
   input_modalities: string[];
   output_modalities: string[];
   tokenizer: string;
+  modality?: string;
+  instruct_type?: string | null;
+}
+
+export interface EnkryptSafety {
+  model_name?: string;
+  provider?: string;
+  source?: string;
+  risk_score?: number | null;
+  bias_score?: number | null;
+  cbrn_score?: number | null;
+  harmful_score?: number | null;
+  insecure_code_score?: number | null;
+  toxicity_score?: number | null;
+  robustness_score?: number | null;
+  jailbreak_score?: number | null;
+  evasion_score?: number | null;
+  safety_score?: number | null;
+  nist_score?: number | null;
+  owasp_score?: number | null;
+  freshness?: string;
+}
+
+export interface TerminalBench {
+  overallScore: number;
+  avgAttemptCostUsd: number;
+}
+
+export interface OpenCodeVariant {
+  reasoning?: {
+    enabled?: boolean;
+    effort?: string;
+  };
+  [key: string]: unknown;
 }
 
 export interface TopProvider {
@@ -25,6 +60,11 @@ export interface OpenCode {
   family?: string;
   prompt?: string;
   ai_sdk_provider?: string;
+  variants?: Record<string, OpenCodeVariant>;
+}
+
+export interface AutoRouting {
+  models: string[];
 }
 
 export interface Model {
@@ -41,6 +81,14 @@ export interface Model {
   preferredIndex: number;
   isFree: boolean;
   per_request_limits?: null | unknown;
+  mayTrainOnYourPrompts?: boolean;
+  autoRouting?: AutoRouting;
+  expiration_date?: string | null;
+  canonical_slug?: string;
+  hugging_face_id?: string;
+  default_parameters?: string[];
+  terminalBench?: TerminalBench;
+  enkrypt?: EnkryptSafety;
 }
 
 export interface ModelsResponse {

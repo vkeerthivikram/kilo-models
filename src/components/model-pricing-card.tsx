@@ -66,6 +66,12 @@ export function ModelPricingCard({ model }: Props) {
             <span className="font-medium">{formatPrice(p.request)}</span>
           </div>
         )}
+        {p?.discount != null && p.discount > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Discount</span>
+            <span className="font-medium text-emerald-600">{p.discount}%</span>
+          </div>
+        )}
       </div>
     </Card>
   );

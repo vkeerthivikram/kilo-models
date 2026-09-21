@@ -13,6 +13,7 @@ import {
   Hash,
   Zap,
   Shield,
+  ShieldAlert,
   Sparkles,
   Wrench,
   Copy,
@@ -24,6 +25,10 @@ import {
   Maximize2,
   Settings2,
   Heart,
+  Route,
+  Gauge,
+  GraduationCap,
+  Link2,
 } from "lucide-react";
 
 interface ModelDetailSheetProps {
@@ -69,6 +74,31 @@ const PriceRow = ({ label, value, icon: Icon }: { label: string; value: string |
     </div>
   );
 };
+
+const InfoRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex items-center justify-between py-2 px-3 gap-3">
+    <span className="text-sm text-muted-foreground shrink-0">{label}</span>
+    <span className="text-sm font-medium text-right break-all">{value}</span>
+  </div>
+);
+
+const ScoreBar = ({ label, score }: { label: string; score: number }) => (
+  <div className="py-1.5 px-3 space-y-1">
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono font-medium">{score.toFixed(1)}</span>
+    </div>
+    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+      <div
+        className={cn(
+          "h-full rounded-full",
+          score >= 50 ? "bg-red-500/70" : score >= 25 ? "bg-amber-500/70" : "bg-emerald-500/70"
+        )}
+        style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+      />
+    </div>
+  </div>
+);
 
 export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onToggleFavorite }: ModelDetailSheetProps) {
   const [copied, setCopied] = React.useState(false);
@@ -161,6 +191,20 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
               <PriceRow label="Web Search" value={model.pricing?.web_search} icon={Zap} />
               <Separator />
               <PriceRow label="Internal Reasoning" value={model.pricing?.internal_reasoning} icon={Sparkles} />
+              {model.pricing?.discount != null && model.pricing.discount > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between py-2 px-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <DollarSign className="h-4 w-4" />
+                      Discount
+                    </div>
+                    <span className="font-mono font-medium text-emerald-600">
+                      {model.pricing.discount}%
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -201,6 +245,18 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                     <span className="font-mono font-medium">
                       {model.top_provider?.context_length?.toLocaleString() ?? "N/A"} tokens
                     </span>
+                  </div>
+                </>
+              )}
+              {model.expiration_date && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between py-2 px-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      Expires
+                    </div>
+                    <span className="font-mono font-medium">{model.expiration_date}</span>
                   </div>
                 </>
               )}
@@ -248,6 +304,24 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                 <span className="font-medium text-sm">{model.architecture.tokenizer}</span>
               </div>
             )}
+            {model.architecture?.modality && (
+              <div className="rounded-xl border bg-card px-3 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Layers className="h-4 w-4" />
+                  Modality Mapping
+                </div>
+                <span className="font-mono font-medium text-sm">{model.architecture.modality}</span>
+              </div>
+            )}
+            {model.architecture?.instruct_type && (
+              <div className="rounded-xl border bg-card px-3 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Settings2 className="h-4 w-4" />
+                  Instruct Type
+                </div>
+                <span className="font-mono font-medium text-sm">{model.architecture.instruct_type}</span>
+              </div>
+            )}
           </div>
 
           {/* Supported Parameters */}
@@ -269,7 +343,113 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
             </div>
           )}
 
-          {/* OpenCode / SDK Info */}
+          {/* Default Parameters */}
+          {model.default_parameters && model.default_parameters.length > 0 && (
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                Default Parameters
+              </h3>
+              <div className="rounded-xl border bg-card p-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {model.default_parameters.map((p) => (
+                    <Badge key={p} variant="secondary" className="text-xs font-mono">
+                      {p}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Auto Routing */}
+          {model.autoRouting?.models && model.autoRouting.models.length > 0 && (
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Route className="h-4 w-4" />
+                Auto-Routed Models
+              </h3>
+              <div className="rounded-xl border bg-card p-3">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Requests to this auto-routing model are distributed across:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {model.autoRouting.models.map((m) => (
+                    <Badge key={m} variant="outline" className="text-xs font-mono">
+                      {m}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Terminal Bench */}
+          {model.terminalBench && (
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Gauge className="h-4 w-4" />
+                Terminal Bench
+              </h3>
+              <div className="rounded-xl border bg-card">
+                <InfoRow
+                  label="Overall Score"
+                  value={
+                    <span className="font-mono text-emerald-600">
+                      {(model.terminalBench.overallScore * 100).toFixed(1)}%
+                    </span>
+                  }
+                />
+                <Separator />
+                <InfoRow
+                  label="Avg Attempt Cost"
+                  value={
+                    <span className="font-mono">
+                      ${model.terminalBench.avgAttemptCostUsd?.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  }
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Safety Scores (enkrypt) */}
+          {model.enkrypt && model.enkrypt.safety_score != null && (
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4" />
+                Safety Report
+                {model.enkrypt.freshness && (
+                  <Badge variant="outline" className="text-[10px] capitalize">
+                    {model.enkrypt.freshness}
+                  </Badge>
+                )}
+              </h3>
+              <div className="rounded-xl border bg-card py-1">
+                {[
+                  ["Overall Safety", model.enkrypt.safety_score],
+                  ["Risk", model.enkrypt.risk_score],
+                  ["Bias", model.enkrypt.bias_score],
+                  ["CBRN", model.enkrypt.cbrn_score],
+                  ["Harmful", model.enkrypt.harmful_score],
+                  ["Insecure Code", model.enkrypt.insecure_code_score],
+                  ["Toxicity", model.enkrypt.toxicity_score],
+                  ["Jailbreak", model.enkrypt.jailbreak_score],
+                  ["Evasion", model.enkrypt.evasion_score],
+                  ["Robustness", model.enkrypt.robustness_score],
+                  ["NIST", model.enkrypt.nist_score],
+                  ["OWASP", model.enkrypt.owasp_score],
+                ]
+                  .filter(([, v]) => v != null)
+                  .map(([label, score]) => (
+                    <ScoreBar key={label as string} label={label as string} score={score as number} />
+                  ))}
+              </div>
+            </div>
+          )}
           {model.opencode && Object.keys(model.opencode).length > 0 && (
             <div className="space-y-1">
               <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -307,6 +487,26 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                     </div>
                   </>
                 )}
+                {model.opencode.variants && Object.keys(model.opencode.variants).length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="py-2 px-3">
+                      <span className="text-sm text-muted-foreground">Variants</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {Object.entries(model.opencode.variants).map(([name, cfg]) => (
+                          <Badge key={name} variant="outline" className="text-xs font-mono gap-1">
+                            {name}
+                            {cfg?.reasoning && (
+                              <span className="text-muted-foreground">
+                                ({cfg.reasoning.enabled ? `effort: ${cfg.reasoning.effort ?? "default"}` : "no reasoning"})
+                              </span>
+                            )}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -324,6 +524,48 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                   {model.top_provider?.is_moderated ? "Yes" : "No"}
                 </span>
               </div>
+              <Separator />
+              <div className="flex items-center justify-between py-2 px-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <GraduationCap className="h-4 w-4" />
+                  May Train on Prompts
+                </div>
+                <span className={`text-sm font-medium ${model.mayTrainOnYourPrompts ? "text-amber-600" : "text-emerald-600"}`}>
+                  {model.mayTrainOnYourPrompts ? "Yes" : "No"}
+                </span>
+              </div>
+              {model.canonical_slug && (
+                <>
+                  <Separator />
+                  <InfoRow
+                    label="Canonical Slug"
+                    value={
+                      <span className="font-mono text-xs flex items-center gap-1 justify-end">
+                        <Link2 className="h-3 w-3 shrink-0" />
+                        {model.canonical_slug}
+                      </span>
+                    }
+                  />
+                </>
+              )}
+              {model.hugging_face_id && (
+                <>
+                  <Separator />
+                  <InfoRow
+                    label="Hugging Face ID"
+                    value={
+                      <a
+                        href={`https://huggingface.co/${model.hugging_face_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs text-primary hover:underline"
+                      >
+                        {model.hugging_face_id}
+                      </a>
+                    }
+                  />
+                </>
+              )}
               {model.per_request_limits != null && (
                   <>
                     <Separator />
