@@ -6,6 +6,7 @@ import { Model } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { ModelSpecsCard } from "@/components/model-specs-card";
 import { ModelPricingCard } from "@/components/model-pricing-card";
+import { ModelSafetyCard } from "@/components/model-safety-card";
 import { SimilarModels } from "@/components/similar-models";
 
 interface Props {
@@ -112,6 +113,8 @@ export default async function ModelPage({ params }: Props) {
           <ModelSpecsCard model={model} />
           <ModelPricingCard model={model} />
         </div>
+
+        <ModelSafetyCard model={model} />
 
         {/* PricingCalculator will be added in Task 5 */}
 
