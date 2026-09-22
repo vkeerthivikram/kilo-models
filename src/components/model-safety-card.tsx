@@ -9,9 +9,8 @@ import { SafetyScoreBar, getSafetyRows } from "@/components/safety-score";
 
 export function ModelSafetyCard({ model }: { model: Model }) {
   const e = model.enkrypt;
-  if (!e || e.safety_score == null) return null;
-
-  const rows = getSafetyRows(e);
+  const rows = e ? getSafetyRows(e) : [];
+  if (!e || !rows.some(([, v]) => v != null)) return null;
 
   return (
     <Card className="p-6 space-y-4">

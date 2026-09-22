@@ -410,7 +410,7 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
           )}
 
           {/* Safety Scores (enkrypt) */}
-          {model.enkrypt && model.enkrypt.safety_score != null && (
+          {model.enkrypt && getSafetyRows(model.enkrypt).some(([, v]) => v != null) && (
             <div className="space-y-1">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4" />
