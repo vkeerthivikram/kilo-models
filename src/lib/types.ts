@@ -19,6 +19,7 @@ export interface ModelArchitecture {
 }
 
 export interface EnkryptSafety {
+  // All scores use a 0-100 scale.
   model_name?: string;
   provider?: string;
   source?: string;
