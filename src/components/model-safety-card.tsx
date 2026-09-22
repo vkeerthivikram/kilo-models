@@ -58,7 +58,7 @@ export function ModelSafetyCard({ model }: { model: Model }) {
             {e.freshness}
           </Badge>
         )}
- {e.provider && (
+        {e.provider && (
           <Badge variant="outline" className="text-[10px] font-mono">
             {e.provider}
           </Badge>
