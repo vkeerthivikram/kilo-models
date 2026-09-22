@@ -116,7 +116,7 @@ export function ModelSpecsCard({ model }: Props) {
             </div>
           </div>
         )}
-        {model.terminalBench && (
+        {model.terminalBench?.overallScore != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Terminal Bench Score</span>
             <span className="font-medium font-mono text-xs text-emerald-600">

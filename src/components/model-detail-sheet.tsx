@@ -385,33 +385,39 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
           )}
 
           {/* Terminal Bench */}
-          {model.terminalBench && (
+          {(model.terminalBench?.overallScore != null || model.terminalBench?.avgAttemptCostUsd != null) && (
             <div className="space-y-1">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Gauge className="h-4 w-4" />
                 Terminal Bench
               </h3>
               <div className="rounded-xl border bg-card">
-                <InfoRow
-                  label="Overall Score"
-                  value={
-                    <span className="font-mono text-emerald-600">
-                      {(model.terminalBench.overallScore * 100).toFixed(1)}%
-                    </span>
-                  }
-                />
-                <Separator />
-                <InfoRow
-                  label="Avg Attempt Cost"
-                  value={
-                    <span className="font-mono">
-                      ${model.terminalBench.avgAttemptCostUsd?.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  }
-                />
+                {model.terminalBench?.overallScore != null && (
+                  <InfoRow
+                    label="Overall Score"
+                    value={
+                      <span className="font-mono text-emerald-600">
+                        {(model.terminalBench.overallScore * 100).toFixed(1)}%
+                      </span>
+                    }
+                  />
+                )}
+                {model.terminalBench?.overallScore != null && model.terminalBench?.avgAttemptCostUsd != null && (
+                  <Separator />
+                )}
+                {model.terminalBench?.avgAttemptCostUsd != null && (
+                  <InfoRow
+                    label="Avg Attempt Cost"
+                    value={
+                      <span className="font-mono">
+                        ${model.terminalBench.avgAttemptCostUsd.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    }
+                  />
+                )}
               </div>
             </div>
           )}

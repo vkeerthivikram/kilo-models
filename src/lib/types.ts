@@ -38,8 +38,9 @@ export interface EnkryptSafety {
 }
 
 export interface TerminalBench {
-  overallScore: number;
-  avgAttemptCostUsd: number;
+  // overallScore is a 0-1 fraction (multiplied by 100 for display).
+  overallScore?: number | null;
+  avgAttemptCostUsd?: number | null;
 }
 
 export interface OpenCodeVariant {
