@@ -163,10 +163,10 @@ export function ModelSpecsCard({ model }: Props) {
             </div>
           </div>
         )}
-        {(model.canonical_slug || model.hugging_face_id) && (
+        {model.canonical_slug && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Canonical Slug</span>
-            <span className="font-medium font-mono text-xs">{model.canonical_slug ?? "—"}</span>
+            <span className="font-medium font-mono text-xs">{model.canonical_slug}</span>
           </div>
         )}
         {model.hugging_face_id && (
