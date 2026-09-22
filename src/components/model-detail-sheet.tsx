@@ -30,6 +30,7 @@ import {
   GraduationCap,
   Link2,
 } from "lucide-react";
+import { SafetyScoreBar, getSafetyRows } from "@/components/safety-score";
 
 interface ModelDetailSheetProps {
   model: Model | null;
@@ -83,21 +84,7 @@ const InfoRow = ({ label, value }: { label: string; value: React.ReactNode }) =>
 );
 
 const ScoreBar = ({ label, score }: { label: string; score: number }) => (
-  <div className="py-1.5 px-3 space-y-1">
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono font-medium">{score.toFixed(1)}</span>
-    </div>
-    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-      <div
-        className={cn(
-          "h-full rounded-full",
-          score >= 50 ? "bg-red-500/70" : score >= 25 ? "bg-amber-500/70" : "bg-emerald-500/70"
-        )}
-        style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
-      />
-    </div>
-  </div>
+  <SafetyScoreBar label={label} score={score} className="py-1.5 px-3" />
 );
 
 export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onToggleFavorite }: ModelDetailSheetProps) {
@@ -435,20 +422,7 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                 )}
               </h3>
               <div className="rounded-xl border bg-card py-1">
-                {[
-                  ["Overall Safety", model.enkrypt.safety_score],
-                  ["Risk", model.enkrypt.risk_score],
-                  ["Bias", model.enkrypt.bias_score],
-                  ["CBRN", model.enkrypt.cbrn_score],
-                  ["Harmful", model.enkrypt.harmful_score],
-                  ["Insecure Code", model.enkrypt.insecure_code_score],
-                  ["Toxicity", model.enkrypt.toxicity_score],
-                  ["Jailbreak", model.enkrypt.jailbreak_score],
-                  ["Evasion", model.enkrypt.evasion_score],
-                  ["Robustness", model.enkrypt.robustness_score],
-                  ["NIST", model.enkrypt.nist_score],
-                  ["OWASP", model.enkrypt.owasp_score],
-                ]
+                {getSafetyRows(model.enkrypt)
                   .filter(([, v]) => v != null)
                   .map(([label, score]) => (
                     <ScoreBar key={label as string} label={label as string} score={score as number} />
