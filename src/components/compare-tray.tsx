@@ -4,7 +4,7 @@ import * as React from "react";
 import { Model } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, GitCompare, Plus, Check } from "lucide-react";
+import { X, GitCompare } from "lucide-react";
 
 interface CompareTrayProps {
   models: Model[];
@@ -16,24 +16,24 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
   if (models.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
-      <div className="container mx-auto px-4 py-3 flex items-center gap-4">
+    <div aria-label="Model comparison" className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-3 px-5 py-3 sm:flex-nowrap sm:px-8">
         {/* Left section: count and pills */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center shrink-0">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="hidden size-10 shrink-0 items-center justify-center rounded-lg bg-muted sm:flex">
             <GitCompare className="h-4 w-4 text-primary" />
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              <span className="font-heading text-primary">{models.length}</span>
+            <span role="status" className="whitespace-nowrap text-sm font-medium">
+              <span className="tabular-nums">{models.length} / 10</span>
               <span className="text-muted-foreground"> selected</span>
             </span>
           </div>
 
-          <div className="h-5 w-px bg-border mx-1" />
+          <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
 
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className="hidden items-center gap-2 overflow-x-auto sm:flex">
             {models.map((model, index) => (
               <Badge
                 key={model.id}
@@ -41,10 +41,7 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
                 className="flex items-center gap-1.5 pr-1.5 shrink-0 cursor-default"
               >
                 <span
-                  className={cn(
-                    "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold",
-                    model.isFree ? "bg-emerald-500/10 text-emerald-600" : "bg-primary/10 text-primary"
-                  )}
+                  className="flex size-5 items-center justify-center text-xs tabular-nums text-muted-foreground"
                 >
                   {index + 1}
                 </span>
@@ -53,7 +50,7 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
                   type="button"
                   aria-label={`Remove ${model.name} from comparison`}
                   onClick={() => onRemove(model)}
-                  className="hover:bg-muted rounded-sm p-1 transition-colors active:scale-90 min-w-[24px] min-h-[24px] flex items-center justify-center"
+                  className="flex size-9 items-center justify-center rounded-sm p-1 transition-colors hover:bg-muted"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -64,23 +61,17 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
 
         {/* Right section: actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {models.length >= 2 && (
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Ready to compare
+          {models.length === 10 && (
+            <div className="hidden text-xs text-muted-foreground lg:block">
+              Remove a model to add another
             </div>
           )}
-          <Button onClick={onOpen} size="sm" className="gap-2">
+          <Button onClick={onOpen} size="sm" className="h-11 gap-2">
             <GitCompare className="h-4 w-4" />
-            <span className="hidden sm:inline">Open Compare</span>
-            <span className="sm:hidden">Compare</span>
+            Compare models
           </Button>
         </div>
       </div>
     </div>
   );
-}
-
-function cn(...classes: (string | boolean | undefined | null)[]): string {
-  return classes.filter(Boolean).join(" ");
 }

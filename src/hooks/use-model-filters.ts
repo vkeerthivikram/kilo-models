@@ -27,6 +27,7 @@ type ViewOption = (typeof VIEW_OPTIONS)[number];
 
 const INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
 const OUTPUT_MODALITIES = ["text", "image", "audio"];
+const EMPTY_FILTERS: string[] = [];
 const ALL_PROVIDERS = [
   "ai21","aion-labs","alfredpros","alibaba","allenai","alpindale","amazon",
   "anthropic","bytedance","cohere","deepseek","google","gryphe","ibm-granite",
@@ -84,7 +85,7 @@ const parsers = {
   fav: parseAsBoolean,
 };
 
-export function useModelFilters(models: Model[]): UseModelFiltersResult {
+export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_FILTERS): UseModelFiltersResult {
   const [params, setParams] = useQueryStates(parsers, {
     clearOnDefault: false,
     shallow: false,
@@ -93,13 +94,12 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
   const urlSearch = params.search ?? "";
   const sort = params.sort ?? "name-asc";
   const free = params.free ?? false;
-  const inputModalities = params.inputModalities ?? [];
-  const outputModalities = params.outputModalities ?? [];
-  const providers = params.providers ?? [];
+  const inputModalities = params.inputModalities ?? EMPTY_FILTERS;
+  const outputModalities = params.outputModalities ?? EMPTY_FILTERS;
+  const providers = params.providers ?? EMPTY_FILTERS;
   const reasoning = params.reasoning ?? false;
   const tools = params.tools ?? false;
   const view = params.view ?? "grid";
-  const page = params.page ?? 1;
   const fav = params.fav ?? false;
 
   const PAGE_SIZE = 24;
@@ -163,6 +163,7 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
 
   const filteredModels = React.useMemo(() => {
     return models.filter((model) => {
+      if (fav && !favoriteIds.includes(model.id)) return false;
       if (search) {
         const s = search.toLowerCase();
         if (
@@ -196,7 +197,7 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
       }
       return true;
     });
-  }, [models, search, free, inputModalities, outputModalities, providers, reasoning, tools]);
+  }, [models, search, free, inputModalities, outputModalities, providers, reasoning, tools, fav, favoriteIds]);
 
   const sortedModels = React.useMemo(() => {
     return [...filteredModels].sort((a, b) => {
@@ -222,6 +223,7 @@ export function useModelFilters(models: Model[]): UseModelFiltersResult {
   }, [filteredModels, sort]);
 
   const totalPages = Math.ceil(sortedModels.length / PAGE_SIZE);
+  const page = pendingSearch !== null ? 1 : Math.max(1, Math.min(params.page ?? 1, totalPages || 1));
   const paginatedModels = React.useMemo(() => {
     return sortedModels.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   }, [sortedModels, page]);

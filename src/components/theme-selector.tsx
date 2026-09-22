@@ -19,14 +19,17 @@ function getModeSwatchColor(
   return mode === "dark" ? swatch.dark : swatch.light;
 }
 
+const emptySubscribe = () => () => {};
+
 export function ThemeSelector() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { colorTheme, setColorTheme } = useColorTheme();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
+  // True after hydration; false on the server and during the first client render.
+  const mounted = React.useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   if (!mounted) {
     return (

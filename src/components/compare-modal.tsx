@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Model } from "@/lib/types";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format-price";
 import { PricingBarChart } from "@/components/pricing-bar-chart";
 import { CapabilityRadarChart } from "@/components/capability-radar-chart";
 import { CompareCostTable } from "@/components/compare-cost-table";
@@ -28,14 +29,6 @@ interface CompareModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRemove: (model: Model) => void;
-}
-
-function formatPrice(price: string | undefined): string {
-  if (!price || price === "0") return "Free";
-  const num = parseFloat(price);
-  if (num < 0.00001) return `$${(num * 1000000).toFixed(2)}/1M`;
-  if (num < 0.001) return `$${(num * 1000).toFixed(4)}/1K`;
-  return `$${num.toFixed(6)}/1K`;
 }
 
 function formatContext(ctx: number): string {
@@ -131,7 +124,6 @@ function CapabilityBadge({ type, enabled }: { type: "reasoning" | "tools" | "mod
 }
 
 function OverviewTab({ models, onRemove }: { models: Model[]; onRemove: (m: Model) => void }) {
-  const router = useRouter();
   const inputPrices = models.map((m) => parseFloat(m.pricing?.prompt ?? "0") || 0);
   const outputPrices = models.map((m) => parseFloat(m.pricing?.completion ?? "0") || 0);
   const contexts = models.map((m) => m.context_length || 0);
@@ -150,21 +142,21 @@ function OverviewTab({ models, onRemove }: { models: Model[]; onRemove: (m: Mode
 
           return (
             <div key={model.id} className="bg-card rounded-xl border shadow-sm overflow-hidden">
-              <div
-                className="p-4 border-b bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => router.push(`/models/${encodeURIComponent(model.id)}`)}
+              <Link
+                className="block p-4 border-b bg-muted/30 hover:bg-muted/50 transition-colors"
+                href={`/models/${encodeURIComponent(model.id)}`}
               >
                 <h3 className="font-heading text-base font-semibold">{model.name}</h3>
                 <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{provider}</p>
-              </div>
+              </Link>
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Input / 1K</div>
+                    <div className="text-xs text-muted-foreground mb-1">Input tokens</div>
                     <div className="text-sm font-bold font-mono">{formatPrice(model.pricing?.prompt)}</div>
                   </div>
                   <div className="text-center p-3 bg-blue-500/5 rounded-lg border border-blue-500/20">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Output / 1K</div>
+                    <div className="text-xs text-muted-foreground mb-1">Output tokens</div>
                     <div className="text-sm font-bold font-mono">{formatPrice(model.pricing?.completion)}</div>
                   </div>
                 </div>
@@ -283,23 +275,23 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b bg-card/30">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden size-10 items-center justify-center rounded-lg bg-muted sm:flex">
               <GitCompare className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="font-heading text-xl">Compare Models</h2>
-              <p className="text-xs text-muted-foreground">
+              <SheetTitle className="text-xl">Compare Models</SheetTitle>
+              <SheetDescription className="text-xs">
                 Comparing {models.length} model{models.length !== 1 ? "s" : ""}
-              </p>
+              </SheetDescription>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="size-11 gap-2 sm:w-auto" onClick={() => onOpenChange(false)} aria-label="Add models" title="Return to directory to add models">
               <Plus className="h-4 w-4" />
-              Add Models
+              <span className="hidden sm:inline">Add models</span>
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+            <Button variant="ghost" size="icon" className="size-11" onClick={() => onOpenChange(false)} aria-label="Close comparison">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -308,18 +300,18 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
         {/* Tabs */}
         <Tabs defaultValue="overview" className="flex-1 min-h-0 flex flex-col">
           <div className="px-4 sm:px-6 pt-4">
-            <TabsList>
+            <TabsList className="w-full sm:w-auto">
               <TabsTrigger value="overview">
-                <List className="h-4 w-4 mr-1.5" />
+                <List className="mr-1.5 hidden size-4 sm:block" />
                 Overview
               </TabsTrigger>
               <TabsTrigger value="charts">
-                <BarChart3 className="h-4 w-4 mr-1.5" />
+                <BarChart3 className="mr-1.5 hidden size-4 sm:block" />
                 Charts
               </TabsTrigger>
               <TabsTrigger value="calculator">
-                <Calculator className="h-4 w-4 mr-1.5" />
-                Cost Calculator
+                <Calculator className="mr-1.5 hidden size-4 sm:block" />
+                <span className="sm:hidden">Costs</span><span className="hidden sm:inline">Cost Calculator</span>
               </TabsTrigger>
             </TabsList>
           </div>

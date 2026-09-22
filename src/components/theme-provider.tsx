@@ -48,43 +48,32 @@ function applyColorTheme(theme: ColorTheme, mode: ThemeMode) {
 function ColorThemeProvider({ children }: { children: React.ReactNode }) {
   const { resolvedTheme } = useTheme();
 
-  const [colorTheme, setColorThemeState] = React.useState<ColorTheme>(() => {
+  const [storedTheme, setStoredTheme] = React.useState<ColorTheme>(() => {
     if (typeof window === "undefined") return DEFAULT_COLOR_THEME;
     const stored = localStorage.getItem(COLOR_THEME_KEY);
     return stored && isValidColorTheme(stored) ? stored : DEFAULT_COLOR_THEME;
   });
 
+  const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
+  // A stored theme can be unavailable in the current mode; resolve during render
+  // instead of correcting state in an effect.
+  const colorTheme = resolvedTheme
+    ? isThemeAvailableInMode(storedTheme, mode)
+      ? storedTheme
+      : getDefaultColorThemeForMode(mode)
+    : storedTheme;
+
   React.useEffect(() => {
     if (!resolvedTheme) return;
-    const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
-    const effectiveTheme = isThemeAvailableInMode(colorTheme, mode)
-      ? colorTheme
-      : getDefaultColorThemeForMode(mode);
-
-    if (effectiveTheme !== colorTheme) {
-      setColorThemeState(effectiveTheme);
-      localStorage.setItem(COLOR_THEME_KEY, effectiveTheme);
-    }
-
-    applyColorTheme(effectiveTheme, mode);
-  }, [colorTheme, resolvedTheme]);
+    applyColorTheme(colorTheme, mode);
+  }, [colorTheme, mode, resolvedTheme]);
 
   const setColorTheme = React.useCallback(
     (theme: ColorTheme) => {
-      let nextTheme = theme;
-
-      if (resolvedTheme) {
-        const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
-        nextTheme = isThemeAvailableInMode(theme, mode)
-          ? theme
-          : getDefaultColorThemeForMode(mode);
-        applyColorTheme(nextTheme, mode);
-      }
-
-      setColorThemeState(nextTheme);
-      localStorage.setItem(COLOR_THEME_KEY, nextTheme);
+      setStoredTheme(theme);
+      localStorage.setItem(COLOR_THEME_KEY, theme);
     },
-    [resolvedTheme],
+    [],
   );
 
   return (
