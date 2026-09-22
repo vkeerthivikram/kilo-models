@@ -5,7 +5,7 @@ import { Model, ViewMode } from "@/lib/types";
 import { ModelCard } from "./model-card-v2";
 import { Badge } from "@/components/ui/badge";
 import { Cpu } from "lucide-react";
-import { formatPrice } from "@/lib/format-price";
+import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
 
 interface ModelGridProps {
   models: Model[];
@@ -14,12 +14,6 @@ interface ModelGridProps {
   onToggleCompare?: (model: Model) => void;
   isFavoriteModel?: (id: string) => boolean;
   onToggleFavorite?: (id: string) => void;
-}
-
-function formatContext(ctx: number): string {
-  if (ctx >= 1000000) return `${(ctx / 1000000).toFixed(0)}M`;
-  if (ctx >= 1000) return `${(ctx / 1000).toFixed(0)}K`;
-  return ctx.toString();
 }
 
 export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite }: ModelGridProps) {
@@ -93,7 +87,7 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
           key={model.id}
           model={model}
           isCompared={isComparedModels?.some((m) => m.id === model.id)}
-          compareDisabled={(isComparedModels?.length ?? 0) >= 10 && !isComparedModels?.some((m) => m.id === model.id)}
+          compareDisabled={(isComparedModels?.length ?? 0) >= COMPARE_LIMIT && !isComparedModels?.some((m) => m.id === model.id)}
           onToggleCompare={onToggleCompare}
           isFavorite={isFavoriteModel?.(model.id)}
           onToggleFavorite={() => onToggleFavorite?.(model.id)}

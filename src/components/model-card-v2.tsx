@@ -6,7 +6,7 @@ import { Model } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { formatPrice } from "@/lib/format-price";
+import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -25,12 +25,6 @@ interface ModelCardProps {
   onToggleCompare?: (model: Model) => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
-}
-
-function formatContext(ctx: number): string {
-  if (ctx >= 1000000) return `${(ctx / 1000000).toFixed(0)}M`;
-  if (ctx >= 1000) return `${(ctx / 1000).toFixed(0)}K`;
-  return ctx.toString();
 }
 
 function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
@@ -138,7 +132,7 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
             onClick={() => !compareDisabled && onToggleCompare?.(model)}
             disabled={compareDisabled}
             aria-pressed={isCompared}
-            title={compareDisabled ? "Compare up to 10 models" : isCompared ? `Remove ${model.name} from comparison` : `Add ${model.name} to comparison`}
+            title={compareDisabled ? `Compare up to ${COMPARE_LIMIT} models` : isCompared ? `Remove ${model.name} from comparison` : `Add ${model.name} to comparison`}
             className={cn(
               "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border transition-colors disabled:pointer-events-none disabled:opacity-40",
               isCompared

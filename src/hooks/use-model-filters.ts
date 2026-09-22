@@ -28,13 +28,7 @@ type ViewOption = (typeof VIEW_OPTIONS)[number];
 const INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
 const OUTPUT_MODALITIES = ["text", "image", "audio"];
 const EMPTY_FILTERS: string[] = [];
-const ALL_PROVIDERS = [
-  "ai21","aion-labs","alfredpros","alibaba","allenai","alpindale","amazon",
-  "anthropic","bytedance","cohere","deepseek","google","gryphe","ibm-granite",
-  "inclusionai","kilo-auto","meta-llama","microsoft","mistralai","moonshotai",
-  "nvidia","openai","openrouter","perplexity","qwen","rekaai","stepfun",
-  "tencent","x-ai","z-ai"
-];
+const PAGE_SIZE = 24;
 
 interface FilterState {
   search: string;
@@ -101,8 +95,6 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const tools = params.tools ?? false;
   const view = params.view ?? "grid";
   const fav = params.fav ?? false;
-
-  const PAGE_SIZE = 24;
 
   const [pendingSearch, setPendingSearch] = React.useState<string | null>(null);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -263,5 +255,5 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   };
 }
 
-export { INPUT_MODALITIES, OUTPUT_MODALITIES, ALL_PROVIDERS };
+export { INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE };
 export type { SortOption, ViewOption };

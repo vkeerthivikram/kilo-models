@@ -5,6 +5,7 @@ import { Model } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, GitCompare } from "lucide-react";
+import { COMPARE_LIMIT } from "@/lib/format-price";
 
 interface CompareTrayProps {
   models: Model[];
@@ -26,7 +27,7 @@ export function CompareTray({ models, onRemove, onOpen }: CompareTrayProps) {
 
           <div className="flex items-center gap-2">
             <span role="status" className="whitespace-nowrap text-sm font-medium">
-              <span className="tabular-nums">{models.length} / 10</span>
+              <span className="tabular-nums">{models.length} / {COMPARE_LIMIT}</span>
               <span className="text-muted-foreground"> selected</span>
             </span>
           </div>

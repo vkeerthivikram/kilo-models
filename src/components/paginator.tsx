@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PaginatorProps {
   page: number;
@@ -44,7 +45,7 @@ export function Paginator({ page, totalPages, totalCount, pageSize, onPageChange
       </p>
 
       <div className="flex items-center gap-1 order-1 sm:order-2">
-        <Button variant="outline" size="icon" className={`${navButton} hidden sm:inline-flex`} onClick={() => onPageChange(1)} disabled={page === 1} aria-label="First page">
+        <Button variant="outline" size="icon" className={cn(navButton, "hidden sm:inline-flex")} onClick={() => onPageChange(1)} disabled={page === 1} aria-label="First page">
           <ChevronsLeft className="size-3.5" />
         </Button>
         <Button variant="outline" size="icon" className={navButton} onClick={() => onPageChange(page - 1)} disabled={page === 1} aria-label="Previous page">
@@ -66,7 +67,7 @@ export function Paginator({ page, totalPages, totalCount, pageSize, onPageChange
                 key={p}
                 variant={p === page ? "secondary" : "ghost"}
                 size="icon"
-                className={`${navButton} text-xs ${p === page ? "font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                className={cn(navButton, "text-xs", p === page ? "font-semibold" : "text-muted-foreground hover:text-foreground")}
                 onClick={() => onPageChange(p)}
                 aria-label={`Page ${p}`}
                 aria-current={p === page ? "page" : undefined}

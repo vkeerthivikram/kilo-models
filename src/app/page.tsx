@@ -19,7 +19,8 @@ import { CompareTray } from "@/components/compare-tray";
 import { CompareModal } from "@/components/compare-modal";
 import { SortDropdown } from "@/components/sort-dropdown";
 import { Search, LayoutGrid, List, ChevronDown, X, Heart, SlidersHorizontal, Check, ArrowUpRight, CircleAlert } from "lucide-react";
-import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES } from "@/hooks/use-model-filters";
+import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE } from "@/hooks/use-model-filters";
+import { COMPARE_LIMIT } from "@/lib/format-price";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useModels } from "@/hooks/use-models";
 
@@ -41,7 +42,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   const handleToggleCompare = (model: Model) => {
     setComparedModels((previous) => previous.some((item) => item.id === model.id)
       ? previous.filter((item) => item.id !== model.id)
-      : previous.length < 10 ? [...previous, model] : previous);
+      : previous.length < COMPARE_LIMIT ? [...previous, model] : previous);
   };
 
   return (
@@ -172,7 +173,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             <>
               <ModelGrid models={paginatedModels} viewMode={view}
                 isComparedModels={comparedModels} onToggleCompare={handleToggleCompare} isFavoriteModel={isFavorite} onToggleFavorite={toggleFavorite} />
-              <Paginator page={page} totalPages={totalPages} totalCount={sortedModels.length} pageSize={24}
+              <Paginator page={page} totalPages={totalPages} totalCount={sortedModels.length} pageSize={PAGE_SIZE}
                 onPageChange={(nextPage) => { setPage(nextPage); document.getElementById("directory")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }} />
             </>
           )}

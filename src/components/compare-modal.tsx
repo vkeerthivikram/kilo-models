@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/lib/format-price";
+import { formatPrice, formatContext } from "@/lib/format-price";
 import { PricingBarChart } from "@/components/pricing-bar-chart";
 import { CapabilityRadarChart } from "@/components/capability-radar-chart";
 import { CompareCostTable } from "@/components/compare-cost-table";
@@ -29,12 +29,6 @@ interface CompareModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRemove: (model: Model) => void;
-}
-
-function formatContext(ctx: number): string {
-  if (ctx >= 1000000) return `${(ctx / 1000000).toFixed(0)}M`;
-  if (ctx >= 1000) return `${(ctx / 1000).toFixed(0)}K`;
-  return ctx.toLocaleString();
 }
 
 function formatDate(ts: number): string {
