@@ -194,7 +194,7 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
               {model.pricing?.discount != null && model.pricing.discount > 0 && (
                 <>
                   <Separator />
-                  <div className="flex items-center justify-between py-2 px-3">
+                  <div className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <DollarSign className="h-4 w-4" />
                       Discount
