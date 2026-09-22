@@ -530,8 +530,8 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
                   <GraduationCap className="h-4 w-4" />
                   May Train on Prompts
                 </div>
-                <span className={`text-sm font-medium ${model.mayTrainOnYourPrompts ? "text-amber-600" : "text-emerald-600"}`}>
-                  {model.mayTrainOnYourPrompts ? "Yes" : "No"}
+                <span className={`text-sm font-medium ${model.mayTrainOnYourPrompts === false ? "text-emerald-600" : model.mayTrainOnYourPrompts ? "text-amber-600" : "text-muted-foreground"}`}>
+                  {model.mayTrainOnYourPrompts == null ? "Unknown" : model.mayTrainOnYourPrompts ? "Yes" : "No"}
                 </span>
               </div>
               {model.canonical_slug && (

@@ -58,8 +58,8 @@ export function ModelSpecsCard({ model }: Props) {
         )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">May Train on Prompts</span>
-          <span className={`font-medium ${model.mayTrainOnYourPrompts ? "text-amber-600" : "text-emerald-600"}`}>
-            {model.mayTrainOnYourPrompts ? "Yes" : "No"}
+          <span className={`font-medium ${model.mayTrainOnYourPrompts === false ? "text-emerald-600" : model.mayTrainOnYourPrompts ? "text-amber-600" : "text-muted-foreground"}`}>
+            {model.mayTrainOnYourPrompts == null ? "Unknown" : model.mayTrainOnYourPrompts ? "Yes" : "No"}
           </span>
         </div>
         <div>
