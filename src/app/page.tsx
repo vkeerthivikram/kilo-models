@@ -1,443 +1,237 @@
 "use client";
 
 import * as React from "react";
-import { Suspense } from "react";
 import Link from "next/link";
-import { Model, ViewMode } from "@/lib/types";
+import type { Model } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
 import { ThemeSelector } from "@/components/theme-selector";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ModelDetailSheet } from "@/components/model-detail-sheet";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 import { ModelGrid } from "@/components/model-grid-v2";
 import { Paginator } from "@/components/paginator";
 import { CompareTray } from "@/components/compare-tray";
 import { CompareModal } from "@/components/compare-modal";
 import { SortDropdown } from "@/components/sort-dropdown";
-import {
-  Search,
-  LayoutGrid,
-  List,
-  ChevronDown,
-  X,
-  Heart,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
-import { useModelFilters } from "@/hooks/use-model-filters";
+import { Search, LayoutGrid, List, ChevronDown, X, Heart, SlidersHorizontal, Check, ArrowUpRight, CircleAlert } from "lucide-react";
+import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE } from "@/hooks/use-model-filters";
+import { COMPARE_LIMIT } from "@/lib/format-price";
 import { useFavorites } from "@/hooks/use-favorites";
-
-const INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
-const OUTPUT_MODALITIES = ["text", "image", "audio"];
-const ALL_PROVIDERS = [
-  "ai21","aion-labs","alfredpros","alibaba","allenai","alpindale","amazon",
-  "anthropic","bytedance","cohere","deepseek","google","gryphe","ibm-granite",
-  "inclusionai","kilo-auto","meta-llama","microsoft","mistralai","moonshotai",
-  "nvidia","openai","openrouter","perplexity","qwen","rekaai","stepfun",
-  "tencent","x-ai","z-ai"
-];
+import { useModels } from "@/hooks/use-models";
 
 function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
-  const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
-  const [selectedModel, setSelectedModel] = React.useState<Model | null>(null);
-  const [sheetOpen, setSheetOpen] = React.useState(false);
-  const [providersOpen, setProvidersOpen] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [comparedModels, setComparedModels] = React.useState<Model[]>([]);
   const [compareModalOpen, setCompareModalOpen] = React.useState(false);
-
+  const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const {
-    search,
-    setSearch,
-    sort,
-    setSort,
-    free,
-    setFree,
-    inputModalities,
-    setInputModalities,
-    outputModalities,
-    setOutputModalities,
-    providers,
-    setProviders,
-    reasoning,
-    setReasoning,
-    tools,
-    setTools,
-    page,
-    setPage,
-    fav,
-    setFav,
-    activeFilterCount,
-    sortedModels,
-    paginatedModels,
-    totalPages,
-  } = useModelFilters(models);
-
-  const { favorites: favoriteIds, isFavorite: isFavoriteFn, toggleFavorite: toggleFavoriteFn } = useFavorites();
-
-
-
-  const toggleModality = (type: "input" | "output", mod: string) => {
-    if (type === "input") {
-      setInputModalities(
-        inputModalities.includes(mod)
-          ? inputModalities.filter((m) => m !== mod)
-          : [...inputModalities, mod]
-      );
-    } else {
-      setOutputModalities(
-        outputModalities.includes(mod)
-          ? outputModalities.filter((m) => m !== mod)
-          : [...outputModalities, mod]
-      );
-    }
-  };
-
-  const toggleProvider = (p: string) => {
-    setProviders(
-      providers.includes(p)
-        ? providers.filter((x) => x !== p)
-        : [...providers, p]
-    );
-  };
-
-  const clearFilters = () => {
-    setSearch("");
-    setFree(false);
-    setInputModalities([]);
-    setOutputModalities([]);
-    setProviders([]);
-    setReasoning(false);
-    setTools(false);
-  };
-
-  const handleSelectModel = (model: Model) => {
-    setSelectedModel(model);
-    setSheetOpen(true);
-  };
+    search, setSearch, sort, setSort, free, setFree,
+    inputModalities, setInputModalities, outputModalities, setOutputModalities,
+    providers, setProviders, reasoning, setReasoning, tools, setTools,
+    page, setPage, fav, setFav, view, setView, clearFilters,
+    activeFilterCount, sortedModels, paginatedModels, totalPages,
+  } = useModelFilters(models, favorites);
+  const availableProviders = [...new Set(models.map((model) => model.id.split("/")[0]))].sort();
+  const hasFilters = activeFilterCount > 0 || search.length > 0;
 
   const handleToggleCompare = (model: Model) => {
-    setComparedModels((prev) => {
-      const exists = prev.some((m) => m.id === model.id);
-      if (exists) {
-        return prev.filter((m) => m.id !== model.id);
-      }
-      if (prev.length >= 10) {
-        return prev;
-      }
-      return [...prev, model];
-    });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setComparedModels((previous) => previous.some((item) => item.id === model.id)
+      ? previous.filter((item) => item.id !== model.id)
+      : previous.length < COMPARE_LIMIT ? [...previous, model] : previous);
   };
 
   return (
     <>
-      <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search models..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-11 rounded-xl bg-background/80 border-primary/10 focus:border-primary/30"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <SortDropdown value={sort} onChange={setSort} />
-            <div className="flex items-center border rounded-xl p-1 bg-background/80">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="h-8 px-2.5"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className="h-8 px-2.5"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 text-sm ml-auto">
-              <span className="font-semibold text-foreground font-heading">{sortedModels.length}</span>
-              <span className="text-muted-foreground">{sortedModels.length === models.length ? "models" : `of ${models.length}`}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant={free ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFree(!free)}
-            className="h-8 rounded-lg text-xs font-medium"
-          >
-            Free Only
-          </Button>
-
-          {INPUT_MODALITIES.map((mod) => (
-            <Button
-              key={`in-${mod}`}
-              variant={inputModalities.includes(mod) ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleModality("input", mod)}
-              className="h-8 rounded-lg text-xs capitalize"
-            >
-              <ArrowUpRight className="h-3 w-3 mr-1" />
-              {mod}
-            </Button>
-          ))}
-
-          {OUTPUT_MODALITIES.map((mod) => (
-            <Button
-              key={`out-${mod}`}
-              variant={outputModalities.includes(mod) ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleModality("output", mod)}
-              className="h-8 rounded-lg text-xs capitalize"
-            >
-              <ArrowDownRight className="h-3 w-3 mr-1" />
-              {mod}
-            </Button>
-          ))}
-
-          <Button
-            variant={reasoning ? "default" : "outline"}
-            size="sm"
-            onClick={() => setReasoning(!reasoning)}
-            className="h-8 rounded-lg text-xs"
-          >
-            Reasoning
-          </Button>
-          <Button
-            variant={tools ? "default" : "outline"}
-            size="sm"
-            onClick={() => setTools(!tools)}
-            className="h-8 rounded-lg text-xs"
-          >
-            Tools
-          </Button>
-
-          <Button
-            variant={fav ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFav(!fav)}
-            className="h-8 rounded-lg text-xs"
-          >
-            <Heart className={cn("h-3.5 w-3.5 mr-1.5", fav ? "fill-current" : "")} />
-            Favorites
-            {favoriteIds.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                {favoriteIds.length}
-              </Badge>
-            )}
-          </Button>
-
-          <div className="relative">
-            <Button
-              variant={providers.length > 0 ? "default" : "outline"}
-              size="sm"
-              onClick={() => setProvidersOpen(!providersOpen)}
-              className="h-8 rounded-lg text-xs"
-            >
-              Providers
-              {providers.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                  {providers.length}
-                </Badge>
-              )}
-              <ChevronDown className="ml-1 h-3 w-3" />
-            </Button>
-
-            {providersOpen && (
-              <div className="absolute top-full left-0 mt-2 w-72 max-w-[calc(100vw-2rem)] max-h-80 overflow-y-auto rounded-xl border bg-popover p-3 shadow-xl z-50">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Select Providers</span>
-                    <Button variant="ghost" size="sm" onClick={() => setProviders([])} className="h-6 text-xs">
-                      Clear
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ALL_PROVIDERS.map((p) => (
-                      <Badge
-                        key={p}
-                        variant={providers.includes(p) ? "default" : "outline"}
-                        className="cursor-pointer text-xs capitalize"
-                        onClick={() => toggleProvider(p)}
-                      >
-                        {p}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 rounded-lg text-xs text-muted-foreground">
-              <X className="h-3 w-3 mr-1" />
-              Clear
-            </Button>
-          )}
-        </div>
+      <div className="flex items-center gap-6 border-b">
+        <button type="button" onClick={() => setFav(false)} aria-pressed={!fav}
+          className={cn("min-h-12 border-b-2 px-1 text-sm font-medium transition-colors", !fav ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          All models <span className="ml-2 text-xs tabular-nums text-muted-foreground">{loading ? "..." : models.length}</span>
+        </button>
+        <button type="button" onClick={() => setFav(true)} aria-pressed={fav}
+          className={cn("flex min-h-12 items-center gap-2 border-b-2 px-1 text-sm font-medium transition-colors", fav ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          <Heart className="size-4" aria-hidden="true" /> Favorites
+          <span className="text-xs tabular-nums text-muted-foreground">{favorites.length}</span>
+        </button>
+        <span className="ml-auto hidden text-xs text-muted-foreground sm:block">Select models to compare side by side</span>
       </div>
 
-      {models.length === 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border bg-card animate-pulse h-64" />
-          ))}
+      <div className="grid items-start gap-6 pt-6 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
+        <div className="flex gap-3 lg:hidden">
+          <Button variant="outline" className="h-11 flex-1" onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen} aria-controls="model-filters">
+            <SlidersHorizontal className="size-4" /> Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
+            <ChevronDown className={cn("ml-auto size-4 transition-transform", filtersOpen && "rotate-180")} />
+          </Button>
+          {hasFilters && <Button variant="ghost" className="h-11" onClick={clearFilters}>Reset</Button>}
         </div>
-      ) : (
-        <>
-          <ModelGrid
-            models={paginatedModels}
-            viewMode={viewMode}
-            onSelectModel={handleSelectModel}
-            isComparedModels={comparedModels}
-            onToggleCompare={handleToggleCompare}
-            isFavoriteModel={isFavoriteFn}
-            onToggleFavorite={toggleFavoriteFn}
-          />
-          <Paginator
-            page={page}
-            totalPages={totalPages}
-            totalCount={sortedModels.length}
-            pageSize={24}
-            onPageChange={handlePageChange}
-          />
-        </>
-      )}
 
-      <ModelDetailSheet
-        model={selectedModel}
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        isFavorite={selectedModel ? isFavoriteFn(selectedModel.id) : false}
-        onToggleFavorite={() => selectedModel && toggleFavoriteFn(selectedModel.id)}
-      />
+        <aside id="model-filters" aria-label="Filter models" className={cn("space-y-7 rounded-xl border p-4 lg:rounded-none lg:border-0 lg:p-0", !filtersOpen && "hidden lg:block")}>
+          <div className="flex h-11 items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold"><SlidersHorizontal className="size-4" aria-hidden="true" /> Filters</h2>
+            {hasFilters && <button type="button" onClick={clearFilters} className="min-h-9 px-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Reset all</button>}
+          </div>
+
+          <fieldset className="space-y-3">
+            <legend className="mb-3 text-sm font-medium">Pricing</legend>
+            <button type="button" onClick={() => setFree(!free)} aria-pressed={free}
+              className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
+              <span className={cn("flex size-4 items-center justify-center rounded border", free ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{free && <Check className="size-3" aria-hidden="true" />}</span>
+              Free models only
+            </button>
+          </fieldset>
+
+          {[
+            { label: "Input modalities", options: INPUT_MODALITIES, selected: inputModalities, set: setInputModalities },
+            { label: "Output modalities", options: OUTPUT_MODALITIES, selected: outputModalities, set: setOutputModalities },
+          ].map(({ label, options, selected, set }) => (
+            <fieldset key={label}>
+              <legend className="mb-3 text-sm font-medium">{label}</legend>
+              <div className="flex flex-wrap gap-2">
+                {options.map((modality) => (
+                  <button key={modality} type="button" aria-pressed={selected.includes(modality)}
+                    onClick={() => set(selected.includes(modality) ? selected.filter((item) => item !== modality) : [...selected, modality])}
+                    className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs capitalize transition-colors", selected.includes(modality) ? "border-foreground bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground")}>
+                    {selected.includes(modality) && <Check className="size-3" aria-hidden="true" />}
+                    {modality}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+
+          <fieldset>
+            <legend className="mb-3 text-sm font-medium">Capabilities</legend>
+            {[{ label: "Reasoning", checked: reasoning, set: setReasoning }, { label: "Tool calling", checked: tools, set: setTools }].map(({ label, checked, set }) => (
+              <button key={label} type="button" onClick={() => set(!checked)} aria-pressed={checked} className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
+                <span className={cn("flex size-4 items-center justify-center rounded border", checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{checked && <Check className="size-3" aria-hidden="true" />}</span>
+                {label}
+              </button>
+            ))}
+          </fieldset>
+
+          <div className="space-y-3 border-t pt-5">
+            <h3 className="text-sm font-medium">Providers</h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" className="h-11 w-full justify-between text-xs" />}>
+                {providers.length ? `${providers.length} selected` : "All providers"}<ChevronDown className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="max-h-80 w-56" align="start">
+                {availableProviders.map((provider) => (
+                  <DropdownMenuCheckboxItem key={provider} checked={providers.includes(provider)} closeOnClick={false}
+                    onCheckedChange={(checked) => setProviders(checked ? [...providers, provider] : providers.filter((item) => item !== provider))}
+                    className="min-h-9 capitalize">{provider}</DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {providers.length > 0 && <button type="button" onClick={() => setProviders([])} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Clear providers</button>}
+          </div>
+        </aside>
+
+        <section aria-label="Model results" aria-busy={loading} className="min-w-0 space-y-5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input aria-label="Search models" placeholder="Search by model, provider, or keyword..." value={search}
+              onChange={(event) => setSearch(event.target.value)} className="h-12 rounded-lg bg-card pl-11 pr-12 text-sm placeholder:text-muted-foreground" />
+            {search && <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></button>}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p role="status" className="text-sm text-muted-foreground">
+              {loading ? "Loading models..." : <><span className="font-semibold tabular-nums text-foreground">{sortedModels.length}</span> {fav ? "favorite" : "available"} {sortedModels.length === 1 ? "model" : "models"}</>}
+            </p>
+            <div className="flex items-center gap-2">
+              <SortDropdown value={sort} onChange={setSort} />
+              <div className="flex items-center rounded-lg border p-1" role="group" aria-label="Results view">
+                <Button variant={view === "grid" ? "secondary" : "ghost"} size="icon" className="size-8" onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"}><LayoutGrid className="size-4" /></Button>
+                <Button variant={view === "list" ? "secondary" : "ghost"} size="icon" className="size-8" onClick={() => setView("list")} aria-label="List view" aria-pressed={view === "list"}><List className="size-4" /></Button>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading model cards">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} className="h-80 space-y-5 rounded-xl border bg-card p-5 motion-safe:animate-pulse" aria-hidden="true">
+                  <div className="h-5 w-2/3 rounded bg-muted" /><div className="h-3 w-1/2 rounded bg-muted" />
+                  <div className="space-y-2 pt-4"><div className="h-3 rounded bg-muted" /><div className="h-3 w-4/5 rounded bg-muted" /></div>
+                  <div className="h-16 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          ) : sortedModels.length === 0 ? (
+            <div className="flex flex-col items-center rounded-xl border border-dashed px-6 py-20 text-center">
+              <Search className="mb-5 size-7 text-muted-foreground" aria-hidden="true" />
+              <h2 className="font-heading text-3xl">{fav && favorites.length === 0 ? "Your shortlist starts here" : "No models found"}</h2>
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{fav && favorites.length === 0 ? "Save a model with the heart button to find it here later." : "Try a different search or remove a filter to see more models."}</p>
+              <Button variant="outline" onClick={clearFilters} className="mt-6 h-11">{fav && favorites.length === 0 ? "Browse all models" : "Clear search and filters"}</Button>
+            </div>
+          ) : (
+            <>
+              <ModelGrid models={paginatedModels} viewMode={view}
+                isComparedModels={comparedModels} onToggleCompare={handleToggleCompare} isFavoriteModel={isFavorite} onToggleFavorite={toggleFavorite} />
+              <Paginator page={page} totalPages={totalPages} totalCount={sortedModels.length} pageSize={PAGE_SIZE}
+                onPageChange={(nextPage) => { setPage(nextPage); document.getElementById("directory")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }} />
+            </>
+          )}
+        </section>
+      </div>
 
       <CompareTray models={comparedModels} onRemove={handleToggleCompare} onOpen={() => setCompareModalOpen(true)} />
-
-      <CompareModal
-        models={comparedModels}
-        open={compareModalOpen}
-        onOpenChange={setCompareModalOpen}
-        onRemove={handleToggleCompare}
-      />
+      <CompareModal models={comparedModels} open={compareModalOpen} onOpenChange={setCompareModalOpen} onRemove={handleToggleCompare} />
     </>
   );
 }
 
 export default function Home() {
-  const [models, setModels] = React.useState<Model[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    async function fetchModels() {
-      try {
-        const res = await fetch("/api/models");
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
-        setModels(data.data ?? []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchModels();
-  }, []);
+  const { models, loading, error } = useModels();
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/30" />
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-primary/3 rounded-full blur-3xl" />
-      </div>
-
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link
-            href="/"
-            aria-label="Go to home page"
-            title="Go to home page"
-            className="flex items-center gap-3"
-          >
-            <div className="relative">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10 flex items-center justify-center overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/favicon.svg" alt="Kilo" className="h-6 w-6" />
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-background" />
-            </div>
-            <div>
-              <h1 className="font-heading text-xl tracking-tight">Kilo Models</h1>
-              <p className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase">AI Directory</p>
-            </div>
+    <div className="flex min-h-screen flex-col">
+      <a href="#directory" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-4 focus:py-3 focus:text-foreground">Skip to models</a>
+      <header className="border-b bg-background">
+        <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-4 px-5 sm:px-8">
+          <Link href="/" aria-label="Kilo Models home" className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.svg" alt="" className="size-9" width={36} height={36} />
+            <span className="font-heading text-2xl tracking-tight">Kilo Models</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-5">
+            <a href="https://github.com/vkeerthivikram/kilo-models" target="_blank" rel="noopener noreferrer" className="hidden items-center gap-1 text-sm text-muted-foreground hover:text-foreground sm:flex">GitHub <ArrowUpRight className="size-4" /></a>
             <ThemeSelector />
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-3 max-w-2xl">
-          <h2 className="font-heading text-4xl md:text-5xl tracking-tight leading-[1.1]">
-            Discover{" "}
-            <span className="italic text-primary">300+</span>
-            <br />
-            AI Models
-          </h2>
-          <p className="text-muted-foreground text-base leading-relaxed max-w-lg">
-            Explore models from the Kilo Gateway. Filter by modality, pricing, context length, and capabilities.
-          </p>
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 pb-28 sm:px-8">
+        <div className="flex flex-col justify-between gap-5 py-10 sm:py-14 lg:flex-row lg:items-end lg:gap-12">
+          <h1 className="max-w-xl text-balance font-heading text-4xl leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">Discover your next <span className="italic">AI model.</span></h1>
+          <p className="max-w-sm text-sm leading-7 text-muted-foreground sm:text-base">Explore models from the Kilo Gateway. Compare pricing, context length, and capabilities in one place.</p>
         </div>
 
-        <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /></div>}>
-          <ModelExplorer models={models} loading={loading} />
-        </Suspense>
+        <div id="directory" className="scroll-mt-6">
+          {error || (!loading && models.length === 0) ? (
+            <div role="alert" className="flex flex-col items-center rounded-xl border px-6 py-16 text-center">
+              <CircleAlert className="mb-4 size-7 text-destructive" aria-hidden="true" />
+              <h2 className="font-heading text-3xl">{error ? "Models could not be loaded" : "No models available"}</h2>
+              <p className="mt-3 text-sm text-muted-foreground">The model directory is unavailable right now. Please try again.</p>
+              <Button onClick={() => window.location.reload()} className="mt-6 h-11">Try again</Button>
+            </div>
+          ) : (
+            <React.Suspense fallback={<p role="status" className="py-16 text-center text-muted-foreground">Loading model directory...</p>}>
+              <ModelExplorer models={models} loading={loading} />
+            </React.Suspense>
+          )}
+        </div>
       </main>
 
-      <footer className="border-t mt-auto">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-            <p>
-              Data from{" "}
-              <a href="https://api.kilo.ai" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:underline">
-                api.kilo.ai
-              </a>
-            </p>
-            <p className="text-center text-muted-foreground/70">
-              Unofficial fan project — not affiliated with or endorsed by Kilo AI
-            </p>
-            <div className="flex items-center gap-3">
-              <p className="font-heading italic">Built with Next.js + shadcn/ui</p>
-              <a
-                href="https://github.com/vkeerthivikram/kilo-models"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="GitHub repository"
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
-              </a>
-            </div>
-          </div>
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-3 px-5 py-6 text-xs leading-relaxed text-muted-foreground sm:flex-row sm:px-8">
+          <p>Model data from <a href="https://api.kilo.ai" target="_blank" rel="noopener noreferrer" className="text-foreground underline-offset-4 hover:underline">Kilo Gateway <ArrowUpRight className="inline size-3" /></a></p>
+          <p>Unofficial fan project. Not affiliated with or endorsed by Kilo AI.</p>
         </div>
       </footer>
     </div>

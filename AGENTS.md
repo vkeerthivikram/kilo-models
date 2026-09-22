@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `bun dev` — dev server on `:3000`
 - `bun run lint` — ESLint (flat config, `eslint.config.mjs`)
 - `bun run build` — production build; also catches type errors
-- No test framework is configured
+- `bun test` (or `bun run test`) — Bun's built-in test runner; `.test.ts(x)` files use `node:test` imports, which Bun maps to its own runner and can execute JSX
 - No dedicated typecheck script; run `bunx tsc --noEmit` if needed
 
 ## Stack

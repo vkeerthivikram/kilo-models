@@ -1,16 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
-
-function formatPrice(price: string | undefined): string {
-  if (!price || price === "0") return "Free";
-  const num = parseFloat(price);
-  if (num < 0.00001) return `$${(num * 1000000).toFixed(2)}/M`;
-  if (num < 0.001) return `$${(num * 1000).toFixed(4)}/K`;
-  return `$${num.toFixed(4)}/K`;
-}
+import { formatPrice } from "@/lib/format-price";
 
 interface Props {
   model: Model;

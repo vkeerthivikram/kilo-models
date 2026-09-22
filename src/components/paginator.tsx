@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,9 +15,7 @@ interface PaginatorProps {
 function getPageNumbers(current: number, total: number): (number | "…")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
-  const around = new Set<number>();
-  around.add(1);
-  around.add(total);
+  const around = new Set<number>([1, total]);
   for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
     around.add(i);
   }
@@ -38,60 +35,40 @@ export function Paginator({ page, totalPages, totalCount, pageSize, onPageChange
 
   if (totalPages <= 1) return null;
 
+  const navButton = "size-9 rounded-lg";
+
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 pb-2">
-      {/* range indicator */}
-      <p className="text-xs text-muted-foreground order-2 sm:order-1">
-        Showing{" "}
-        <span className="font-medium text-foreground">{from}–{to}</span>{" "}
-        of{" "}
-        <span className="font-medium text-foreground">{totalCount}</span>{" "}
-        models
+    <nav aria-label="Model pages" className="flex flex-col items-center justify-between gap-4 pb-2 pt-6 sm:flex-row">
+      <p className="order-2 text-xs text-muted-foreground sm:order-1">
+        Showing <span className="font-medium tabular-nums text-foreground">{from}–{to}</span> of{" "}
+        <span className="font-medium tabular-nums text-foreground">{totalCount}</span> models
       </p>
 
-      {/* controls */}
       <div className="flex items-center gap-1 order-1 sm:order-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-lg"
-          onClick={() => onPageChange(1)}
-          disabled={page === 1}
-          aria-label="First page"
-        >
-          <ChevronsLeft className="h-3.5 w-3.5" />
+        <Button variant="outline" size="icon" className={cn(navButton, "hidden sm:inline-flex")} onClick={() => onPageChange(1)} disabled={page === 1} aria-label="First page">
+          <ChevronsLeft className="size-3.5" />
+        </Button>
+        <Button variant="outline" size="icon" className={navButton} onClick={() => onPageChange(page - 1)} disabled={page === 1} aria-label="Previous page">
+          <ChevronLeft className="size-3.5" />
         </Button>
 
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-lg"
-          onClick={() => onPageChange(page - 1)}
-          disabled={page === 1}
-          aria-label="Previous page"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </Button>
+        <span className="mx-2 text-xs tabular-nums text-muted-foreground sm:hidden">
+          Page {page} of {totalPages}
+        </span>
 
-        <div className="flex items-center gap-1 mx-1">
+        <div className="hidden items-center gap-1 sm:flex">
           {getPageNumbers(page, totalPages).map((p, i) =>
             p === "…" ? (
-              <span
-                key={`ellipsis-${i}`}
-                className="w-8 text-center text-xs text-muted-foreground select-none"
-              >
+              <span key={`ellipsis-${i}`} className="w-8 text-center text-xs select-none text-muted-foreground" aria-hidden="true">
                 …
               </span>
             ) : (
               <Button
                 key={p}
-                variant={p === page ? "default" : "ghost"}
+                variant={p === page ? "secondary" : "ghost"}
                 size="icon"
-                className={cn(
-                  "h-8 w-8 rounded-lg text-xs",
-                  p === page ? "font-semibold pointer-events-none" : "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => onPageChange(p as number)}
+                className={cn(navButton, "text-xs", p === page ? "font-semibold" : "text-muted-foreground hover:text-foreground")}
+                onClick={() => onPageChange(p)}
                 aria-label={`Page ${p}`}
                 aria-current={p === page ? "page" : undefined}
               >
@@ -101,28 +78,13 @@ export function Paginator({ page, totalPages, totalCount, pageSize, onPageChange
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-lg"
-          onClick={() => onPageChange(page + 1)}
-          disabled={page === totalPages}
-          aria-label="Next page"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
+        <Button variant="outline" size="icon" className={navButton} onClick={() => onPageChange(page + 1)} disabled={page === totalPages} aria-label="Next page">
+          <ChevronRight className="size-3.5" />
         </Button>
-
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-lg"
-          onClick={() => onPageChange(totalPages)}
-          disabled={page === totalPages}
-          aria-label="Last page"
-        >
-          <ChevronsRight className="h-3.5 w-3.5" />
+        <Button variant="outline" size="icon" className={`${navButton} hidden sm:inline-flex`} onClick={() => onPageChange(totalPages)} disabled={page === totalPages} aria-label="Last page">
+          <ChevronsRight className="size-3.5" />
         </Button>
       </div>
-    </div>
+    </nav>
   );
 }

@@ -164,10 +164,8 @@ export function buildColorThemeVariables(
   const border = mix(background, foreground, mode === "dark" ? 30 : 18);
   const sidebar = mix(background, foreground, mode === "dark" ? 7 : 3);
 
-  const mutedForeground =
-    variant.overrides?.["text-weak"] ??
-    variant.overrides?.["syntax-comment"] ??
-    mix(background, foreground, mode === "dark" ? 56 : 52);
+  // Syntax-comment colors are too faint for descriptions and form labels.
+  const mutedForeground = mix(background, foreground, 78);
 
   return {
     "--background": background,
@@ -183,7 +181,7 @@ export function buildColorThemeVariables(
     "--muted": muted,
     "--muted-foreground": mutedForeground,
     "--accent": accentSurface,
-    "--accent-foreground": readableText(accent),
+    "--accent-foreground": foreground,
     "--destructive": palette.error,
     "--destructive-foreground": readableText(palette.error),
     "--border": border,
@@ -200,7 +198,7 @@ export function buildColorThemeVariables(
     "--sidebar-primary": palette.primary,
     "--sidebar-primary-foreground": readableText(palette.primary),
     "--sidebar-accent": accentSurface,
-    "--sidebar-accent-foreground": readableText(accent),
+    "--sidebar-accent-foreground": foreground,
     "--sidebar-border": border,
     "--sidebar-ring": interactive,
   };
