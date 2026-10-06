@@ -50,3 +50,17 @@ test("expanded comparison estimates identify missing extra rates and overlapping
   assert.match(html, /cache.*input/i);
   assert.match(html, /Unavailable/);
 });
+
+test("calculators expose separate charge components without adding input subtotal twice", () => {
+  const expanded = { ...model, pricing: { prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" } };
+  const workload = { ...DEFAULT_WORKLOAD, inputTokens: 100, outputTokens: 10, requests: 2, cachePercent: 50, cacheWriteTokens: 20, images: 2, searches: 3 };
+  const detail = renderToStaticMarkup(<NuqsTestingAdapter searchParams="?inputTokens=100&outputTokens=10&requests=2&cachePercent=50&cacheWriteTokens=20&images=2&searches=3"><PricingCalculator model={expanded} /></NuqsTestingAdapter>);
+  for (const html of [detail, render(<CompareCostTable models={[expanded]} workload={workload} />)]) {
+    for (const label of ["Uncached input", "Cache reads", "Cache writes", "Images", "Searches", "Request fee"]) assert.match(html, new RegExp(label));
+    assert.match(html, /\$0\.1200/);
+    assert.match(html, /\$0\.0500/);
+    assert.match(html, /\$0\.1000/);
+    assert.match(html, /\$0\.4800/);
+    assert.match(html, /\$0\.9600/);
+  }
+});

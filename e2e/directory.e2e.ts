@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function openDirectoryWorkload(page: Page) {
+  await expect(page.getByRole("region", { name: "Model results", exact: true })).toBeVisible();
   const requests = page.getByRole("spinbutton", { name: "Requests", exact: true });
-  if (!await requests.isVisible()) await page.getByText("Estimate workload", { exact: false }).first().click();
+  if (!await requests.isVisible()) await page.locator("summary").filter({ hasText: "Estimate workload" }).click();
   await expect(requests).toBeVisible();
 }
 
@@ -57,7 +58,22 @@ test("failed refresh keeps the loaded catalog and supports retry", async ({ page
 });
 
 test("keyboard opens and closes comparison; mobile keeps controls reachable", async ({ page }) => {
-  await page.goto("/");
+  const serverFilterNavigations: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/" && url.searchParams.get("view") === "grid" && url.searchParams.has("_rsc")) {
+      serverFilterNavigations.push(request.url());
+    }
+  });
+  await page.goto("/?view=list");
+  await expect(page.getByRole("link", { name: /^Fixture Model \d+$/ })).toHaveCount(24);
+  const gridView = page.getByRole("button", { name: "Grid view", exact: true });
+  await gridView.focus();
+  await page.keyboard.press("Enter");
+  await expect(gridView).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL((url) => url.searchParams.get("view") === "grid");
+  await expect(page.getByRole("link", { name: /^Fixture Model \d+$/ })).toHaveCount(24);
+  await expect(page).toHaveTitle("Kilo Models | AI Model Directory");
   const compare = page.getByRole("button", { name: "Add Fixture Model 01 to comparison", exact: true });
   await compare.focus();
   await expect(compare).toBeFocused();
@@ -67,10 +83,18 @@ test("keyboard opens and closes comparison; mobile keeps controls reachable", as
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Compare Models" })).toBeVisible();
+  const firstControl = dialog.getByRole("button", { name: "Add models", exact: true });
+  const lastControl = dialog.getByRole("button", { name: "Remove Fixture Model 01 from comparison", exact: true });
+  await lastControl.focus();
+  await page.keyboard.press("Tab");
+  await expect(firstControl).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(lastControl).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(tray.getByRole("button", { name: "Compare", exact: true })).toBeFocused();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(serverFilterNavigations, "Client-side view/filter changes must not start competing server navigations").toEqual([]);
 });
 
 test("a shared comparison reloads with only the linked models", async ({ page }) => {
@@ -84,16 +108,43 @@ test("a shared comparison reloads with only the linked models", async ({ page })
   await expect(dialog.getByRole("button", { name: "Remove Fixture Model 02 from comparison", exact: true })).toBeVisible();
 });
 
-test("direct model links copy the model ID and return safely to the directory", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("direct model links copy the model ID and return safely to the directory", async ({ page, context, browserName }) => {
+  const hydrationMessages: string[] = [];
+  const consoleChecks: Promise<void>[] = [];
+  page.on("console", (message) => {
+    consoleChecks.push((async () => {
+      // Firefox may expose React's formatting string separately from its text arguments.
+      const args = await Promise.all(message.args().map((arg) => arg.jsonValue().catch(() => undefined)));
+      const text = [message.text(), ...args.filter((arg) => typeof arg === "string")].join(" ");
+      if (/hydration|A tree hydrated|hydrating/i.test(text)) hydrationMessages.push(text);
+    })());
+  });
+  if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  else await page.addInitScript(() => {
+    // Firefox/WebKit do not expose Chromium's clipboard permission names.
+    // Verify the app's exact Clipboard API call in this isolated test context.
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: async (value: string) => { (window as typeof window & { copiedModelId?: string }).copiedModelId = value; },
+    } });
+  });
   await page.goto("/models/fixture%2Fmodel-01");
   await expect(page.getByRole("heading", { name: "Fixture Model 01", level: 1, exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Copy model ID", exact: true }).click();
   await expect(page.getByText("Model ID copied.", { exact: true })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe("fixture/model-01");
+  await expect.poll(() => page.evaluate((nativeClipboard) => nativeClipboard ? navigator.clipboard.readText()
+    : (window as typeof window & { copiedModelId?: string }).copiedModelId, browserName === "chromium")).toBe("fixture/model-01");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Copy model ID", exact: true })).toBeEnabled();
   await expect(page.getByRole("link", { name: "Back to Directory" })).toHaveAttribute("href", "/");
   await page.getByRole("link", { name: "Back to Directory" }).click();
   await expect(page.getByRole("textbox", { name: "Search models" })).toBeVisible();
+  const modelLinks = page.getByRole("link", { name: /^Fixture Model \d+$/ });
+  await expect(modelLinks).toHaveCount(24);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Refresh catalog", exact: true })).toBeEnabled();
+  await expect(modelLinks).toHaveCount(24);
+  await Promise.all(consoleChecks);
+  expect(hydrationMessages).toEqual([]);
 });
 
 test("workload ranking accounts for per-request billing and survives reload", async ({ page }) => {
@@ -117,6 +168,8 @@ test("saved setups restore workload and filters after reload while preserving co
   await page.getByRole("textbox", { name: "Search models", exact: true }).fill("Fixture Model 0");
   await page.getByRole("button", { name: "Save setup", exact: true }).click();
   await expect(page.getByText("Saved “Fixture workload”.", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL((url) => url.searchParams.get("search") === "Fixture Model 0");
+  await expect(page.getByRole("link", { name: /^Fixture Model \d+$/ })).toHaveCount(9);
   await page.reload();
   // Query-driven comparisons open on a fresh load; close it to edit the directory.
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -129,7 +182,8 @@ test("saved setups restore workload and filters after reload while preserving co
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Search models", exact: true })).toHaveValue("Fixture Model 0");
   await expect(page.getByRole("spinbutton", { name: "Requests", exact: true })).toHaveValue("42");
-  await expect(page).toHaveURL((url) => url.searchParams.get("images") === "3" && url.searchParams.get("compare") === "fixture/model-02");
+  await expect(page).toHaveURL((url) => url.searchParams.get("images") === "3" && url.searchParams.get("compare") === "fixture/model-02"
+    && url.searchParams.get("requests") === "42" && url.searchParams.get("search") === "Fixture Model 0");
   await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("1 / 10");
   await page.getByRole("button", { name: "Delete Fixture workload", exact: true }).click();
   await expect(page.getByText("No saved setups yet. Name this workload and filter view to reuse it later.", { exact: true })).toBeVisible();
@@ -173,6 +227,7 @@ test("detail workload survives View comparison and Back; workload-only setups pr
   await page.getByRole("link", { name: "Fixture Model 25", exact: true }).click();
   await expect(page).toHaveURL((url) => decodeURIComponent(url.pathname) === "/models/fixture/model-25");
   await page.getByRole("spinbutton", { name: "Requests", exact: true }).fill("8");
+  await page.getByRole("spinbutton", { name: "Requests", exact: true }).press("Enter");
   await expect(page).toHaveURL((url) => url.pathname.startsWith("/models/") && url.searchParams.get("requests") === "8");
   await page.getByRole("link", { name: "Back to Directory", exact: true }).click();
   await openDirectoryWorkload(page);

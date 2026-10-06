@@ -51,6 +51,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   const { workload, setWorkload } = useCalculatorWorkload();
   const {
     search, setSearch, sort, setSort, free, setFree, hideRetired, setHideRetired,
+    fitsWorkload, setFitsWorkload, maxBudget, setMaxBudget,
     inputModalities, setInputModalities, outputModalities, setOutputModalities,
     providers, setProviders, reasoning, setReasoning, tools, setTools,
     minContext, setMinContext, maxInputPrice, setMaxInputPrice, maxOutputPrice, setMaxOutputPrice, filterCounts,
@@ -64,6 +65,8 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     ...(search ? [{ key: "search", label: `Search: ${search}`, remove: () => setSearch("") }] : []),
     ...(free ? [{ key: "free", label: "Free only", remove: () => setFree(false) }] : []),
     ...(hideRetired ? [{ key: "hide-retired", label: "Hide retired", remove: () => setHideRetired(false) }] : []),
+    ...(fitsWorkload ? [{ key: "fits-workload", label: "Fits workload", remove: () => setFitsWorkload(false) }] : []),
+    ...(maxBudget !== null ? [{ key: "budget", label: `${workload.period === "month" ? "Monthly" : "Batch"} budget ≤ $${maxBudget}`, remove: () => setMaxBudget(null) }] : []),
     ...inputModalities.map((value) => ({ key: `input-${value}`, label: `Input: ${value}`, remove: () => setInputModalities(inputModalities.filter((item) => item !== value)) })),
     ...outputModalities.map((value) => ({ key: `output-${value}`, label: `Output: ${value}`, remove: () => setOutputModalities(outputModalities.filter((item) => item !== value)) })),
     ...providers.map((value) => ({ key: `provider-${value}`, label: `Provider: ${value}`, remove: () => setProviders(providers.filter((item) => item !== value)) })),
@@ -117,6 +120,18 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
               Hide retired models
             </button>
             <p className="text-xs leading-relaxed text-muted-foreground">Uses published retirement dates in UTC. Models with no date stay visible.</p>
+          </fieldset>
+
+          <fieldset className="space-y-3">
+            <legend className="mb-3 text-sm font-medium">Workload shortlist</legend>
+            <button type="button" onClick={() => setFitsWorkload(!fitsWorkload)} aria-pressed={fitsWorkload}
+              className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
+              <span className={cn("flex size-4 items-center justify-center rounded border", fitsWorkload ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{fitsWorkload && <Check className="size-3" aria-hidden="true" />}</span>
+              Fits workload
+            </button>
+            <p className="text-xs leading-relaxed text-muted-foreground">Checks published context and output limits. Unknown limits are excluded. Set usage in Estimate workload.</p>
+            <NumericFilterInput id="max-budget" label={`Total budget · USD / ${workload.period === "month" ? "month" : "batch"}`} value={maxBudget} onChange={setMaxBudget} />
+            <p className="text-xs leading-relaxed text-muted-foreground">Includes every selected charge for all requests. Unavailable estimates are excluded; limits are checked only with Fits workload.</p>
           </fieldset>
 
           <fieldset className="space-y-3">
@@ -315,7 +330,7 @@ export default function Home() {
 
       <footer className="border-t">
         <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-3 px-5 py-6 text-xs leading-relaxed text-muted-foreground sm:flex-row sm:px-8">
-          <p>Model data from <a href="https://api.kilo.ai" target="_blank" rel="noopener noreferrer" className="text-foreground underline-offset-4 hover:underline">Kilo Gateway <ArrowUpRight className="inline size-3" /></a></p>
+          <p>Model data from <a href="https://api.kilo.ai" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4">Kilo Gateway <ArrowUpRight className="inline size-3" /></a></p>
           <p>Unofficial fan project. Not affiliated with or endorsed by Kilo AI.</p>
         </div>
       </footer>

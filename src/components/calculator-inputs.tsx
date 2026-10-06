@@ -1,8 +1,7 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { tokenCount } from "@/lib/cost-calculator";
 import { Button } from "@/components/ui/button";
 import { WORKLOAD_PRESETS, type CalculatorWorkload } from "@/lib/calculator-workload";
 
@@ -10,6 +9,43 @@ interface Props {
   workload: CalculatorWorkload;
   onChange: (workload: CalculatorWorkload) => void;
   showCache?: boolean;
+}
+
+function WorkloadNumberInput({ id, label, value, onChange, min = 0, max = Number.MAX_SAFE_INTEGER, integer = true }: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  integer?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [badInput, setBadInput] = useState(false);
+  const number = draft === null || draft.trim() === "" ? NaN : Number(draft);
+  const valid = Number.isFinite(number) && (!integer || Number.isSafeInteger(number)) && number >= min && number <= max;
+  const invalid = badInput || (draft !== null && draft !== "" && !valid);
+  const finishEdit = () => {
+    if (draft !== null && valid && !badInput && number !== value) onChange(number);
+    setDraft(null);
+    setBadInput(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm text-muted-foreground">{label}</label>
+      <Input id={id} type="number" min={min} max={max} step={integer ? 1 : "any"} inputMode={integer ? "numeric" : "decimal"}
+        value={draft ?? value} className="h-11" aria-invalid={invalid} aria-describedby={invalid ? `${id}-error` : undefined}
+        onChange={(event) => { setDraft(event.target.value); setBadInput(event.target.validity.badInput); }}
+        onBlur={finishEdit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
+        }} />
+      {invalid && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
+        {integer ? `Enter a whole number from ${min} to ${max}.` : "Enter a percentage from 0 to 100."}
+      </p>}
+    </div>
+  );
 }
 
 export function CalculatorInputs(props: Props) {
@@ -30,13 +66,11 @@ export function CalculatorInputs(props: Props) {
             onClick={() => onChange({ ...workload, inputTokens: preset.inputTokens, outputTokens: preset.outputTokens })}>{preset.label}</Button>
         ))}
       </div>
+      <p className="text-xs text-muted-foreground">Press Enter or leave a field to update the estimate.</p>
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {fields.map((field) => (
-        <div key={field.key} className="space-y-2">
-          <label htmlFor={`${id}-${field.key}`} className="text-sm text-muted-foreground">{field.label}</label>
-          <Input id={`${id}-${field.key}`} type="number" min={field.min} max={Number.MAX_SAFE_INTEGER} step={1} value={workload[field.key]}
-            onChange={(event) => onChange({ ...workload, [field.key]: tokenCount(event.target.value, field.min) })} className="h-11" />
-        </div>
+        <WorkloadNumberInput key={field.key} id={`${id}-${field.key}`} label={field.label} min={field.min} value={workload[field.key]}
+          onChange={(value) => onChange({ ...workload, [field.key]: value })} />
       ))}
     </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -48,9 +82,8 @@ export function CalculatorInputs(props: Props) {
           </select>
         </div>
         {(props.showCache || workload.cachePercent > 0) && <div className="space-y-2">
-          <label htmlFor={`${id}-cache`} className="text-sm text-muted-foreground">Cached input (%)</label>
-          <Input id={`${id}-cache`} type="number" min={0} max={100} step={1} value={workload.cachePercent} className="h-11"
-            onChange={(event) => onChange({ ...workload, cachePercent: Math.min(100, tokenCount(event.target.value)) })} />
+          <WorkloadNumberInput id={`${id}-cache`} label="Cached input (%)" value={workload.cachePercent} integer={false} max={100}
+            onChange={(value) => onChange({ ...workload, cachePercent: value })} />
           <p className="text-xs text-muted-foreground">Share of total input billed at the cache read rate.</p>
         </div>}
       </div>
@@ -61,11 +94,8 @@ export function CalculatorInputs(props: Props) {
             { key: "images", label: "Images per request" },
             { key: "searches", label: "Searches per request" },
             { key: "cacheWriteTokens", label: "Cache-write tokens per request" },
-          ] as const).map((field) => <div key={field.key} className="space-y-2">
-            <label htmlFor={`${id}-${field.key}`} className="text-sm text-muted-foreground">{field.label}</label>
-            <Input id={`${id}-${field.key}`} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={workload[field.key]} className="h-11"
-              onChange={(event) => onChange({ ...workload, [field.key]: tokenCount(event.target.value) })} />
-          </div>)}
+          ] as const).map((field) => <WorkloadNumberInput key={field.key} id={`${id}-${field.key}`} label={field.label} value={workload[field.key]}
+            onChange={(value) => onChange({ ...workload, [field.key]: value })} />)}
         </div>
         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Images and searches add their listed unit charges. Cache-write tokens are part of total input and replace regular input billing; reads and writes must not overlap. Used units without a published rate make the estimate unavailable.</p>
       </details>

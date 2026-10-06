@@ -3,8 +3,9 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { CalculatorWorkload } from "@/lib/calculator-workload";
 import {
-  addSavedSetup, deleteSavedSetup, parseSavedSetups, readSavedSetups, writeSavedSetups,
-  SAVED_SETUPS_STORAGE_KEY, type SaveSetupResult,
+  addSavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, parseSavedSetups,
+  renameSavedSetup, restoreDeletedSetup, updateSavedSetup, writeSavedSetups,
+  SAVED_SETUPS_STORAGE_KEY, type DeletedSavedSetup, type SavedSetup,
 } from "@/lib/saved-setups";
 
 const CHANGE_EVENT = "kilo-models-saved-setups-change";
@@ -32,10 +33,10 @@ export function useSavedSetups() {
   const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const setups = useMemo(() => parseSavedSetups(stored), [stored]);
 
-  function saveSetup(name: string, workload: CalculatorWorkload, directoryQuery?: string | URLSearchParams): SaveSetupResult {
+  function mutate<T extends { ok: true; setups: SavedSetup[] }>(mutation: (current: SavedSetup[]) => T | { ok: false; error: string }): T | { ok: false; error: string } {
     try {
       const storage = window.localStorage;
-      const result = addSavedSetup(readSavedSetups(storage), name, workload, directoryQuery, crypto.randomUUID());
+      const result = mutation(parseSavedSetups(storage.getItem(SAVED_SETUPS_STORAGE_KEY)));
       if (!result.ok) return result;
       const persisted = writeSavedSetups(storage, result.setups);
       if (!persisted.ok) return persisted;
@@ -46,16 +47,42 @@ export function useSavedSetups() {
     }
   }
 
-  function deleteSetup(id: string): { ok: true } | { ok: false; error: string } {
+  function saveSetup(name: string, workload: CalculatorWorkload, directoryQuery?: string | URLSearchParams) {
+    return mutate((current) => addSavedSetup(current, name, workload, directoryQuery, crypto.randomUUID()));
+  }
+
+  function renameSetup(id: string, name: string) {
+    return mutate((current) => renameSavedSetup(current, id, name));
+  }
+
+  function updateSetup(id: string, workload: CalculatorWorkload, directoryQuery?: string | URLSearchParams) {
+    return mutate((current) => updateSavedSetup(current, id, workload, directoryQuery));
+  }
+
+  function deleteSetup(id: string) {
+    return mutate<{ ok: true; setups: SavedSetup[]; deleted: DeletedSavedSetup }>((current) => {
+      const index = current.findIndex((setup) => setup.id === id);
+      if (index < 0) return { ok: false as const, error: "This setup is no longer saved. Choose another setup." };
+      return { ok: true as const, setups: deleteSavedSetup(current, id), deleted: { setup: current[index], index } };
+    });
+  }
+
+  function restoreSetup(deleted: DeletedSavedSetup) {
+    return mutate((current) => restoreDeletedSetup(current, deleted));
+  }
+
+  function importBackup(backup: string) {
+    return mutate((current) => importSavedSetupsBackup(current, backup));
+  }
+
+  function exportBackup(): { ok: true; backup: string } | { ok: false; error: string } {
     try {
-      const storage = window.localStorage;
-      const result = writeSavedSetups(storage, deleteSavedSetup(readSavedSetups(storage), id));
-      if (result.ok) window.dispatchEvent(new Event(CHANGE_EVENT));
-      return result;
-    } catch {
-      return { ok: false, error: storageError };
+      const current = parseSavedSetups(window.localStorage.getItem(SAVED_SETUPS_STORAGE_KEY));
+      return { ok: true, backup: exportSavedSetupsBackup(current) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error && error.message.startsWith("This backup") ? error.message : "Could not read saved setups. Allow browser storage, then try again." };
     }
   }
 
-  return { setups, saveSetup, deleteSetup };
+  return { setups, saveSetup, renameSetup, updateSetup, deleteSetup, restoreSetup, importBackup, exportBackup };
 }

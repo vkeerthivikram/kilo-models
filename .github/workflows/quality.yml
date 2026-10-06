@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -24,9 +24,9 @@ jobs:
         run: bun test
       - name: Production build
         run: bun run build
-      - name: Install Chromium
-        run: bunx playwright install --with-deps chromium
-      - name: Browser behavior tests
+      - name: Install Chromium, Firefox and WebKit
+        run: bunx playwright install --with-deps chromium firefox webkit
+      - name: Browser behavior and accessibility tests
         run: bun run test:e2e
       - name: Upload browser diagnostics
         if: ${{ !cancelled() }}

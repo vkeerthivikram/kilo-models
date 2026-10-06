@@ -18,7 +18,9 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
+    { name: "mobile-chromium", use: { ...devices["Pixel 7"] }, testIgnore: "**/accessibility-themes.e2e.ts" },
+    { name: "desktop-firefox", use: { ...devices["Desktop Firefox"] }, testIgnore: "**/accessibility-themes.e2e.ts" },
+    { name: "desktop-webkit", use: { ...devices["Desktop Safari"] }, testIgnore: "**/accessibility-themes.e2e.ts" },
   ],
   webServer: [
     {

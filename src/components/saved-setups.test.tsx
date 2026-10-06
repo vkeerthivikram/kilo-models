@@ -16,6 +16,11 @@ test("saved setups expose named saving and a clear empty state with accessible f
   assert.match(html, /No saved setups yet/);
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /Saved in this browser/);
+  assert.match(html, /Export backup/);
+  assert.match(html, /Import backup/);
+  assert.match(html, /type="file"/);
+  assert.match(html, /accept="\.json,application\/json"/);
+  assert.match(html, /keeps existing setups/);
 });
 
 test("saved setup actions persist create and delete and report blocked storage", () => {

@@ -7,6 +7,7 @@ test("expanded billing replaces cache-write input and adds image and search char
   // 30 regular + 50 cache-read + 20 cache-write input tokens.
   assert.ok(Math.abs(result.inputCost! - 0.27) < 1e-12);
   assert.equal(result.cacheWriteCost, 0.1);
+  assert.equal(result.uncachedCost, 0.12);
   assert.equal(result.imageCost, 0.06);
   assert.equal(result.searchCost, 0.06);
   assert.ok(Math.abs(result.total! - 0.96) < 1e-12);

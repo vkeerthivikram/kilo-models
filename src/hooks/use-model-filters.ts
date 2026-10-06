@@ -43,6 +43,8 @@ interface FilterState {
   sort: SortOption;
   free: boolean;
   hideRetired: boolean;
+  fitsWorkload: boolean;
+  maxBudget: number | null;
   inputModalities: string[];
   outputModalities: string[];
   providers: string[];
@@ -61,6 +63,8 @@ interface UseModelFiltersResult extends FilterState {
   setSort: (v: SortOption) => void;
   setFree: (v: boolean) => void;
   setHideRetired: (v: boolean) => void;
+  setFitsWorkload: (v: boolean) => void;
+  setMaxBudget: (v: number | null) => void;
   setInputModalities: (v: string[]) => void;
   setOutputModalities: (v: string[]) => void;
   setProviders: (v: string[]) => void;
@@ -94,6 +98,8 @@ const parsers = {
   sort: parseAsStringLiteral(SORT_OPTIONS),
   free: parseAsBoolean,
   hideRetired: parseAsBoolean,
+  fitsWorkload: parseAsBoolean,
+  maxBudget: numericParser(),
   inputModalities: parseAsArrayOf(parseAsString),
   outputModalities: parseAsArrayOf(parseAsString),
   providers: parseAsArrayOf(parseAsString),
@@ -111,13 +117,16 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const now = useRetirementClock();
   const [params, setParams] = useQueryStates(parsers, {
     clearOnDefault: false,
-    shallow: false,
+    // Filtering uses the loaded catalog; server navigations can interrupt reloads.
+    shallow: true,
   });
 
   const urlSearch = params.search ?? "";
   const sort = params.sort ?? "name-asc";
   const free = params.free ?? false;
   const hideRetired = params.hideRetired ?? false;
+  const fitsWorkload = params.fitsWorkload ?? false;
+  const maxBudget = params.maxBudget;
   const inputModalities = params.inputModalities ?? EMPTY_FILTERS;
   const outputModalities = params.outputModalities ?? EMPTY_FILTERS;
   const providers = params.providers ?? EMPTY_FILTERS;
@@ -151,6 +160,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const setSort = (v: SortOption) => setParams({ sort: v, page: 1 });
   const setFree = (v: boolean) => setParams({ free: v, page: 1 });
   const setHideRetired = (v: boolean) => setParams({ hideRetired: v, page: 1 });
+  const setFitsWorkload = (v: boolean) => setParams({ fitsWorkload: v, page: 1 });
+  const setMaxBudget = (v: number | null) => setParams({ maxBudget: parseNumericFilter(v), page: 1 });
   const setInputModalities = (v: string[]) => setParams({ inputModalities: v, page: 1 });
   const setOutputModalities = (v: string[]) => setParams({ outputModalities: v, page: 1 });
   const setProviders = (v: string[]) => setParams({ providers: v, page: 1 });
@@ -171,6 +182,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
       search: "",
       free: false,
       hideRetired: false,
+      fitsWorkload: false,
+      maxBudget: null,
       inputModalities: [],
       outputModalities: [],
       providers: [],
@@ -197,6 +210,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const activeFilterCount =
     (free ? 1 : 0) +
     (hideRetired ? 1 : 0) +
+    (fitsWorkload ? 1 : 0) +
+    (maxBudget !== null ? 1 : 0) +
     inputModalities.length +
     outputModalities.length +
     providers.length +
@@ -206,8 +221,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     (maxInputPrice !== null ? 1 : 0) +
     (maxOutputPrice !== null ? 1 : 0);
 
-  const criteria = React.useMemo(() => ({ search, free, hideRetired, now, inputModalities, outputModalities, providers, reasoning, tools, fav, minContext, maxInputPrice, maxOutputPrice }),
-    [search, free, hideRetired, now, inputModalities, outputModalities, providers, reasoning, tools, fav, minContext, maxInputPrice, maxOutputPrice]);
+  const criteria = React.useMemo(() => ({ search, free, hideRetired, fitsWorkload, maxBudget, workload, now, inputModalities, outputModalities, providers, reasoning, tools, fav, minContext, maxInputPrice, maxOutputPrice }),
+    [search, free, hideRetired, fitsWorkload, maxBudget, workload, now, inputModalities, outputModalities, providers, reasoning, tools, fav, minContext, maxInputPrice, maxOutputPrice]);
   const filteredModels = React.useMemo(() => models.filter((model) => matchesModelFilters(model, criteria, favoriteIds)), [models, criteria, favoriteIds]);
   const filterCounts = React.useMemo(() => getFilterCounts(models, criteria, favoriteIds), [models, criteria, favoriteIds]);
   const sortedModels = React.useMemo(() => {
@@ -259,6 +274,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     sort,
     free,
     hideRetired,
+    fitsWorkload,
+    maxBudget,
     inputModalities,
     outputModalities,
     providers,
@@ -271,6 +288,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     setSort,
     setFree,
     setHideRetired,
+    setFitsWorkload,
+    setMaxBudget,
     setInputModalities,
     setOutputModalities,
     setProviders,

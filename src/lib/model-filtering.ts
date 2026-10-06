@@ -1,6 +1,8 @@
 import type { Model } from "./types";
 import { parsePrice } from "./format-price";
 import { getRetirementStatus } from "./model-retirement";
+import { DEFAULT_WORKLOAD, getWorkloadSuitability, type CalculatorWorkload } from "./calculator-workload";
+import { calculateWorkloadCost } from "./cost-calculator";
 
 export interface ModelFilterCriteria {
   search: string;
@@ -16,6 +18,9 @@ export interface ModelFilterCriteria {
   minContext: number | null;
   maxInputPrice: number | null;
   maxOutputPrice: number | null;
+  fitsWorkload?: boolean;
+  maxBudget?: number | null;
+  workload?: CalculatorWorkload;
 }
 
 type FacetGroup = "providers" | "inputModalities" | "outputModalities" | "capabilities" | "free";
@@ -29,6 +34,12 @@ export function parseNumericFilter(value: unknown, integer = false): number | nu
 }
 
 export function matchesModelFilters(model: Model, filters: ModelFilterCriteria, favoriteIds: string[], ignored?: FacetGroup): boolean {
+  if (filters.fitsWorkload && getWorkloadSuitability(model, filters.workload ?? DEFAULT_WORKLOAD) !== "fits") return false;
+  if (filters.maxBudget !== undefined && filters.maxBudget !== null) {
+    const total = calculateWorkloadCost(model.pricing, filters.workload ?? DEFAULT_WORKLOAD).total;
+    const tolerance = Number.EPSILON * Math.max(total ?? 0, filters.maxBudget) * 4;
+    if (total === null || total - filters.maxBudget > tolerance) return false;
+  }
   if (filters.hideRetired && getRetirementStatus(model.expiration_date, filters.now ?? Date.now())?.retired) return false;
   if (filters.fav && !favoriteIds.includes(model.id)) return false;
   const search = filters.search.trim().toLowerCase();

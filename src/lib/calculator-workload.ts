@@ -51,13 +51,24 @@ export function parseCalculatorWorkload(search: string): CalculatorWorkload {
   };
 }
 
+function getWorkloadLimits(model: Model) {
+  const validLimit = (limit: unknown): limit is number => typeof limit === "number" && Number.isFinite(limit) && limit > 0;
+  const completion = model.top_provider?.max_completion_tokens;
+  const contexts = [model.context_length, model.top_provider?.context_length].filter(validLimit);
+  return { outputLimit: validLimit(completion) ? completion : null, contextLimit: contexts.length ? Math.min(...contexts) : null };
+}
+
+export function getWorkloadSuitability(model: Model, workload: CalculatorWorkload): "fits" | "exceeds" | "unknown" {
+  const { outputLimit, contextLimit } = getWorkloadLimits(model);
+  if ((outputLimit !== null && workload.outputTokens > outputLimit) ||
+      (contextLimit !== null && workload.inputTokens + workload.outputTokens > contextLimit)) return "exceeds";
+  return outputLimit === null || contextLimit === null ? "unknown" : "fits";
+}
+
 export function getWorkloadWarnings(model: Model, workload: CalculatorWorkload): string[] {
   const warnings: string[] = [];
-  const validLimit = (limit: unknown): limit is number => typeof limit === "number" && Number.isFinite(limit) && limit > 0;
-  const outputLimit = model.top_provider?.max_completion_tokens;
-  const contexts = [model.context_length, model.top_provider?.context_length].filter(validLimit);
-  const contextLimit = contexts.length ? Math.min(...contexts) : null;
-  if (validLimit(outputLimit) && workload.outputTokens > outputLimit) {
+  const { outputLimit, contextLimit } = getWorkloadLimits(model);
+  if (outputLimit !== null && workload.outputTokens > outputLimit) {
     warnings.push(`Output exceeds this model's ${outputLimit.toLocaleString("en-US")}-token completion limit.`);
   }
   if (contextLimit !== null && workload.inputTokens + workload.outputTokens > contextLimit) {

@@ -13,6 +13,9 @@ An unofficial AI model directory for browsing and comparing 300+ models from the
 - Model detail sheet with specs, pricing, and capabilities
 - Side-by-side model comparison (up to 10 models)
 - Favorites — saved locally in the browser
+- Workload-fit and total-budget filters with shareable URL state
+- Cost estimates with separate token, cache, image, search, and request charges
+- Saved workloads and directory views with rename, update, undo delete, and JSON backups
 - Multiple themes
 
 ## Tech Stack
@@ -44,9 +47,13 @@ bun test
 bun run build
 bun run test:e2e:install
 bun run test:e2e
+# Run only automated accessibility checks
+bun run test:e2e:a11y
 ```
 
-The Playwright suite runs Chromium at desktop and mobile sizes in isolated browser contexts. It starts its own app on port 3210 with a separate `.next-e2e` output folder and synthetic catalog server on port 3211; both ports must be free. It never reuses a running app or personal browser profile. Directory reloads, filters, pagination, detail return navigation, comparison and favorite persistence, clipboard copying, refresh failure recovery, keyboard interaction, and mobile overflow are covered. Workload tests verify ranking with unit charges, named setup save/apply/delete across reloads, and workload-only setups preserving directory filters and comparison.
+The Playwright suite runs desktop Chromium, Firefox, and WebKit, plus mobile Chromium, in isolated browser contexts. It starts its own app on port 3210 with a separate `.next-e2e` output folder and synthetic catalog server on port 3211; both ports must be free. It never reuses a running app or personal browser profile. Directory reloads, filters, pagination, detail return navigation, comparison and favorite persistence, clipboard copying, refresh failure recovery, keyboard interaction, and mobile overflow are covered. Workload tests verify complete billing totals, workload-fit and budget filters, numeric draft editing, and saved setup management and backups across reloads.
+
+Axe scans cover the directory, model detail, comparison overview, and expanded comparison costs. Every supported light/dark theme combination is checked in desktop Chromium, and default light/dark modes are checked in every browser project. Results are attached as JSON to the HTML report. Automated checks complement manual keyboard and visual review; they cannot prove complete accessibility.
 
 Browser fixtures use `KILO_MODELS_GATEWAY_URL` for the server-side gateway request in development. Production builds ignore that override and use Kilo. The browser suite intentionally uses a separate development server; CI also checks a normal production build. No live Kilo connection is required by browser tests.
 

@@ -36,6 +36,23 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
   )
 }
 
+function SheetSurface({ ref, ...props }: React.ComponentProps<"div">) {
+  const surfaceRef = React.useRef<HTMLDivElement>(null)
+  React.useImperativeHandle(ref, () => surfaceRef.current!)
+  React.useLayoutEffect(() => {
+    const surface = surfaceRef.current
+    // Base UI exposes these focus guards as buttons to Safari/VoiceOver.
+    // Name their existing focus actions without changing the modal focus trap.
+    for (const [guard, label] of [
+      [surface?.previousElementSibling, "Go to last dialog control"],
+      [surface?.nextElementSibling, "Go to first dialog control"],
+    ] as const) {
+      if (guard?.matches("[data-base-ui-focus-guard]")) guard.setAttribute("aria-label", label)
+    }
+  })
+  return <div {...props} ref={surfaceRef} />
+}
+
 function SheetContent({
   className,
   children,
@@ -50,6 +67,7 @@ function SheetContent({
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Popup
+        render={<SheetSurface />}
         data-slot="sheet-content"
         data-side={side}
         className={cn(

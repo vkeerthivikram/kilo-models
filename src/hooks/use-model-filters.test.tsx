@@ -39,6 +39,36 @@ test("favorites filter runs before pagination", () => {
   assert.equal(result.paginatedModels[0]?.id, "test/model-29");
 });
 
+test("fits workload requires known context and completion limits, including provider context", () => {
+  const workload = { ...DEFAULT_WORKLOAD, inputTokens: 800, outputTokens: 100 };
+  const catalog = [
+    models[0],
+    { ...models[1], top_provider: { ...models[1].top_provider, max_completion_tokens: 99 } },
+    { ...models[2], top_provider: { ...models[2].top_provider, context_length: 899 } },
+    { ...models[3], top_provider: { ...models[3].top_provider, max_completion_tokens: 0 } },
+  ];
+  const result = inspect("?fitsWorkload=true", [], catalog, workload);
+  assert.deepEqual(result.sortedModels.map((model) => model.id), [models[0].id]);
+  assert.equal(result.activeFilterCount, 1);
+  assert.equal(result.filterCounts.free, 1);
+  assert.equal(inspect("?fitsWorkload=true", [], catalog, { ...workload, inputTokens: 1000 }).sortedModels.length, 0);
+});
+
+test("total budget includes every selected charge, is inclusive and excludes unavailable estimates", () => {
+  const workload = { ...DEFAULT_WORKLOAD, inputTokens: 100, outputTokens: 10, requests: 2, cachePercent: 50, cacheWriteTokens: 20, images: 2, searches: 3 };
+  const pricing = { prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" };
+  const catalog = [
+    { ...models[0], pricing },
+    { ...models[1], pricing: { ...pricing, request: "0.02" } },
+    { ...models[2], pricing: { prompt: "0", completion: "0" } },
+  ];
+  const result = inspect("?maxBudget=0.96", [], catalog, workload);
+  assert.deepEqual(result.sortedModels.map((model) => model.id), [models[0].id]);
+  assert.equal(result.activeFilterCount, 1);
+  assert.equal(inspect("?maxBudget=0", [], models, { ...DEFAULT_WORKLOAD, inputTokens: 0, outputTokens: 0 }).sortedModels.length, models.length);
+  for (const value of ["-1", "Infinity", "garbage", "1e999"]) assert.equal(inspect(`?maxBudget=${value}`).activeFilterCount, 0);
+});
+
 test("workload ranking includes output, cache and extra charges, with unknown estimates last", () => {
   const catalog = [
     { ...models[0], pricing: { prompt: "0.000001", completion: "0.000010", image: "0.02", web_search: "0.03", request: "0.01" } },

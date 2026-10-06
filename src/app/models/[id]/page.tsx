@@ -50,7 +50,7 @@ export default async function ModelPage({ params }: Props) {
   const provider = model.id.split("/")[0];
 
   return (
-    <div className="min-h-screen">
+    <main className="min-h-screen">
       <div className="container mx-auto px-4 py-8 space-y-8">
         <BackToDirectory />
 
@@ -89,6 +89,6 @@ export default async function ModelPage({ params }: Props) {
 
         <SimilarModels models={similar} />
       </div>
-    </div>
+    </main>
   );
 }

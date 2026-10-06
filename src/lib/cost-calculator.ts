@@ -31,7 +31,7 @@ export function calculateCost(pricing: ModelPricing | undefined, inputTokens: nu
   const sum = inputCost === null || outputCost === null || requestCost === null || imageCost === null || searchCost === null ? null : inputCost + outputCost + requestCost + imageCost + searchCost;
   const perRequest = sum !== null && Number.isFinite(sum) ? sum : null;
   const total = perRequest === null || !Number.isSafeInteger(requests) || requests < 1 ? null : perRequest * requests;
-  return { inputCost, cacheReadCost, cacheWriteCost, outputCost, imageCost, searchCost, requestCost, perRequest, total: total !== null && Number.isFinite(total) ? total : null };
+  return { inputCost, uncachedCost, cacheReadCost, cacheWriteCost, outputCost, imageCost, searchCost, requestCost, perRequest, total: total !== null && Number.isFinite(total) ? total : null };
 }
 
 export function calculateWorkloadCost(pricing: ModelPricing | undefined, workload: CalculatorWorkload) {
