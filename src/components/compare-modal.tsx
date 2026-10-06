@@ -10,6 +10,8 @@ import { CapabilityRadarChart } from "@/components/capability-radar-chart";
 import { CompareCostTable } from "@/components/compare-cost-table";
 import { ComparisonTable } from "@/components/comparison-table";
 import { getComparisonRows } from "@/lib/comparison";
+import { ComparisonActions } from "@/components/comparison-actions";
+import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
 import {
   X,
   GitCompare,
@@ -43,6 +45,7 @@ function ChartsTab({ models }: { models: Model[] }) {
 
 export function CompareModal({ models, open, onOpenChange, onRemove }: CompareModalProps) {
   const [differencesOnly, setDifferencesOnly] = React.useState(false);
+  const { workload, setWorkload } = useCalculatorWorkload();
   const rows = getComparisonRows(models);
   const differenceCount = rows.filter((row) => row.different).length;
   if (models.length === 0) return null;
@@ -50,7 +53,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        className="w-full data-[side=top]:!h-[100dvh] data-[side=top]:max-h-[100dvh] max-w-7xl mx-auto p-0 flex flex-col overflow-hidden"
+        className="w-full data-[side=top]:!h-[100dvh] data-[side=top]:max-h-[100dvh] max-w-7xl mx-auto p-0 flex flex-col overflow-clip"
         side="top"
         showCloseButton={false}
       >
@@ -78,8 +81,10 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
           </div>
         </div>
 
+        <ComparisonActions models={models} workload={workload} />
+
         {/* Tabs */}
-        <Tabs defaultValue="overview" className="flex-1 min-h-0 flex flex-col">
+        <Tabs defaultValue="overview" className="flex-1 min-h-0 flex flex-col overflow-clip">
           <div className="shrink-0 px-4 sm:px-6 pt-1">
             <TabsList className="w-full group-data-horizontal/tabs:h-11 sm:w-auto">
               <TabsTrigger value="overview">
@@ -117,7 +122,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
           </TabsContent>
 
           <TabsContent value="calculator" keepMounted className="flex-1 min-h-0 overflow-y-auto p-6">
-            <CompareCostTable models={models} />
+            <CompareCostTable models={models} workload={workload} onWorkloadChange={setWorkload} />
           </TabsContent>
         </Tabs>
       </SheetContent>

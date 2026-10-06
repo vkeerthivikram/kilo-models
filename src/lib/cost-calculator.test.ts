@@ -24,3 +24,15 @@ test("invalid workloads and arithmetic overflow never display NaN or Infinity", 
   assert.equal(tokenCount("2.9"), 2);
   assert.equal(formatCost(Infinity), "Unavailable");
 });
+
+test("cached input replaces the regular input charge rather than adding to it", () => {
+  const prices = { prompt: "0.000004", completion: "0.000008", input_cache_read: "0.000001", request: "0.01" };
+  const result = calculateCost(prices, 2000, 500, 1000, 50);
+  assert.equal(result.inputCost, 0.005);
+  assert.equal(result.cacheReadCost, 0.001);
+  assert.ok(Math.abs(result.perRequest! - 0.019) < 1e-12);
+  assert.ok(Math.abs(result.total! - 19) < 1e-10);
+  assert.equal(calculateCost({ prompt: "0.000004", completion: "0" }, 100, 0, 1, 50).total, null);
+  assert.equal(calculateCost(prices, 100, 0, 1, 101).total, null);
+  assert.equal(calculateCost(prices, 100, 0, 1, NaN).total, null);
+});

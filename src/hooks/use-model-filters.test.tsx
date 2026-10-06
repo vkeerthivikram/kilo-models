@@ -64,3 +64,48 @@ test("ordinary browsing preserves all models and URL view", () => {
   assert.equal(result.paginatedModels.length, 24);
   assert.equal(result.view, "list");
 });
+
+test("numeric filters use tokens and USD per million tokens with inclusive limits", () => {
+  const catalog = [
+    { ...models[0], context_length: 128000, pricing: { prompt: "0.000002", completion: "0.000008" } },
+    { ...models[1], context_length: 64000, pricing: { prompt: "0", completion: "0" } },
+    { ...models[2], context_length: 256000, pricing: { prompt: "0.000003", completion: "0.000010" } },
+  ];
+  assert.deepEqual(inspect("?minContext=128000&maxInputPrice=2&maxOutputPrice=8", [], catalog).sortedModels.map((model) => model.id), [models[0].id]);
+});
+
+test("zero price limits accept free rates and exclude unknown or paid rates", () => {
+  const catalog = ["0", "-1", "", "NaN", "0.000001"].map((prompt, index) => ({ ...models[index], pricing: { prompt, completion: prompt } }));
+  assert.deepEqual(inspect("?maxInputPrice=0&maxOutputPrice=0", [], catalog).sortedModels.map((model) => model.id), [models[0].id]);
+  assert.equal(inspect("?maxInputPrice=0&maxOutputPrice=0", [], catalog).activeFilterCount, 2);
+});
+
+test("a decimal price cap includes the exact per-million rate", () => {
+  const catalog = [{ ...models[0], pricing: { prompt: "0.00000097", completion: "0.00000097" } }];
+  assert.equal(inspect("?maxInputPrice=0.97&maxOutputPrice=0.97", [], catalog).sortedModels.length, 1);
+});
+
+test("invalid numeric URL filters are ignored instead of hiding the catalog", () => {
+  for (const invalid of ["-1", "NaN", "Infinity", "1e999", "garbage", "1usd", "0x10"]) {
+    const result = inspect(`?minContext=${invalid}&maxInputPrice=${invalid}&maxOutputPrice=${invalid}`);
+    assert.equal(result.sortedModels.length, models.length);
+    assert.equal(result.activeFilterCount, 0);
+  }
+  assert.equal(inspect("?minContext=1.5").minContext, null);
+});
+
+test("facet counts respect other groups while retaining alternatives in the current group", () => {
+  const catalog = [
+    { ...models[0], id: "alpha/text", architecture: { ...models[0].architecture, input_modalities: ["text"] }, supported_parameters: ["reasoning"] },
+    { ...models[1], id: "alpha/image", architecture: { ...models[0].architecture, input_modalities: ["image", "image"] }, supported_parameters: ["tools"] },
+    { ...models[2], id: "beta/image", architecture: { ...models[0].architecture, input_modalities: ["image"] }, supported_parameters: ["tools", "reasoning"] },
+  ];
+  const result = inspect("?providers=alpha&inputModalities=image&tools=true", [], catalog);
+  assert.equal(result.sortedModels.length, 1);
+  assert.deepEqual(result.filterCounts.providers, { alpha: 1, beta: 1 });
+  assert.deepEqual(result.filterCounts.inputModalities, { image: 1 });
+  assert.equal(result.filterCounts.reasoning, 0);
+  assert.equal(result.filterCounts.tools, 1);
+  assert.deepEqual(inspect("?providers=alpha&inputModalities=image", [], catalog).filterCounts.inputModalities, { text: 1, image: 1 });
+  assert.equal(inspect("?inputModalities=image,text", [], catalog).sortedModels.length, 3);
+});

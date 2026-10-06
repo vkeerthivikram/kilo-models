@@ -6,7 +6,7 @@ export function tokenCount(value: string | number, minimum = 0): number {
   return Number.isFinite(number) ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(minimum, Math.floor(number))) : minimum;
 }
 
-export function calculateCost(pricing: ModelPricing | undefined, inputTokens: number, outputTokens: number, requests: number) {
+export function calculateCost(pricing: ModelPricing | undefined, inputTokens: number, outputTokens: number, requests: number, cachePercent = 0) {
   const cost = (tokens: number, rate: unknown) => {
     if (!Number.isSafeInteger(tokens) || tokens < 0) return null;
     if (tokens === 0) return 0;
@@ -14,13 +14,17 @@ export function calculateCost(pricing: ModelPricing | undefined, inputTokens: nu
     const result = price === null ? null : tokens * price;
     return result !== null && Number.isFinite(result) ? result : null;
   };
-  const inputCost = cost(inputTokens, pricing?.prompt);
+  const validCache = Number.isFinite(cachePercent) && cachePercent >= 0 && cachePercent <= 100;
+  const cachedTokens = validCache && Number.isSafeInteger(inputTokens) && inputTokens >= 0 ? Math.round(inputTokens * (cachePercent / 100)) : null;
+  const uncachedCost = cachedTokens === null ? null : cost(inputTokens - cachedTokens, pricing?.prompt);
+  const cacheReadCost = cachedTokens === null ? null : cost(cachedTokens, pricing?.input_cache_read);
+  const inputCost = uncachedCost === null || cacheReadCost === null ? null : uncachedCost + cacheReadCost;
   const outputCost = cost(outputTokens, pricing?.completion);
   const requestCost = pricing?.request === undefined ? 0 : parsePrice(pricing.request);
   const sum = inputCost === null || outputCost === null || requestCost === null ? null : inputCost + outputCost + requestCost;
   const perRequest = sum !== null && Number.isFinite(sum) ? sum : null;
   const total = perRequest === null || !Number.isSafeInteger(requests) || requests < 1 ? null : perRequest * requests;
-  return { inputCost, outputCost, requestCost, perRequest, total: total !== null && Number.isFinite(total) ? total : null };
+  return { inputCost, cacheReadCost, outputCost, requestCost, perRequest, total: total !== null && Number.isFinite(total) ? total : null };
 }
 
 export function formatCost(cost: number | null): string {

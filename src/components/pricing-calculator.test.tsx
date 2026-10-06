@@ -9,11 +9,20 @@ const model = { id: "test/paid", name: "Paid", pricing: { prompt: "0.000003", co
 
 test("both calculators use per-token rates for the default workload", () => {
   for (const html of [renderToStaticMarkup(<PricingCalculator model={model} />), renderToStaticMarkup(<CompareCostTable models={[model]} />)]) {
-    assert.match(html, /\$0\.3000/);
-    assert.match(html, /\$0\.7500/);
-    assert.match(html, /\$1050\.0000/);
+    assert.match(html, /\$0\.006000/);
+    assert.match(html, /\$0\.007500/);
+    assert.match(html, /\$13\.5000/);
     assert.match(html, /for="/);
   }
+});
+
+test("comparison estimates explain impossible workloads and cache pricing gaps", () => {
+  const limited = { ...model, context_length: 1000, top_provider: { max_completion_tokens: 100 } } as Model;
+  const html = renderToStaticMarkup(<CompareCostTable models={[limited]} workload={{ inputTokens: 2000, outputTokens: 500, requests: 10, period: "month", cachePercent: 50 }} />);
+  assert.match(html, /exceeds/);
+  assert.match(html, /monthly/i);
+  assert.match(html, /cache read rate/i);
+  assert.match(html, /Unavailable/);
 });
 
 test("unavailable rates do not become free or negative estimates", () => {

@@ -18,6 +18,8 @@ import { Paginator } from "@/components/paginator";
 import { CompareTray } from "@/components/compare-tray";
 import { CompareModal } from "@/components/compare-modal";
 import { SortDropdown } from "@/components/sort-dropdown";
+import { NumericFilterInput } from "@/components/numeric-filter-input";
+import { useDirectoryScrollRestoration } from "@/lib/directory-navigation";
 import { Search, LayoutGrid, List, ChevronDown, X, Heart, SlidersHorizontal, Check, ArrowUpRight, CircleAlert } from "lucide-react";
 import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE } from "@/hooks/use-model-filters";
 import { useComparison } from "@/hooks/use-comparison";
@@ -26,17 +28,32 @@ import { useModels } from "@/hooks/use-models";
 
 function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const { comparedModels, toggleCompare, clearComparison } = useComparison(models);
+  const [providerSearch, setProviderSearch] = React.useState("");
+  const { comparedModels, toggleCompare, clearComparison, hasSharedComparison } = useComparison(models);
   const [compareModalOpen, setCompareModalOpen] = React.useState(false);
+  const openedSharedComparison = React.useRef(false);
+  useDirectoryScrollRestoration(!loading);
+  React.useEffect(() => {
+    if (!hasSharedComparison) openedSharedComparison.current = false;
+    if (!loading && hasSharedComparison && comparedModels.length > 0 && !openedSharedComparison.current) {
+      const frame = window.requestAnimationFrame(() => {
+        openedSharedComparison.current = true;
+        setCompareModalOpen(true);
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+  }, [loading, hasSharedComparison, comparedModels.length]);
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const {
     search, setSearch, sort, setSort, free, setFree,
     inputModalities, setInputModalities, outputModalities, setOutputModalities,
     providers, setProviders, reasoning, setReasoning, tools, setTools,
+    minContext, setMinContext, maxInputPrice, setMaxInputPrice, maxOutputPrice, setMaxOutputPrice, filterCounts,
     page, setPage, fav, setFav, view, setView, clearFilters,
     activeFilterCount, sortedModels, paginatedModels, totalPages,
   } = useModelFilters(models, favorites);
   const availableProviders = [...new Set(models.map((model) => model.id.split("/")[0]))].sort();
+  const matchingProviders = availableProviders.filter((provider) => provider.toLowerCase().includes(providerSearch.trim().toLowerCase()));
   const hasFilters = activeFilterCount > 0 || search.length > 0;
   const activeFilters = [
     ...(search ? [{ key: "search", label: `Search: ${search}`, remove: () => setSearch("") }] : []),
@@ -46,6 +63,9 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     ...providers.map((value) => ({ key: `provider-${value}`, label: `Provider: ${value}`, remove: () => setProviders(providers.filter((item) => item !== value)) })),
     ...(reasoning ? [{ key: "reasoning", label: "Reasoning", remove: () => setReasoning(false) }] : []),
     ...(tools ? [{ key: "tools", label: "Tool calling", remove: () => setTools(false) }] : []),
+    ...(minContext !== null ? [{ key: "context", label: `Context ≥ ${minContext.toLocaleString()} tokens`, remove: () => setMinContext(null) }] : []),
+    ...(maxInputPrice !== null ? [{ key: "input-price", label: `Input ≤ $${maxInputPrice}/1M tokens`, remove: () => setMaxInputPrice(null) }] : []),
+    ...(maxOutputPrice !== null ? [{ key: "output-price", label: `Output ≤ $${maxOutputPrice}/1M tokens`, remove: () => setMaxOutputPrice(null) }] : []),
   ];
 
   const handleToggleCompare = (model: Model) => {
@@ -89,13 +109,21 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
               className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
               <span className={cn("flex size-4 items-center justify-center rounded border", free ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{free && <Check className="size-3" aria-hidden="true" />}</span>
               Free models only
+              <span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.free}</span>
             </button>
+            <NumericFilterInput id="max-input-price" label="Max input · USD / 1M tokens" value={maxInputPrice} onChange={setMaxInputPrice} />
+            <NumericFilterInput id="max-output-price" label="Max output · USD / 1M tokens" value={maxOutputPrice} onChange={setMaxOutputPrice} />
+          </fieldset>
+
+          <fieldset>
+            <legend className="mb-3 text-sm font-medium">Context</legend>
+            <NumericFilterInput id="min-context" label="Minimum context · tokens" value={minContext} onChange={setMinContext} integer />
           </fieldset>
 
           {[
-            { label: "Input modalities", options: INPUT_MODALITIES, selected: inputModalities, set: setInputModalities },
-            { label: "Output modalities", options: OUTPUT_MODALITIES, selected: outputModalities, set: setOutputModalities },
-          ].map(({ label, options, selected, set }) => (
+            { label: "Input modalities", options: INPUT_MODALITIES, selected: inputModalities, set: setInputModalities, counts: filterCounts.inputModalities },
+            { label: "Output modalities", options: OUTPUT_MODALITIES, selected: outputModalities, set: setOutputModalities, counts: filterCounts.outputModalities },
+          ].map(({ label, options, selected, set, counts }) => (
             <fieldset key={label}>
               <legend className="mb-3 text-sm font-medium">{label}</legend>
               <div className="flex flex-wrap gap-2">
@@ -105,37 +133,44 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
                     className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs capitalize transition-colors", selected.includes(modality) ? "border-foreground bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground")}>
                     {selected.includes(modality) && <Check className="size-3" aria-hidden="true" />}
                     {modality}
+                    <span className="tabular-nums text-muted-foreground">{counts[modality] ?? 0}</span>
                   </button>
                 ))}
               </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Matches any selected modality.</p>
             </fieldset>
           ))}
 
           <fieldset>
             <legend className="mb-3 text-sm font-medium">Capabilities</legend>
-            {[{ label: "Reasoning", checked: reasoning, set: setReasoning }, { label: "Tool calling", checked: tools, set: setTools }].map(({ label, checked, set }) => (
+            {[{ label: "Reasoning", checked: reasoning, set: setReasoning, count: filterCounts.reasoning }, { label: "Tool calling", checked: tools, set: setTools, count: filterCounts.tools }].map(({ label, checked, set, count }) => (
               <button key={label} type="button" onClick={() => set(!checked)} aria-pressed={checked} className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
                 <span className={cn("flex size-4 items-center justify-center rounded border", checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{checked && <Check className="size-3" aria-hidden="true" />}</span>
                 {label}
+                <span className="ml-auto text-xs tabular-nums text-muted-foreground">{count}</span>
               </button>
             ))}
           </fieldset>
 
           <div className="space-y-3 border-t pt-5">
             <h3 className="text-sm font-medium">Providers</h3>
+            <Input aria-label="Search providers" placeholder="Find provider..." value={providerSearch}
+              onChange={(event) => setProviderSearch(event.target.value)} className="h-11 text-base md:text-sm" />
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" className="h-11 w-full justify-between text-xs" />}>
                 {providers.length ? `${providers.length} selected` : "All providers"}<ChevronDown className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="max-h-80 w-56" align="start">
-                {availableProviders.map((provider) => (
+                {matchingProviders.map((provider) => (
                   <DropdownMenuCheckboxItem key={provider} checked={providers.includes(provider)} closeOnClick={false}
                     onCheckedChange={(checked) => setProviders(checked ? [...providers, provider] : providers.filter((item) => item !== provider))}
-                    className="min-h-9 capitalize">{provider}</DropdownMenuCheckboxItem>
+                    className="min-h-11 capitalize"><span className="min-w-0 truncate">{provider}</span><span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.providers[provider] ?? 0}</span></DropdownMenuCheckboxItem>
                 ))}
+                {matchingProviders.length === 0 && <p className="px-3 py-4 text-xs text-muted-foreground">No providers match this search.</p>}
               </DropdownMenuContent>
             </DropdownMenu>
             {providers.length > 0 && <button type="button" onClick={() => setProviders([])} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Clear providers</button>}
+            <p className="text-xs leading-relaxed text-muted-foreground">Option counts match filters outside their group.</p>
           </div>
         </aside>
 

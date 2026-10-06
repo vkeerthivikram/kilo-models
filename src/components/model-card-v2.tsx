@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ModelActions, type ModelActionsProps } from "./model-actions";
 import { formatPrice, formatContext } from "@/lib/format-price";
+import { rememberDirectoryPosition } from "@/lib/directory-navigation";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -57,6 +58,7 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
           <h3 className="text-base font-semibold leading-snug break-words">
             <Link
               href={`/models/${encodeURIComponent(model.id)}`}
+              onClick={rememberDirectoryPosition}
               className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring"
             >
               <span className="group-hover:underline group-hover:underline-offset-4">
@@ -122,6 +124,7 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
             onToggleCompare={onToggleCompare} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
           <Link
             href={`/models/${encodeURIComponent(model.id)}`}
+            onClick={rememberDirectoryPosition}
             title={`View ${model.name} details`}
             className="relative z-10 ml-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
           >

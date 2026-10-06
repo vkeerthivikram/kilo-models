@@ -1,56 +1,86 @@
 "use client";
 
 import * as React from "react";
+import { parseAsString, useQueryState } from "nuqs";
 import type { Model } from "@/lib/types";
 import { COMPARE_LIMIT } from "@/lib/format-price";
 import { COMPARISON_STORAGE_KEY, parseComparisonIds } from "@/lib/comparison-storage";
+import { parseSharedComparison } from "@/lib/comparison-share";
 
-function readSelection(): string[] {
-  if (typeof window === "undefined") return [];
+const SELECTION_EVENT = "kilo-comparison-change";
+
+function readStoredSelection(): string | null {
   try {
-    return parseComparisonIds(localStorage.getItem(COMPARISON_STORAGE_KEY));
+    return localStorage.getItem(COMPARISON_STORAGE_KEY);
   } catch {
-    return [];
+    return null;
   }
 }
 
+function subscribeSelection(callback: () => void) {
+  const syncSelection = (event: StorageEvent) => {
+    if (event.key === COMPARISON_STORAGE_KEY || event.key === null) callback();
+  };
+  window.addEventListener("storage", syncSelection);
+  window.addEventListener(SELECTION_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", syncSelection);
+    window.removeEventListener(SELECTION_EVENT, callback);
+  };
+}
+const serverSelection = () => null;
+
 export function useComparison(models: Model[]) {
-  const [ids, setIds] = React.useState<string[]>(readSelection);
+  const stored = React.useSyncExternalStore(subscribeSelection, readStoredSelection, serverSelection);
+  const savedIds = React.useMemo(() => parseComparisonIds(stored), [stored]);
+  const [editedSelection, setEditedSelection] = React.useState(false);
+  const [sharedIds, setSharedIds] = useQueryState("compare", parseAsString.withOptions({ clearOnDefault: false }));
   const catalog = React.useMemo(() => new Map(models.map((model) => [model.id, model])), [models]);
+  const sharedSelection = React.useMemo(() => sharedIds === null ? null
+    : parseSharedComparison(new URLSearchParams({ compare: sharedIds }).toString()) ?? [], [sharedIds]);
+  const selected = sharedSelection ?? savedIds;
+  const ids = React.useMemo(() => models.length ? selected.filter((id) => catalog.has(id)) : selected,
+    [selected, models.length, catalog]);
   const comparedModels = React.useMemo(() => ids.flatMap((id) => {
     const model = catalog.get(id);
     return model ? [model] : [];
   }), [ids, catalog]);
 
   React.useEffect(() => {
+    const markArrival = () => setEditedSelection(false);
+    window.addEventListener("popstate", markArrival);
+    return () => window.removeEventListener("popstate", markArrival);
+  }, []);
+
+  React.useEffect(() => {
+    // Wait for the catalog before removing unavailable IDs from a shared link.
+    if (models.length === 0) return;
     try {
-      localStorage.setItem(COMPARISON_STORAGE_KEY, JSON.stringify(ids));
+      const serialized = JSON.stringify(ids);
+      if (localStorage.getItem(COMPARISON_STORAGE_KEY) !== serialized) {
+        localStorage.setItem(COMPARISON_STORAGE_KEY, serialized);
+        window.dispatchEvent(new Event(SELECTION_EVENT));
+      }
     } catch {
       // Selection still works for this visit when browser storage is unavailable.
     }
-  }, [ids]);
-
-  React.useEffect(() => {
-    const syncSelection = (event: StorageEvent) => {
-      try {
-        if (event.storageArea === localStorage && (event.key === COMPARISON_STORAGE_KEY || event.key === null)) {
-          setIds(parseComparisonIds(event.newValue));
-        }
-      } catch {
-        // Some browser privacy modes deny access to localStorage.
-      }
-    };
-    window.addEventListener("storage", syncSelection);
-    return () => window.removeEventListener("storage", syncSelection);
-  }, []);
+    if (sharedIds !== null && sharedIds !== ids.join(",")) void setSharedIds(ids.join(","));
+  }, [ids, models.length, sharedIds, setSharedIds]);
 
   const toggleCompare = (model: Model) => {
-    setIds((previous) => {
-      const current = previous.filter((id) => catalog.has(id));
-      if (current.includes(model.id)) return current.filter((id) => id !== model.id);
-      return current.length < COMPARE_LIMIT ? [...current, model.id] : current;
+    if (!catalog.has(model.id)) return;
+    setEditedSelection(true);
+    void setSharedIds((previous) => {
+      const current = (previous === null ? ids : parseSharedComparison(new URLSearchParams({ compare: previous }).toString()) ?? [])
+        .filter((id) => catalog.has(id));
+      const next = current.includes(model.id) ? current.filter((id) => id !== model.id)
+        : current.length < COMPARE_LIMIT ? [...current, model.id] : current;
+      return next.join(",");
     });
   };
 
-  return { comparedModels, toggleCompare, clearComparison: () => setIds([]) };
+  return {
+    comparedModels, toggleCompare, clearComparison: () => { setEditedSelection(true); void setSharedIds(""); },
+    hasSharedComparison: sharedIds !== null && !editedSelection && comparedModels.length > 0,
+  };
 }

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Cpu } from "lucide-react";
 import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
+import { rememberDirectoryPosition } from "@/lib/directory-navigation";
 
 interface ModelGridProps {
   models: Model[];
@@ -55,7 +56,7 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
               return (
                 <tr key={model.id} className={cn("border-b last:border-b-0 hover:bg-muted/30", isCompared && "bg-muted/50")}>
                   <td className="px-3 py-3 md:px-4">
-                    <Link href={`/models/${encodeURIComponent(model.id)}`} className="break-words font-medium hover:underline hover:underline-offset-4">
+                    <Link href={`/models/${encodeURIComponent(model.id)}`} onClick={rememberDirectoryPosition} className="inline-flex min-h-11 items-center break-words rounded-md font-medium hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                       {model.name}
                     </Link>
                     {model.isFree && (

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Model } from "@/lib/types";
 import { parsePrice } from "@/lib/format-price";
+import { getFilterCounts, matchesModelFilters, parseNumericFilter } from "@/lib/model-filtering";
 import {
   parseAsArrayOf,
   parseAsString,
@@ -10,6 +11,7 @@ import {
   parseAsStringLiteral,
   parseAsInteger,
   useQueryStates,
+  createParser,
 } from "nuqs";
 
 const SORT_OPTIONS = [
@@ -43,6 +45,9 @@ interface FilterState {
   view: ViewOption;
   page: number;
   fav: boolean;
+  minContext: number | null;
+  maxInputPrice: number | null;
+  maxOutputPrice: number | null;
 }
 
 interface UseModelFiltersResult extends FilterState {
@@ -57,6 +62,10 @@ interface UseModelFiltersResult extends FilterState {
   setView: (v: ViewOption) => void;
   setPage: (v: number) => void;
   setFav: (v: boolean) => void;
+  setMinContext: (v: number | null) => void;
+  setMaxInputPrice: (v: number | null) => void;
+  setMaxOutputPrice: (v: number | null) => void;
+  filterCounts: ReturnType<typeof getFilterCounts>;
   clearFilters: () => void;
   activeFilterCount: number;
   filteredModels: Model[];
@@ -65,6 +74,11 @@ interface UseModelFiltersResult extends FilterState {
   totalPages: number;
   hasMore: boolean;
 }
+
+const numericParser = (integer = false) => createParser({
+  parse: (value) => parseNumericFilter(value, integer),
+  serialize: String,
+});
 
 const parsers = {
   search: parseAsString,
@@ -78,6 +92,9 @@ const parsers = {
   view: parseAsStringLiteral(VIEW_OPTIONS),
   page: parseAsInteger,
   fav: parseAsBoolean,
+  minContext: numericParser(true),
+  maxInputPrice: numericParser(),
+  maxOutputPrice: numericParser(),
 };
 
 export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_FILTERS): UseModelFiltersResult {
@@ -96,6 +113,9 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const tools = params.tools ?? false;
   const view = params.view ?? "grid";
   const fav = params.fav ?? false;
+  const minContext = params.minContext;
+  const maxInputPrice = params.maxInputPrice;
+  const maxOutputPrice = params.maxOutputPrice;
 
   const [pendingSearch, setPendingSearch] = React.useState<string | null>(null);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,6 +147,10 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const setPage = (v: number) => setParams({ page: v });
   const setFav = (v: boolean) => setParams({ fav: v, page: 1 });
 
+  const setMinContext = (v: number | null) => setParams({ minContext: parseNumericFilter(v, true), page: 1 });
+  const setMaxInputPrice = (v: number | null) => setParams({ maxInputPrice: parseNumericFilter(v), page: 1 });
+  const setMaxOutputPrice = (v: number | null) => setParams({ maxOutputPrice: parseNumericFilter(v), page: 1 });
+
   const clearFilters = () => {
     setPendingSearch(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -136,6 +160,9 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
       inputModalities: [],
       outputModalities: [],
       providers: [],
+      minContext: null,
+      maxInputPrice: null,
+      maxOutputPrice: null,
       reasoning: false,
       tools: false,
       page: 1,
@@ -148,46 +175,15 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     outputModalities.length +
     providers.length +
     (reasoning ? 1 : 0) +
-    (tools ? 1 : 0);
+    (tools ? 1 : 0) +
+    (minContext !== null ? 1 : 0) +
+    (maxInputPrice !== null ? 1 : 0) +
+    (maxOutputPrice !== null ? 1 : 0);
 
-  const filteredModels = React.useMemo(() => {
-    return models.filter((model) => {
-      if (fav && !favoriteIds.includes(model.id)) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        if (
-          !model.name.toLowerCase().includes(s) &&
-          !model.id.toLowerCase().includes(s) &&
-          !model.description.toLowerCase().includes(s)
-        )
-          return false;
-      }
-      if (free && !model.isFree) return false;
-      if (inputModalities.length > 0) {
-        const mods = model.architecture?.input_modalities ?? [];
-        if (!inputModalities.some((m) => mods.includes(m))) return false;
-      }
-      if (outputModalities.length > 0) {
-        const mods = model.architecture?.output_modalities ?? [];
-        if (!outputModalities.some((m) => mods.includes(m))) return false;
-      }
-      if (providers.length > 0) {
-        const p = model.id.split("/")[0];
-        if (!providers.includes(p)) return false;
-      }
-      if (reasoning) {
-        const params = model.supported_parameters ?? [];
-        if (!params.includes("reasoning") && !params.includes("include_reasoning"))
-          return false;
-      }
-      if (tools) {
-        const params = model.supported_parameters ?? [];
-        if (!params.includes("tools")) return false;
-      }
-      return true;
-    });
-  }, [models, search, free, inputModalities, outputModalities, providers, reasoning, tools, fav, favoriteIds]);
-
+  const criteria = React.useMemo(() => ({ search, free, inputModalities, outputModalities, providers, reasoning, tools, fav, minContext, maxInputPrice, maxOutputPrice }),
+    [search, free, inputModalities, outputModalities, providers, reasoning, tools, fav, minContext, maxInputPrice, maxOutputPrice]);
+  const filteredModels = React.useMemo(() => models.filter((model) => matchesModelFilters(model, criteria, favoriteIds)), [models, criteria, favoriteIds]);
+  const filterCounts = React.useMemo(() => getFilterCounts(models, criteria, favoriteIds), [models, criteria, favoriteIds]);
   const sortedModels = React.useMemo(() => {
     return [...filteredModels].sort((a, b) => {
       switch (sort) {
@@ -246,6 +242,13 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     setView,
     setPage,
     setFav,
+    minContext,
+    maxInputPrice,
+    maxOutputPrice,
+    setMinContext,
+    setMaxInputPrice,
+    setMaxOutputPrice,
+    filterCounts,
     clearFilters,
     activeFilterCount,
     filteredModels,

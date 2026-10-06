@@ -1,7 +1,5 @@
 import * as React from "react";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ModelSpecsCard } from "@/components/model-specs-card";
 import { ModelPricingCard } from "@/components/model-pricing-card";
@@ -9,6 +7,9 @@ import { ModelSafetyCard } from "@/components/model-safety-card";
 import { SimilarModels } from "@/components/similar-models";
 import { PricingCalculator } from "@/components/pricing-calculator";
 import { findModel, getModels } from "@/lib/get-models";
+import { getSimilarModels } from "@/lib/similar-models";
+import { BackToDirectory } from "@/components/back-to-directory";
+import { ModelDetailActions } from "@/components/model-detail-actions";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -41,29 +42,14 @@ export default async function ModelPage({ params }: Props) {
 
   if (!model) notFound();
 
-  const similar = allModels
-    .filter((m) => m.id !== model!.id)
-    .filter((m) => {
-      const sameProvider = m.id.split("/")[0] === model!.id.split("/")[0];
-      const sameInput = (m.architecture?.input_modalities ?? []).some((mod) =>
-        (model!.architecture?.input_modalities ?? []).includes(mod)
-      );
-      return sameProvider || sameInput;
-    })
-    .slice(0, 6);
+  const similar = getSimilarModels(allModels, model);
 
   const provider = model.id.split("/")[0];
 
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 space-y-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Directory
-        </Link>
+        <BackToDirectory />
 
         <div>
           <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-widest">
@@ -81,6 +67,9 @@ export default async function ModelPage({ params }: Props) {
               Added {new Date(model.created * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
             </p>
           )}
+          <React.Suspense fallback={<p className="mt-5 text-sm text-muted-foreground">Loading model actions...</p>}>
+            <ModelDetailActions model={model} models={allModels} />
+          </React.Suspense>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
