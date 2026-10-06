@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { Model } from "@/lib/types";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PricingBarChart } from "@/components/pricing-bar-chart";
-import { CapabilityRadarChart } from "@/components/capability-radar-chart";
 import { CompareCostTable } from "@/components/compare-cost-table";
 import { ComparisonTable } from "@/components/comparison-table";
 import { getComparisonRows } from "@/lib/comparison";
@@ -28,23 +27,14 @@ interface CompareModalProps {
   onRemove: (model: Model) => void;
 }
 
-function ChartsTab({ models }: { models: Model[] }) {
-  return (
-    <div className="space-y-8 p-6">
-      <div>
-        <h3 className="font-heading text-base mb-4">Pricing Comparison</h3>
-        <PricingBarChart models={models} />
-      </div>
-      <div>
-        <h3 className="font-heading text-base mb-4">Capability Radar</h3>
-        <CapabilityRadarChart models={models} />
-      </div>
-    </div>
-  );
-}
+const ComparisonCharts = dynamic(
+  () => import("@/components/comparison-charts").then((module) => module.ComparisonCharts),
+  { ssr: false, loading: () => <p role="status" className="p-4 sm:p-6 text-sm text-muted-foreground">Loading comparison charts…</p> },
+);
 
 export function CompareModal({ models, open, onOpenChange, onRemove }: CompareModalProps) {
   const [differencesOnly, setDifferencesOnly] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState("overview");
   const { workload, setWorkload } = useCalculatorWorkload();
   const rows = getComparisonRows(models);
   const differenceCount = rows.filter((row) => row.different).length;
@@ -84,7 +74,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
         <ComparisonActions models={models} workload={workload} />
 
         {/* Tabs */}
-        <Tabs defaultValue="overview" className="flex-1 min-h-0 flex flex-col overflow-clip">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(String(value))} className="flex-1 min-h-0 flex flex-col overflow-clip">
           <div className="shrink-0 px-4 sm:px-6 pt-1">
             <TabsList className="w-full group-data-horizontal/tabs:h-11 sm:w-auto">
               <TabsTrigger value="overview">
@@ -118,7 +108,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
           </TabsContent>
 
           <TabsContent value="charts" className="flex-1 min-h-0 overflow-y-auto">
-            <ChartsTab models={models} />
+            {open && activeTab === "charts" && <ComparisonCharts models={models} />}
           </TabsContent>
 
           <TabsContent value="calculator" keepMounted className="flex-1 min-h-0 overflow-y-auto p-6">

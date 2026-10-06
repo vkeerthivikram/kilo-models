@@ -25,6 +25,7 @@ import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE } from 
 import { useComparison } from "@/hooks/use-comparison";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useModels } from "@/hooks/use-models";
+import { CatalogStatus } from "@/components/catalog-status";
 
 function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -45,7 +46,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   }, [loading, hasSharedComparison, comparedModels.length]);
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const {
-    search, setSearch, sort, setSort, free, setFree,
+    search, setSearch, sort, setSort, free, setFree, hideRetired, setHideRetired,
     inputModalities, setInputModalities, outputModalities, setOutputModalities,
     providers, setProviders, reasoning, setReasoning, tools, setTools,
     minContext, setMinContext, maxInputPrice, setMaxInputPrice, maxOutputPrice, setMaxOutputPrice, filterCounts,
@@ -58,6 +59,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   const activeFilters = [
     ...(search ? [{ key: "search", label: `Search: ${search}`, remove: () => setSearch("") }] : []),
     ...(free ? [{ key: "free", label: "Free only", remove: () => setFree(false) }] : []),
+    ...(hideRetired ? [{ key: "hide-retired", label: "Hide retired", remove: () => setHideRetired(false) }] : []),
     ...inputModalities.map((value) => ({ key: `input-${value}`, label: `Input: ${value}`, remove: () => setInputModalities(inputModalities.filter((item) => item !== value)) })),
     ...outputModalities.map((value) => ({ key: `output-${value}`, label: `Output: ${value}`, remove: () => setOutputModalities(outputModalities.filter((item) => item !== value)) })),
     ...providers.map((value) => ({ key: `provider-${value}`, label: `Provider: ${value}`, remove: () => setProviders(providers.filter((item) => item !== value)) })),
@@ -102,6 +104,16 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             <h2 className="flex items-center gap-2 text-sm font-semibold"><SlidersHorizontal className="size-4" aria-hidden="true" /> Filters</h2>
             {hasFilters && <button type="button" onClick={clearFilters} className="min-h-9 px-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Reset all</button>}
           </div>
+
+          <fieldset>
+            <legend className="mb-3 text-sm font-medium">Availability</legend>
+            <button type="button" onClick={() => setHideRetired(!hideRetired)} aria-pressed={hideRetired}
+              className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
+              <span className={cn("flex size-4 items-center justify-center rounded border", hideRetired ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{hideRetired && <Check className="size-3" aria-hidden="true" />}</span>
+              Hide retired models
+            </button>
+            <p className="text-xs leading-relaxed text-muted-foreground">Uses published retirement dates in UTC. Models with no date stay visible.</p>
+          </fieldset>
 
           <fieldset className="space-y-3">
             <legend className="mb-3 text-sm font-medium">Pricing</legend>
@@ -243,7 +255,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
 }
 
 export default function Home() {
-  const { models, loading, error } = useModels();
+  const { models, loading, error, fetchedAt, revalidating, refresh } = useModels();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -269,12 +281,13 @@ export default function Home() {
         </div>
 
         <div id="directory" className="scroll-mt-6">
-          {error || (!loading && models.length === 0) ? (
+          <CatalogStatus fetchedAt={fetchedAt} loading={loading} revalidating={revalidating} error={error} onRefresh={() => void refresh()} />
+          {error && fetchedAt === null ? (
             <div role="alert" className="flex flex-col items-center rounded-xl border px-6 py-16 text-center">
               <CircleAlert className="mb-4 size-7 text-destructive" aria-hidden="true" />
               <h2 className="font-heading text-3xl">{error ? "Models could not be loaded" : "No models available"}</h2>
               <p className="mt-3 text-sm text-muted-foreground">The model directory is unavailable right now. Please try again.</p>
-              <Button onClick={() => window.location.reload()} className="mt-6 h-11">Try again</Button>
+              <Button onClick={() => void refresh()} disabled={revalidating} className="mt-6 h-11">Try again</Button>
             </div>
           ) : (
             <React.Suspense fallback={<p role="status" className="py-16 text-center text-muted-foreground">Loading model directory...</p>}>

@@ -1,9 +1,12 @@
 import type { Model } from "./types";
 import { parsePrice } from "./format-price";
+import { getRetirementStatus } from "./model-retirement";
 
 export interface ModelFilterCriteria {
   search: string;
   free: boolean;
+  hideRetired?: boolean;
+  now?: number;
   inputModalities: string[];
   outputModalities: string[];
   providers: string[];
@@ -26,6 +29,7 @@ export function parseNumericFilter(value: unknown, integer = false): number | nu
 }
 
 export function matchesModelFilters(model: Model, filters: ModelFilterCriteria, favoriteIds: string[], ignored?: FacetGroup): boolean {
+  if (filters.hideRetired && getRetirementStatus(model.expiration_date, filters.now ?? Date.now())?.retired) return false;
   if (filters.fav && !favoriteIds.includes(model.id)) return false;
   const search = filters.search.trim().toLowerCase();
   if (search && ![model.name, model.id, model.description].some((value) => value.toLowerCase().includes(search))) return false;

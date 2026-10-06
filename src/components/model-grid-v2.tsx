@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Cpu } from "lucide-react";
 import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
 import { rememberDirectoryPosition } from "@/lib/directory-navigation";
+import { RetirementBadge } from "./retirement-badge";
 
 interface ModelGridProps {
   models: Model[];
@@ -63,6 +64,7 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
                       <Badge className="ml-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[9px]">FREE</Badge>
                     )}
                     <p className="mt-1 truncate text-[11px] font-mono text-muted-foreground" title={model.id}>{model.id}</p>
+                    {model.expiration_date && <div className="mt-2"><RetirementBadge expirationDate={model.expiration_date} /></div>}
                     <p className="mt-1 text-xs text-muted-foreground md:hidden">{formatContext(model.context_length)} context tokens</p>
                     <div className="mt-1">
                       <ModelActions model={model} isCompared={isCompared}

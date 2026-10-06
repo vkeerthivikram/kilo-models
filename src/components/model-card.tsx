@@ -17,7 +17,6 @@ import {
   Zap,
   Shield,
   Hash,
-  Star,
 } from "lucide-react";
 
 interface ModelCardProps {

@@ -1,19 +1,45 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { getCapabilityData, getPricingData } from "./chart-data";
+import { getCapabilityData, getPricingData, getSpecificationValue } from "./chart-data";
 import type { Model } from "./types";
 
 const models = ["0.000002", "0.000006", "-1"].map((prompt, index) => ({ id: `test/${index}`, name: `Model ${index}`, context_length: 1000, pricing: { prompt, completion: prompt }, supported_parameters: [] } as unknown as Model));
 test("price charts use per-million units and preserve unavailable rates", () => {
   assert.deepEqual(getPricingData(models).map((row) => row.prompt), [2, 6, null]);
 });
+
+test("profile values retain actual units and small prices without rounding to free", () => {
+  const model = { ...models[0], context_length: 128000, top_provider: { max_completion_tokens: 8192 }, pricing: { prompt: "0.0000000001" }, supported_parameters: ["temperature", "top_p"] } as unknown as Model;
+  assert.equal(getSpecificationValue(model, "Context"), "128,000 tokens");
+  assert.equal(getSpecificationValue(model, "Max output"), "8,192 tokens");
+  assert.equal(getSpecificationValue(model, "Low input price"), "$0.0001 / 1M input tokens");
+  assert.equal(getSpecificationValue(model, "Supported parameters"), "2 parameters");
+  assert.equal(getSpecificationValue(models[0], "Max output"), "Unknown");
+});
+
+test("all unknown specifications remain gaps instead of relative scores", () => {
+  const unknown = { id: "unknown", name: "Unknown" } as Model;
+  assert.deepEqual(getCapabilityData([unknown]).map((row) => row.model0), [null, null, null, null]);
+});
 test("radar has capability axes and bounded scores for one or many models", () => {
   const rows = getCapabilityData(models);
-  assert.deepEqual(rows.map((row) => row.capability), ["Context", "Max output", "Low input price", "Parameters"]);
+  assert.deepEqual(rows.map((row) => row.capability), ["Context", "Max output", "Low input price", "Supported parameters"]);
   assert.equal(rows[2].model0, 100);
   assert.equal(rows[2].model1, 0);
   assert.equal(rows[2].model2, null);
   assert.equal(getCapabilityData([models[0]])[2].model0, 100);
   assert.equal(getCapabilityData([{ ...models[0], pricing: { prompt: "0", completion: "0" } }])[2].model0, 100);
   for (const row of rows) for (const [key, value] of Object.entries(row)) if (key !== "capability" && value !== null) assert.ok(typeof value === "number" && value >= 0 && value <= 100);
+});
+
+test("specification profile distinguishes unknown values from confirmed zero", () => {
+  const unknown = { ...models[0], context_length: undefined, supported_parameters: undefined } as unknown as Model;
+  const zero = { ...models[1], context_length: 0, top_provider: { max_completion_tokens: 0 }, supported_parameters: [] } as unknown as Model;
+  const rows = getCapabilityData([unknown, zero]);
+  assert.equal(rows[0].model0, null);
+  assert.equal(rows[1].model0, null);
+  assert.equal(rows[3].model0, null);
+  assert.equal(rows[0].model1, 0);
+  assert.equal(rows[1].model1, 0);
+  assert.equal(rows[3].model1, 0);
 });

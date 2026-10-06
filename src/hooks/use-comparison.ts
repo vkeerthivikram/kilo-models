@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { parseAsString, useQueryState } from "nuqs";
-import type { Model } from "@/lib/types";
 import { COMPARE_LIMIT } from "@/lib/format-price";
 import { COMPARISON_STORAGE_KEY, parseComparisonIds } from "@/lib/comparison-storage";
 import { parseSharedComparison } from "@/lib/comparison-share";
@@ -30,7 +29,7 @@ function subscribeSelection(callback: () => void) {
 }
 const serverSelection = () => null;
 
-export function useComparison(models: Model[]) {
+export function useComparison<T extends { id: string }>(models: T[]) {
   const stored = React.useSyncExternalStore(subscribeSelection, readStoredSelection, serverSelection);
   const savedIds = React.useMemo(() => parseComparisonIds(stored), [stored]);
   const [editedSelection, setEditedSelection] = React.useState(false);
@@ -54,7 +53,9 @@ export function useComparison(models: Model[]) {
 
   React.useEffect(() => {
     // Wait for the catalog before removing unavailable IDs from a shared link.
-    if (models.length === 0) return;
+    // A null server snapshot also means saved selection has not hydrated yet.
+    // With no explicit URL selection there is nothing to persist at that point.
+    if (models.length === 0 || (stored === null && sharedIds === null)) return;
     try {
       const serialized = JSON.stringify(ids);
       if (localStorage.getItem(COMPARISON_STORAGE_KEY) !== serialized) {
@@ -65,9 +66,9 @@ export function useComparison(models: Model[]) {
       // Selection still works for this visit when browser storage is unavailable.
     }
     if (sharedIds !== null && sharedIds !== ids.join(",")) void setSharedIds(ids.join(","));
-  }, [ids, models.length, sharedIds, setSharedIds]);
+  }, [ids, models.length, stored, sharedIds, setSharedIds]);
 
-  const toggleCompare = (model: Model) => {
+  const toggleCompare = (model: { id: string }) => {
     if (!catalog.has(model.id)) return;
     setEditedSelection(true);
     void setSharedIds((previous) => {

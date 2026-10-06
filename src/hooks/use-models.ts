@@ -2,36 +2,51 @@
 
 import * as React from "react";
 import { Model } from "@/lib/types";
-import { parseModelsResponse } from "@/lib/models-response";
+import { createCatalogClient } from "@/lib/catalog-client";
 
 interface UseModelsResult {
   models: Model[];
   loading: boolean;
   error: Error | null;
+  fetchedAt: string | null;
+  revalidating: boolean;
+  refresh: () => Promise<void>;
 }
 
 export function useModels(): UseModelsResult {
   const [models, setModels] = React.useState<Model[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
+  const [fetchedAt, setFetchedAt] = React.useState<string | null>(null);
+  const [revalidating, setRevalidating] = React.useState(false);
+  const client = React.useRef<ReturnType<typeof createCatalogClient> | null>(null);
 
-  React.useEffect(() => {
-    const controller = new AbortController();
-    async function fetchModels() {
-      try {
-        const res = await fetch("/api/models", { signal: controller.signal });
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
-        if (!controller.signal.aborted) setModels(parseModelsResponse(data));
-      } catch (err) {
-        if (!controller.signal.aborted) setError(err instanceof Error ? err : new Error("Unknown error"));
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
+  const load = React.useCallback(async (refresh = false) => {
+    if (!client.current) client.current = createCatalogClient();
+    try {
+      const catalog = await client.current.load(refresh);
+      if (!catalog) return;
+      setModels(catalog.data);
+      setFetchedAt(catalog.fetchedAt);
+      setLoading(false);
+      setRevalidating(false);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Unable to load model catalog"));
+      setLoading(false);
+      setRevalidating(false);
     }
-    fetchModels();
-    return () => controller.abort();
   }, []);
 
-  return { models, loading, error };
+  const refresh = React.useCallback(() => {
+    setRevalidating(true);
+    setError(null);
+    return load(true);
+  }, [load]);
+
+  React.useEffect(() => {
+    void load();
+    return () => client.current?.cancel();
+  }, [load]);
+
+  return { models, loading, error, fetchedAt, revalidating, refresh };
 }

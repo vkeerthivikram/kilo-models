@@ -15,7 +15,6 @@ import {
   Shield,
   ShieldAlert,
   Sparkles,
-  Wrench,
   Copy,
   Check,
   Clock,
@@ -47,12 +46,6 @@ function formatPrice(price: string | undefined): string {
   if (num < 0.00001) return `$${(num * 1000000).toFixed(2)}/1M`;
   if (num < 0.001) return `$${(num * 1000).toFixed(4)}/1K`;
   return `$${num.toFixed(6)}/1K`;
-}
-
-function formatContext(ctx: number): string {
-  if (ctx >= 1000000) return `${(ctx / 1000000).toFixed(0)}M`;
-  if (ctx >= 1000) return `${(ctx / 1000).toFixed(0)}K`;
-  return ctx.toLocaleString();
 }
 
 function formatDate(ts: number): string {
@@ -98,11 +91,6 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const allPricingKeys = Object.keys(model.pricing ?? {}).filter(
-    (k) => model.pricing?.[k as keyof typeof model.pricing] &&
-           model.pricing?.[k as keyof typeof model.pricing] !== "0"
-  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

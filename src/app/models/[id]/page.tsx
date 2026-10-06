@@ -10,6 +10,9 @@ import { findModel, getModels } from "@/lib/get-models";
 import { getSimilarModels } from "@/lib/similar-models";
 import { BackToDirectory } from "@/components/back-to-directory";
 import { ModelDetailActions } from "@/components/model-detail-actions";
+import { getModelDetailActionProps } from "@/lib/model-detail-summary";
+import { ModelDescription } from "@/components/model-description";
+import { RetirementBadge } from "@/components/retirement-badge";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -60,15 +63,16 @@ export default async function ModelPage({ params }: Props) {
             {model.isFree && (
               <Badge variant="secondary" className="text-xs">Free</Badge>
             )}
+            <RetirementBadge expirationDate={model.expiration_date} />
           </div>
-          <p className="text-muted-foreground mt-2 max-w-2xl">{model.description}</p>
-          {model.created && (
+          <div className="mt-3"><ModelDescription description={model.description} /></div>
+          {model.created > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
               Added {new Date(model.created * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
             </p>
           )}
           <React.Suspense fallback={<p className="mt-5 text-sm text-muted-foreground">Loading model actions...</p>}>
-            <ModelDetailActions model={model} models={allModels} />
+            <ModelDetailActions {...getModelDetailActionProps(model, allModels)} />
           </React.Suspense>
         </div>
 

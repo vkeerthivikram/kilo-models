@@ -35,7 +35,7 @@ export function PricingBarChart({ models }: Props) {
         <XAxis type="number" tickFormatter={(v) => `$${v}`} />
         <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
         <Tooltip
-          formatter={(value, name) => [`$${Number(value).toFixed(2)}/M`, name]}
+          formatter={(value, name) => [`$${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 12 })} / 1M tokens`, name]}
           contentStyle={{
             backgroundColor: isDark ? "#1e1e2e" : "#fff",
             border: "none",

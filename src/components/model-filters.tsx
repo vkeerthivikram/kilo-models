@@ -24,8 +24,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Search,
   SlidersHorizontal,
-  LayoutGrid,
-  List,
   X,
   ArrowUpRight,
   ArrowDownRight,
@@ -57,9 +55,6 @@ interface ModelFiltersProps {
   resultCount: number;
   totalCount: number;
 }
-
-const ALL_INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
-const ALL_OUTPUT_MODALITIES = ["text", "image", "audio"];
 
 interface FilterContentProps {
   filters: Filters;

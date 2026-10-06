@@ -8,7 +8,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useComparison } from "@/hooks/use-comparison";
 import { COMPARE_LIMIT } from "@/lib/format-price";
 import { getDirectoryReturnHref, prepareDirectoryReturn } from "@/lib/directory-navigation";
-import type { Model } from "@/lib/types";
+import type { ModelDetailActionProps } from "@/lib/model-detail-summary";
 import { cn } from "@/lib/utils";
 
 const subscribe = () => () => {};
@@ -16,11 +16,11 @@ const clientReady = () => true;
 const serverReady = () => false;
 const serverHref = () => "/";
 
-export function ModelDetailActions({ model, models }: { model: Model; models: Model[] }) {
+export function ModelDetailActions({ model, catalog }: ModelDetailActionProps) {
   const ready = React.useSyncExternalStore(subscribe, clientReady, serverReady);
   const directoryHref = React.useSyncExternalStore(subscribe, getDirectoryReturnHref, serverHref);
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { comparedModels, toggleCompare } = useComparison(models);
+  const { comparedModels, toggleCompare } = useComparison(catalog);
   const favorite = ready && isFavorite(model.id);
   const compared = ready && comparedModels.some((item) => item.id === model.id);
   const limitReached = !compared && comparedModels.length >= COMPARE_LIMIT;

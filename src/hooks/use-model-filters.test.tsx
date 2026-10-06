@@ -65,6 +65,13 @@ test("ordinary browsing preserves all models and URL view", () => {
   assert.equal(result.view, "list");
 });
 
+test("retirement visibility is URL state and counts as a removable filter", () => {
+  assert.equal(inspect("?hideRetired=true").hideRetired, true);
+  assert.equal(inspect("?hideRetired=true").activeFilterCount, 1);
+  assert.equal(inspect("").hideRetired, false);
+  assert.equal(inspect("?hideRetired=garbage").hideRetired, false);
+});
+
 test("numeric filters use tokens and USD per million tokens with inclusive limits", () => {
   const catalog = [
     { ...models[0], context_length: 128000, pricing: { prompt: "0.000002", completion: "0.000008" } },
