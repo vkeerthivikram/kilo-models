@@ -3,6 +3,8 @@
 import * as React from "react";
 import { Model } from "@/lib/types";
 import { parsePrice } from "@/lib/format-price";
+import { DEFAULT_WORKLOAD, type CalculatorWorkload } from "@/lib/calculator-workload";
+import { calculateWorkloadCost } from "@/lib/cost-calculator";
 import { getFilterCounts, matchesModelFilters, parseNumericFilter } from "@/lib/model-filtering";
 import { useRetirementClock } from "./use-retirement-clock";
 import {
@@ -20,6 +22,8 @@ const SORT_OPTIONS = [
   "name-desc",
   "price-asc",
   "price-desc",
+  "cost-asc",
+  "cost-desc",
   "context-desc",
   "created-desc",
   "created-asc",
@@ -70,6 +74,8 @@ interface UseModelFiltersResult extends FilterState {
   setMaxOutputPrice: (v: number | null) => void;
   filterCounts: ReturnType<typeof getFilterCounts>;
   clearFilters: () => void;
+  directoryQuery: URLSearchParams;
+  applyDirectoryQuery: (query: URLSearchParams) => void;
   activeFilterCount: number;
   filteredModels: Model[];
   sortedModels: Model[];
@@ -101,7 +107,7 @@ const parsers = {
   maxOutputPrice: numericParser(),
 };
 
-export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_FILTERS): UseModelFiltersResult {
+export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_FILTERS, workload: CalculatorWorkload = DEFAULT_WORKLOAD): UseModelFiltersResult {
   const now = useRetirementClock();
   const [params, setParams] = useQueryStates(parsers, {
     clearOnDefault: false,
@@ -177,6 +183,17 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     });
   };
 
+  const directoryQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries({ ...params, search })) {
+    if (key !== "page" && value !== null) directoryQuery.set(key, parsers[key as keyof typeof parsers].serialize(value as never));
+  }
+  const applyDirectoryQuery = (query: URLSearchParams) => {
+    setPendingSearch(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const values = Object.fromEntries(Object.entries(parsers).map(([key, parser]) => [key, query.has(key) ? parser.parse(query.get(key)!) : null]));
+    void setParams({ ...values, page: 1 });
+  };
+
   const activeFilterCount =
     (free ? 1 : 0) +
     (hideRetired ? 1 : 0) +
@@ -194,6 +211,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const filteredModels = React.useMemo(() => models.filter((model) => matchesModelFilters(model, criteria, favoriteIds)), [models, criteria, favoriteIds]);
   const filterCounts = React.useMemo(() => getFilterCounts(models, criteria, favoriteIds), [models, criteria, favoriteIds]);
   const sortedModels = React.useMemo(() => {
+    const costs = sort.startsWith("cost-") ? new Map(filteredModels.map((model) => [model.id, calculateWorkloadCost(model.pricing, workload).total])) : null;
     return [...filteredModels].sort((a, b) => {
       switch (sort) {
         case "name-asc":
@@ -208,6 +226,14 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
           if (second === null) return -1;
           return sort === "price-asc" ? first - second : second - first;
         }
+        case "cost-asc":
+        case "cost-desc": {
+          const first = costs?.get(a.id) ?? null;
+          const second = costs?.get(b.id) ?? null;
+          if (first === null) return second === null ? a.name.localeCompare(b.name) : 1;
+          if (second === null) return -1;
+          return (sort === "cost-asc" ? first - second : second - first) || a.name.localeCompare(b.name);
+        }
         case "context-desc":
           return (b.context_length ?? 0) - (a.context_length ?? 0);
         case "created-desc":
@@ -218,7 +244,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
           return 0;
       }
     });
-  }, [filteredModels, sort]);
+  }, [filteredModels, sort, workload]);
 
   const totalPages = Math.ceil(sortedModels.length / PAGE_SIZE);
   const page = pendingSearch !== null ? 1 : Math.max(1, Math.min(params.page ?? 1, totalPages || 1));
@@ -261,6 +287,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     setMaxOutputPrice,
     filterCounts,
     clearFilters,
+    directoryQuery,
+    applyDirectoryQuery,
     activeFilterCount,
     filteredModels,
     sortedModels,

@@ -51,9 +51,24 @@ export function CalculatorInputs(props: Props) {
           <label htmlFor={`${id}-cache`} className="text-sm text-muted-foreground">Cached input (%)</label>
           <Input id={`${id}-cache`} type="number" min={0} max={100} step={1} value={workload.cachePercent} className="h-11"
             onChange={(event) => onChange({ ...workload, cachePercent: Math.min(100, tokenCount(event.target.value)) })} />
-          <p className="text-xs text-muted-foreground">Share of input charged at the listed cache read rate. Cache creation is excluded.</p>
+          <p className="text-xs text-muted-foreground">Share of total input billed at the cache read rate.</p>
         </div>}
       </div>
+      <details className="border-t pt-3">
+        <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Additional billing</summary>
+        <div className="grid gap-4 pt-3 sm:grid-cols-3">
+          {([
+            { key: "images", label: "Images per request" },
+            { key: "searches", label: "Searches per request" },
+            { key: "cacheWriteTokens", label: "Cache-write tokens per request" },
+          ] as const).map((field) => <div key={field.key} className="space-y-2">
+            <label htmlFor={`${id}-${field.key}`} className="text-sm text-muted-foreground">{field.label}</label>
+            <Input id={`${id}-${field.key}`} type="number" min={0} max={Number.MAX_SAFE_INTEGER} step={1} value={workload[field.key]} className="h-11"
+              onChange={(event) => onChange({ ...workload, [field.key]: tokenCount(event.target.value) })} />
+          </div>)}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Images and searches add their listed unit charges. Cache-write tokens are part of total input and replace regular input billing; reads and writes must not overlap. Used units without a published rate make the estimate unavailable.</p>
+      </details>
     </div>
   );
 }

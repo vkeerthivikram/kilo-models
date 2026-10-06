@@ -12,7 +12,7 @@ test("model details expose favorite, comparison, copy and a safe direct-load ret
   assert.match(html, /Add Percent Model to comparison/);
   assert.match(html, /Copy model ID/);
   assert.match(html, /test\/100%/);
-  const back = renderToStaticMarkup(<BackToDirectory />);
+  const back = renderToStaticMarkup(<NuqsTestingAdapter><BackToDirectory /></NuqsTestingAdapter>);
   assert.match(back, /href="\/"/);
   assert.match(back, /Back to Directory/);
 });

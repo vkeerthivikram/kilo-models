@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { WORKLOAD_QUERY_KEYS } from "./calculator-workload";
 
 const RETURN_KEY = "kilo-models-directory-return";
 const RESTORE_KEY = "kilo-models-directory-restore";
@@ -89,6 +90,10 @@ export function restoreDirectoryPosition(): () => void {
   // Comparison links may add a compare query while retaining the directory filters.
   expected.searchParams.delete("compare");
   actual.searchParams.delete("compare");
+  for (const key of WORKLOAD_QUERY_KEYS) {
+    expected.searchParams.delete(key);
+    actual.searchParams.delete(key);
+  }
   expected.searchParams.sort();
   actual.searchParams.sort();
   if (expected.search !== actual.search) return () => {};

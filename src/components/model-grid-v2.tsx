@@ -10,17 +10,20 @@ import { Cpu } from "lucide-react";
 import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
 import { rememberDirectoryPosition } from "@/lib/directory-navigation";
 import { RetirementBadge } from "./retirement-badge";
+import { ModelCostEstimate } from "./model-cost-estimate";
+import { buildWorkloadHref, type CalculatorWorkload } from "@/lib/calculator-workload";
 
 interface ModelGridProps {
   models: Model[];
   viewMode: ViewMode;
+  workload?: CalculatorWorkload;
   isComparedModels?: Model[];
   onToggleCompare?: (model: Model) => void;
   isFavoriteModel?: (id: string) => boolean;
   onToggleFavorite?: (id: string) => void;
 }
 
-export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite }: ModelGridProps) {
+export function ModelGrid({ models, viewMode, workload, isComparedModels, onToggleCompare, isFavoriteModel, onToggleFavorite }: ModelGridProps) {
   if (models.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -57,7 +60,7 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
               return (
                 <tr key={model.id} className={cn("border-b last:border-b-0 hover:bg-muted/30", isCompared && "bg-muted/50")}>
                   <td className="px-3 py-3 md:px-4">
-                    <Link href={`/models/${encodeURIComponent(model.id)}`} onClick={rememberDirectoryPosition} className="inline-flex min-h-11 items-center break-words rounded-md font-medium hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                    <Link href={workload ? buildWorkloadHref(`/models/${encodeURIComponent(model.id)}`, workload) : `/models/${encodeURIComponent(model.id)}`} onClick={rememberDirectoryPosition} className="inline-flex min-h-11 items-center break-words rounded-md font-medium hover:underline hover:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                       {model.name}
                     </Link>
                     {model.isFree && (
@@ -66,6 +69,7 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
                     <p className="mt-1 truncate text-[11px] font-mono text-muted-foreground" title={model.id}>{model.id}</p>
                     {model.expiration_date && <div className="mt-2"><RetirementBadge expirationDate={model.expiration_date} /></div>}
                     <p className="mt-1 text-xs text-muted-foreground md:hidden">{formatContext(model.context_length)} context tokens</p>
+                    {workload && <div className="mt-2"><ModelCostEstimate model={model} workload={workload} /></div>}
                     <div className="mt-1">
                       <ModelActions model={model} isCompared={isCompared}
                         compareDisabled={(isComparedModels?.length ?? 0) >= COMPARE_LIMIT && !isCompared}
@@ -100,6 +104,7 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
         <ModelCard
           key={model.id}
           model={model}
+          workload={workload}
           isCompared={isComparedModels?.some((m) => m.id === model.id)}
           compareDisabled={(isComparedModels?.length ?? 0) >= COMPARE_LIMIT && !isComparedModels?.some((m) => m.id === model.id)}
           onToggleCompare={onToggleCompare}

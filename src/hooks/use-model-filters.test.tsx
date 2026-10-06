@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { Model } from "../lib/types";
 import { useModelFilters } from "./use-model-filters";
+import { DEFAULT_WORKLOAD, type CalculatorWorkload } from "../lib/calculator-workload";
 
 const models: Model[] = Array.from({ length: 30 }, (_, index) => ({
   id: `test/model-${index}`,
@@ -20,10 +21,10 @@ const models: Model[] = Array.from({ length: 30 }, (_, index) => ({
   isFree: true,
 }));
 
-function inspect(searchParams: string, favorites: string[] = [], catalog: Model[] = models) {
+function inspect(searchParams: string, favorites: string[] = [], catalog: Model[] = models, workload: CalculatorWorkload = DEFAULT_WORKLOAD) {
   let result: ReturnType<typeof useModelFilters> | undefined;
   function Probe() {
-    result = useModelFilters(catalog, favorites);
+    result = useModelFilters(catalog, favorites, workload);
     return null;
   }
   renderToStaticMarkup(<NuqsTestingAdapter searchParams={searchParams}><Probe /></NuqsTestingAdapter>);
@@ -36,6 +37,18 @@ test("favorites filter runs before pagination", () => {
   assert.equal(result.sortedModels.length, 1);
   assert.equal(result.page, 1);
   assert.equal(result.paginatedModels[0]?.id, "test/model-29");
+});
+
+test("workload ranking includes output, cache and extra charges, with unknown estimates last", () => {
+  const catalog = [
+    { ...models[0], pricing: { prompt: "0.000001", completion: "0.000010", image: "0.02", web_search: "0.03", request: "0.01" } },
+    { ...models[1], pricing: { prompt: "0.000002", completion: "0.000001", input_cache_read: "0", image: "0.01", web_search: "0.01" } },
+    { ...models[2], pricing: { prompt: "0", completion: "0" } },
+  ];
+  const workload = { ...DEFAULT_WORKLOAD, images: 1, searches: 1 };
+  assert.deepEqual(inspect("?sort=cost-asc", [], catalog, workload).sortedModels.map((m) => m.id), [models[1].id, models[0].id, models[2].id]);
+  assert.deepEqual(inspect("?sort=cost-desc", [], catalog, workload).sortedModels.map((m) => m.id), [models[0].id, models[1].id, models[2].id]);
+  assert.deepEqual(inspect("?sort=cost-asc", [], catalog, { ...workload, cachePercent: 50 }).sortedModels.map((m) => m.id), [models[1].id, models[0].id, models[2].id]);
 });
 
 test("unknown prices sort after known prices in either direction", () => {

@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import ModelPage, { generateMetadata } from "../app/models/[id]/page";
 import { GET } from "../app/api/models/route";
 import { installCatalogTestCache } from "../test/catalog-cache";
@@ -15,7 +16,7 @@ test("detail lookup preserves decoded percent IDs and catalog failures are not 4
     assert.equal((await generateMetadata(props)).title, "Percent Model — Kilo Models");
     assert.equal((await generateMetadata({ params: Promise.resolve({ id: encodeURIComponent(model.id) }) })).title, "Percent Model — Kilo Models");
     assert.deepEqual(await generateMetadata({ params: Promise.resolve({ id: "bad%" }) }), {});
-    const html = renderToStaticMarkup(await ModelPage(props));
+    const html = renderToStaticMarkup(<NuqsTestingAdapter>{await ModelPage(props)}</NuqsTestingAdapter>);
     assert.match(html, /Cost Calculator/);
     assert.match(html, /<strong>Warning<\/strong>/);
     assert.doesNotMatch(html, /<\/div>0</, "an unknown creation date must not print a stray zero");

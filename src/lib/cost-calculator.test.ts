@@ -2,6 +2,25 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { calculateCost, tokenCount, formatCost } from "./cost-calculator";
 
+test("expanded billing replaces cache-write input and adds image and search charges", () => {
+  const result = calculateCost({ prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" }, 100, 10, 2, 50, { cacheWriteTokens: 20, images: 2, searches: 3 });
+  // 30 regular + 50 cache-read + 20 cache-write input tokens.
+  assert.ok(Math.abs(result.inputCost! - 0.27) < 1e-12);
+  assert.equal(result.cacheWriteCost, 0.1);
+  assert.equal(result.imageCost, 0.06);
+  assert.equal(result.searchCost, 0.06);
+  assert.ok(Math.abs(result.total! - 0.96) < 1e-12);
+});
+
+test("extra billing requires a rate only for units actually used and rejects overlapping cache input", () => {
+  const prices = { prompt: "0", completion: "0" };
+  assert.equal(calculateCost(prices, 100, 0, 1, 0, { images: 0, searches: 0, cacheWriteTokens: 0 }).total, 0);
+  for (const extras of [{ images: 1 }, { searches: 1 }, { cacheWriteTokens: 1 }, { images: -1 }, { searches: 0.5 }]) {
+    assert.equal(calculateCost(prices, 100, 0, 1, 0, extras).total, null);
+  }
+  assert.equal(calculateCost({ ...prices, input_cache_read: "0", input_cache_write: "0" }, 100, 0, 1, 50, { cacheWriteTokens: 51 }).total, null);
+});
+
 test("charges tokens directly and includes request fees once per request", () => {
   const result = calculateCost({ prompt: "0.000003", completion: "0.000015", request: "0.01" }, 100000, 50000, 1000);
   assert.equal(result.inputCost, 0.3);

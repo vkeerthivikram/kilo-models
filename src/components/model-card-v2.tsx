@@ -9,6 +9,8 @@ import { ModelActions, type ModelActionsProps } from "./model-actions";
 import { formatPrice, formatContext } from "@/lib/format-price";
 import { rememberDirectoryPosition } from "@/lib/directory-navigation";
 import { RetirementBadge } from "./retirement-badge";
+import { ModelCostEstimate } from "./model-cost-estimate";
+import { buildWorkloadHref, type CalculatorWorkload } from "@/lib/calculator-workload";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -18,7 +20,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-type ModelCardProps = ModelActionsProps;
+type ModelCardProps = ModelActionsProps & { workload?: CalculatorWorkload };
 
 function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
   if (mods.length === 0) return null;
@@ -39,7 +41,9 @@ function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
   );
 }
 
-export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
+export function ModelCard({ model, workload, isCompared, compareDisabled, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
+  const detailPath = `/models/${encodeURIComponent(model.id)}`;
+  const detailHref = workload ? buildWorkloadHref(detailPath, workload) : detailPath;
   const inputMods = model.architecture?.input_modalities ?? [];
   const outputMods = model.architecture?.output_modalities ?? [];
   const hasReasoning = (model.supported_parameters ?? []).some(
@@ -58,7 +62,7 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
         <div className="min-w-0">
           <h3 className="text-base font-semibold leading-snug break-words">
             <Link
-              href={`/models/${encodeURIComponent(model.id)}`}
+              href={detailHref}
               onClick={rememberDirectoryPosition}
               className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring"
             >
@@ -121,11 +125,12 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
           )}
         </div>
 
+        {workload && <ModelCostEstimate model={model} workload={workload} />}
         <div className="relative z-10 mt-auto flex items-center gap-2 border-t pt-3">
           <ModelActions model={model} isCompared={isCompared} compareDisabled={compareDisabled}
             onToggleCompare={onToggleCompare} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
           <Link
-            href={`/models/${encodeURIComponent(model.id)}`}
+            href={detailHref}
             onClick={rememberDirectoryPosition}
             title={`View ${model.name} details`}
             className="relative z-10 ml-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground"

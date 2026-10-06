@@ -83,7 +83,9 @@ export default async function ModelPage({ params }: Props) {
 
         <ModelSafetyCard model={model} />
 
-        <PricingCalculator model={model} />
+        <React.Suspense fallback={<p role="status" className="text-sm text-muted-foreground">Loading cost calculator...</p>}>
+          <PricingCalculator model={model} />
+        </React.Suspense>
 
         <SimilarModels models={similar} />
       </div>

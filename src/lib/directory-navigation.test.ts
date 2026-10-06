@@ -35,7 +35,7 @@ test("returning from model details restores the actual directory scroll after re
     assert.equal(getDirectoryReturnHref(), "/?search=claude&page=3");
     prepareDirectoryReturn();
     browser.location.pathname = "/";
-    browser.location.href = "https://models.test/?page=3&search=claude&compare=test%2Fa%2Ctest%2Fb";
+    browser.location.href = "https://models.test/?page=3&search=claude&compare=test%2Fa%2Ctest%2Fb&inputTokens=50000&images=2";
     restoreDirectoryPosition();
     assert.deepEqual(scrolls, []);
     frames.shift()!(0);

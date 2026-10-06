@@ -26,6 +26,9 @@ import { useComparison } from "@/hooks/use-comparison";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useModels } from "@/hooks/use-models";
 import { CatalogStatus } from "@/components/catalog-status";
+import { CalculatorInputs } from "@/components/calculator-inputs";
+import { SavedSetups } from "@/components/saved-setups";
+import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
 
 function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -45,14 +48,15 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     }
   }, [loading, hasSharedComparison, comparedModels.length]);
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  const { workload, setWorkload } = useCalculatorWorkload();
   const {
     search, setSearch, sort, setSort, free, setFree, hideRetired, setHideRetired,
     inputModalities, setInputModalities, outputModalities, setOutputModalities,
     providers, setProviders, reasoning, setReasoning, tools, setTools,
     minContext, setMinContext, maxInputPrice, setMaxInputPrice, maxOutputPrice, setMaxOutputPrice, filterCounts,
     page, setPage, fav, setFav, view, setView, clearFilters,
-    activeFilterCount, sortedModels, paginatedModels, totalPages,
-  } = useModelFilters(models, favorites);
+    activeFilterCount, sortedModels, paginatedModels, totalPages, directoryQuery, applyDirectoryQuery,
+  } = useModelFilters(models, favorites, workload);
   const availableProviders = [...new Set(models.map((model) => model.id.split("/")[0]))].sort();
   const matchingProviders = availableProviders.filter((provider) => provider.toLowerCase().includes(providerSearch.trim().toLowerCase()));
   const hasFilters = activeFilterCount > 0 || search.length > 0;
@@ -219,6 +223,18 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             </div>
           </div>
 
+          <details className="border-y py-1">
+            <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+              Estimate workload <span className="ml-2 text-xs font-normal text-muted-foreground">& saved setups</span>
+              <span className="mt-1 block text-xs font-normal tabular-nums text-muted-foreground">{workload.inputTokens.toLocaleString("en-US")} input · {workload.outputTokens.toLocaleString("en-US")} output · {workload.requests.toLocaleString("en-US")} requests{workload.period === "month" ? " / month" : " / batch"}</span>
+            </summary>
+            <div className="space-y-6 py-4">
+              <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">Choose usage for every model estimate, then sort by estimated cost. Published rates may vary by provider or tier.</p>
+              <CalculatorInputs workload={workload} onChange={setWorkload} showCache />
+              <SavedSetups workload={workload} onWorkloadChange={setWorkload} directoryQuery={directoryQuery} onApplyDirectoryQuery={applyDirectoryQuery} />
+            </div>
+          </details>
+
           {loading ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading model cards">
               {Array.from({ length: 6 }, (_, index) => (
@@ -239,7 +255,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             </div>
           ) : (
             <>
-              <ModelGrid models={paginatedModels} viewMode={view}
+              <ModelGrid models={paginatedModels} viewMode={view} workload={workload}
                 isComparedModels={comparedModels} onToggleCompare={handleToggleCompare} isFavoriteModel={isFavorite} onToggleFavorite={toggleFavorite} />
               <Paginator page={page} totalPages={totalPages} totalCount={sortedModels.length} pageSize={PAGE_SIZE}
                 onPageChange={(nextPage) => { setPage(nextPage); document.getElementById("directory")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }} />

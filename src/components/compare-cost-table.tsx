@@ -2,10 +2,11 @@
 
 import type { Model } from "@/lib/types";
 import { CalculatorInputs } from "./calculator-inputs";
-import { calculateCost, formatCost } from "@/lib/cost-calculator";
+import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
 import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
-import { getWorkloadWarnings, type CalculatorWorkload } from "@/lib/calculator-workload";
+import { getBillingWarnings, getWorkloadWarnings, type CalculatorWorkload } from "@/lib/calculator-workload";
 import { parsePrice } from "@/lib/format-price";
+import { SavedSetups } from "./saved-setups";
 
 export function CompareCostTable({ models, workload: controlledWorkload, onWorkloadChange }: {
   models: Model[]; workload?: CalculatorWorkload; onWorkloadChange?: (workload: CalculatorWorkload) => void;
@@ -13,16 +14,16 @@ export function CompareCostTable({ models, workload: controlledWorkload, onWorkl
   const local = useCalculatorWorkload();
   const workload = controlledWorkload ?? local.workload;
   const setWorkload = onWorkloadChange ?? local.setWorkload;
-  const { inputTokens, outputTokens, requests, period, cachePercent } = workload;
-  const rows = models.map((model) => ({ model, warnings: getWorkloadWarnings(model, workload), ...calculateCost(model.pricing, inputTokens, outputTokens, requests, cachePercent) }))
+  const { requests, period } = workload;
+  const rows = models.map((model) => ({ model, warnings: getWorkloadWarnings(model, workload), billingWarnings: getBillingWarnings(model.pricing, workload), ...calculateWorkloadCost(model.pricing, workload) }))
     .sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity));
   const cheapest = rows.filter((row) => row.total !== null && row.warnings.length === 0).reduce<number | null>((best, row) => best === null ? row.total : Math.min(best, row.total!), null);
 
   return (
     <div className="space-y-4">
       <CalculatorInputs workload={workload} onChange={setWorkload} showCache={models.some((model) => parsePrice(model.pricing?.input_cache_read) !== null)} />
-      <p className="text-xs text-muted-foreground">Input and output costs are per request. Totals include selected cache reads and any request fee; cache creation, images, search, extra reasoning, and tiered pricing are excluded. Highlighted totals are the lowest estimate among models that fit the listed limits.</p>
-      {cachePercent > 0 && <p role="status" className="text-xs text-muted-foreground">Models without a listed cache read rate show Unavailable when cached input is used.</p>}
+      <SavedSetups workload={workload} onWorkloadChange={setWorkload} />
+      <p className="text-xs text-muted-foreground">Input and output costs are per request. Totals include selected cache, image, search, and request charges. Used units without a listed rate show Unavailable. Extra reasoning and tiered pricing are excluded. Highlighted totals are the lowest estimate among models that fit the listed limits.</p>
       <div role="region" aria-label="Cost estimates" tabIndex={0} className="rounded-lg border overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">
         <table className="w-full min-w-[600px] text-sm">
           <caption className="sr-only">Estimated costs, lowest available total first</caption>
@@ -35,10 +36,11 @@ export function CompareCostTable({ models, workload: controlledWorkload, onWorkl
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ model, warnings, inputCost, outputCost, total }) => (
+            {rows.map(({ model, warnings, billingWarnings, inputCost, outputCost, total }) => (
               <tr key={model.id} className={total !== null && total === cheapest && warnings.length === 0 ? "bg-primary/5" : ""}>
                 <th scope="row" className="text-left p-3 font-medium">{model.name}
                   {warnings.length > 0 && <div className="mt-2 space-y-1 text-xs font-normal text-muted-foreground">{warnings.map((warning) => <p key={warning}>{warning}</p>)}<p>Hypothetical cost; workload does not fit.</p></div>}
+                  {billingWarnings.length > 0 && <div className="mt-2 space-y-1 text-xs font-normal text-muted-foreground">{billingWarnings.map((warning) => <p key={warning}>{warning}</p>)}</div>}
                 </th>
                 <td className="text-right p-3 tabular-nums">{formatCost(inputCost)}</td>
                 <td className="text-right p-3 tabular-nums">{formatCost(outputCost)}</td>

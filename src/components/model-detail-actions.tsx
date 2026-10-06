@@ -10,6 +10,8 @@ import { COMPARE_LIMIT } from "@/lib/format-price";
 import { getDirectoryReturnHref, prepareDirectoryReturn } from "@/lib/directory-navigation";
 import type { ModelDetailActionProps } from "@/lib/model-detail-summary";
 import { cn } from "@/lib/utils";
+import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
+import { buildComparisonUrl } from "@/lib/comparison-share";
 
 const subscribe = () => () => {};
 const clientReady = () => true;
@@ -21,13 +23,13 @@ export function ModelDetailActions({ model, catalog }: ModelDetailActionProps) {
   const directoryHref = React.useSyncExternalStore(subscribe, getDirectoryReturnHref, serverHref);
   const { isFavorite, toggleFavorite } = useFavorites();
   const { comparedModels, toggleCompare } = useComparison(catalog);
+  const { workload } = useCalculatorWorkload();
   const favorite = ready && isFavorite(model.id);
   const compared = ready && comparedModels.some((item) => item.id === model.id);
   const limitReached = !compared && comparedModels.length >= COMPARE_LIMIT;
   const [copying, setCopying] = React.useState(false);
   const [message, setMessage] = React.useState("");
-  const comparisonUrl = new URL(directoryHref, "https://directory.local");
-  comparisonUrl.searchParams.set("compare", comparedModels.map((item) => item.id).join(","));
+  const comparisonUrl = new URL(buildComparisonUrl(new URL(directoryHref, "https://directory.local").href, comparedModels.map((item) => item.id), workload));
   const comparisonHref = `${comparisonUrl.pathname}${comparisonUrl.search}${comparisonUrl.hash}`;
 
   async function copyId() {

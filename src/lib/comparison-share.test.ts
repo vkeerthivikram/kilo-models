@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import type { Model } from "./types";
 import { buildComparisonUrl, comparisonCsv, csvCell, parseSharedComparison, resolveComparisonSelection } from "./comparison-share";
+import { DEFAULT_WORKLOAD } from "./calculator-workload";
 
 const model: Model = {
   id: "provider/model:free", name: "Example, model", description: 'Two lines\nwith "quotes"', created: 0,
@@ -10,7 +11,7 @@ const model: Model = {
   pricing: { prompt: "0.000003", completion: "0.000015", request: "0.01" }, context_length: 1000,
   supported_parameters: ["tools"], opencode: {}, preferredIndex: 0, isFree: false,
 };
-const workload = { inputTokens: 100000, outputTokens: 50000, requests: 1000, period: "month" as const, cachePercent: 0 };
+const workload = { ...DEFAULT_WORKLOAD, inputTokens: 100000, outputTokens: 50000, requests: 1000, period: "month" as const, cachePercent: 0 };
 
 test("shared selection is distinct from absent selection, validates, deduplicates and caps IDs", () => {
   assert.equal(parseSharedComparison("?search=x"), null);
@@ -70,10 +71,21 @@ test("missing prices are exported as unavailable, and malicious model strings st
 
 test("cached workload exports its actual estimate and marks hypothetical requests above model limits", () => {
   const csv = comparisonCsv([{ ...model, pricing: { prompt: "0.000004", completion: "0.000008", input_cache_read: "0.000001", request: "0.01" } }],
-    { inputTokens: 2000, outputTokens: 500, requests: 1000, period: "batch", cachePercent: 50 });
+    { ...DEFAULT_WORKLOAD, inputTokens: 2000, outputTokens: 500, requests: 1000, period: "batch", cachePercent: 50 });
   assert.equal(csv.includes('"19"'), true);
   assert.equal(csv.includes('"Feasibility"'), true);
   assert.equal(csv.includes('"Hypothetical estimate"'), true);
   assert.equal(csv.includes("completion limit"), true);
   assert.equal(csv.includes("context limit"), true);
+});
+
+test("CSV and shared links include extra units and the complete billing estimate", () => {
+  const extraWorkload = { ...DEFAULT_WORKLOAD, inputTokens: 100, outputTokens: 10, requests: 2, cachePercent: 50, cacheWriteTokens: 20, images: 2, searches: 3 };
+  const priced = { ...model, pricing: { prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" } };
+  const csv = comparisonCsv([priced], extraWorkload);
+  assert.match(csv, /"0\.96"/);
+  assert.match(csv, /"Images\/request"/);
+  const url = new URL(buildComparisonUrl("https://example.test/", [model.id], extraWorkload));
+  assert.equal(url.searchParams.get("cacheWriteTokens"), "20");
+  assert.equal(url.searchParams.get("images"), "2");
 });
