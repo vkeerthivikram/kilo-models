@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseModelsResponse } from "@/lib/models-response";
 
 const MODELS_URL = "https://api.kilo.ai/api/gateway/models";
 
@@ -19,11 +20,11 @@ export async function GET() {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
+    return NextResponse.json({ data: parseModelsResponse(data) });
+  } catch {
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { error: "Unable to load model catalog" },
+      { status: 502 }
     );
   }
 }

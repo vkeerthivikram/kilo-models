@@ -3,6 +3,8 @@
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { formatPrice } from "@/lib/format-price";
+import { formatCost } from "@/lib/cost-calculator";
+import { parsePrice } from "@/lib/format-price";
 
 interface Props {
   model: Model;
@@ -37,13 +39,13 @@ export function ModelPricingCard({ model }: Props) {
         {p?.image && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Image</span>
-            <span className="font-medium">{formatPrice(p.image)}</span>
+            <span className="font-medium">{formatCost(parsePrice(p.image))}/image</span>
           </div>
         )}
         {p?.web_search && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Web Search</span>
-            <span className="font-medium">{formatPrice(p.web_search)}</span>
+            <span className="font-medium">{formatCost(parsePrice(p.web_search))}/search</span>
           </div>
         )}
         {p?.internal_reasoning && (
@@ -55,7 +57,7 @@ export function ModelPricingCard({ model }: Props) {
         {p?.request && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Per Request</span>
-            <span className="font-medium">{formatPrice(p.request)}</span>
+            <span className="font-medium">{formatCost(parsePrice(p.request))}/request</span>
           </div>
         )}
         {p?.discount != null && p.discount > 0 && (

@@ -88,7 +88,7 @@ export interface Model {
   expiration_date?: string | null;
   canonical_slug?: string;
   hugging_face_id?: string;
-  default_parameters?: string[];
+  default_parameters?: string[] | Record<string, unknown>;
   terminalBench?: TerminalBench;
   enkrypt?: EnkryptSafety;
 }

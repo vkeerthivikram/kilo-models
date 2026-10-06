@@ -31,6 +31,7 @@ import {
   Link2,
 } from "lucide-react";
 import { SafetyScoreBar, getSafetyRows } from "@/components/safety-score";
+import { defaultParameterLabels } from "@/lib/default-parameters";
 
 interface ModelDetailSheetProps {
   model: Model | null;
@@ -331,7 +332,7 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
           )}
 
           {/* Default Parameters */}
-          {model.default_parameters && model.default_parameters.length > 0 && (
+          {defaultParameterLabels(model.default_parameters).length > 0 && (
             <div className="space-y-1">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Settings2 className="h-4 w-4" />
@@ -339,7 +340,7 @@ export function ModelDetailSheet({ model, open, onOpenChange, isFavorite, onTogg
               </h3>
               <div className="rounded-xl border bg-card p-3">
                 <div className="flex flex-wrap gap-1.5">
-                  {model.default_parameters.map((p) => (
+                  {defaultParameterLabels(model.default_parameters).map((p) => (
                     <Badge key={p} variant="secondary" className="text-xs font-mono">
                       {p}
                     </Badge>

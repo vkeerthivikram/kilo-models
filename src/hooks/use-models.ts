@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Model } from "@/lib/types";
+import { parseModelsResponse } from "@/lib/models-response";
 
 interface UseModelsResult {
   models: Model[];
@@ -15,19 +16,21 @@ export function useModels(): UseModelsResult {
   const [error, setError] = React.useState<Error | null>(null);
 
   React.useEffect(() => {
+    const controller = new AbortController();
     async function fetchModels() {
       try {
-        const res = await fetch("/api/models");
+        const res = await fetch("/api/models", { signal: controller.signal });
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-        setModels(data.data ?? []);
+        if (!controller.signal.aborted) setModels(parseModelsResponse(data));
       } catch (err) {
-        setError(err instanceof Error ? err : new Error("Unknown error"));
+        if (!controller.signal.aborted) setError(err instanceof Error ? err : new Error("Unknown error"));
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
     fetchModels();
+    return () => controller.abort();
   }, []);
 
   return { models, loading, error };

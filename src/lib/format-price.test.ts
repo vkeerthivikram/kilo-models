@@ -26,3 +26,10 @@ test("formats context lengths", () => {
   assert.equal(formatContext(0), "—");
   assert.equal(formatContext(undefined), "—");
 });
+
+test("rejects unknown sentinel, non-finite, empty and malformed prices", () => {
+  for (const value of ["-1", "", " ", "0.1oops", "Infinity", Infinity, -1]) {
+    assert.equal(formatPrice(value), "—");
+  }
+  assert.equal(formatContext(Infinity), "—");
+});

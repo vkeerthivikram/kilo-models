@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Model } from "@/lib/types";
+import { parsePrice } from "@/lib/format-price";
 import {
   parseAsArrayOf,
   parseAsString,
@@ -195,9 +196,13 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
         case "name-desc":
           return b.name.localeCompare(a.name);
         case "price-asc":
-          return (parseFloat(a.pricing?.prompt ?? "0") || 0) - (parseFloat(b.pricing?.prompt ?? "0") || 0);
-        case "price-desc":
-          return (parseFloat(b.pricing?.prompt ?? "0") || 0) - (parseFloat(a.pricing?.prompt ?? "0") || 0);
+        case "price-desc": {
+          const first = parsePrice(a.pricing?.prompt);
+          const second = parsePrice(b.pricing?.prompt);
+          if (first === null) return second === null ? 0 : 1;
+          if (second === null) return -1;
+          return sort === "price-asc" ? first - second : second - first;
+        }
         case "context-desc":
           return (b.context_length ?? 0) - (a.context_length ?? 0);
         case "created-desc":

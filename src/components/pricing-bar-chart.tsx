@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Model } from "@/lib/types";
 import { useTheme } from "next-themes";
+import { getPricingData } from "@/lib/chart-data";
 
 interface Props {
   models: Model[];
@@ -21,22 +22,20 @@ export function PricingBarChart({ models }: Props) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const data = models.map((m) => ({
-    name: m.name.split("/").pop() ?? m.name,
-    prompt: parseFloat(m.pricing?.prompt ?? "0") || 0,
-    completion: parseFloat(m.pricing?.completion ?? "0") || 0,
-  }));
+  const data = getPricingData(models);
 
   const promptColor = isDark ? "#a78bfa" : "#7c3aed";
   const completionColor = isDark ? "#f472b6" : "#db2777";
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <div>
+    <p className="text-xs text-muted-foreground mb-3">USD per 1M tokens. Unavailable prices are omitted.</p>
+    <ResponsiveContainer width="100%" height={Math.max(300, models.length * 48)}>
       <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
         <XAxis type="number" tickFormatter={(v) => `$${v}`} />
         <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
         <Tooltip
-          formatter={(value) => [`$${Number(value).toFixed(6)}`, ""]}
+          formatter={(value, name) => [`$${Number(value).toFixed(2)}/M`, name]}
           contentStyle={{
             backgroundColor: isDark ? "#1e1e2e" : "#fff",
             border: "none",
@@ -48,5 +47,6 @@ export function PricingBarChart({ models }: Props) {
         <Bar dataKey="completion" name="Completion" fill={completionColor} radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }

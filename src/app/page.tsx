@@ -20,13 +20,13 @@ import { CompareModal } from "@/components/compare-modal";
 import { SortDropdown } from "@/components/sort-dropdown";
 import { Search, LayoutGrid, List, ChevronDown, X, Heart, SlidersHorizontal, Check, ArrowUpRight, CircleAlert } from "lucide-react";
 import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE } from "@/hooks/use-model-filters";
-import { COMPARE_LIMIT } from "@/lib/format-price";
+import { useComparison } from "@/hooks/use-comparison";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useModels } from "@/hooks/use-models";
 
 function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [comparedModels, setComparedModels] = React.useState<Model[]>([]);
+  const { comparedModels, toggleCompare, clearComparison } = useComparison(models);
   const [compareModalOpen, setCompareModalOpen] = React.useState(false);
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const {
@@ -49,9 +49,8 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   ];
 
   const handleToggleCompare = (model: Model) => {
-    setComparedModels((previous) => previous.some((item) => item.id === model.id)
-      ? previous.filter((item) => item.id !== model.id)
-      : previous.length < COMPARE_LIMIT ? [...previous, model] : previous);
+    if (comparedModels.length === 1 && comparedModels[0].id === model.id) setCompareModalOpen(false);
+    toggleCompare(model);
   };
 
   return (
@@ -64,7 +63,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
         <button type="button" onClick={() => setFav(true)} aria-pressed={fav}
           className={cn("flex min-h-12 items-center gap-2 border-b-2 px-1 text-sm font-medium transition-colors", fav ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
           <Heart className="size-4" aria-hidden="true" /> Favorites
-          <span className="text-xs tabular-nums text-muted-foreground">{favorites.length}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{loading ? "..." : favorites.length}</span>
         </button>
         <span className="ml-auto hidden text-xs text-muted-foreground sm:block">Select models to compare side by side</span>
       </div>
@@ -202,7 +201,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
         </section>
       </div>
 
-      <CompareTray models={comparedModels} onRemove={handleToggleCompare} onClear={() => setComparedModels([])} onOpen={() => setCompareModalOpen(true)} />
+      <CompareTray models={comparedModels} onRemove={handleToggleCompare} onClear={() => { clearComparison(); setCompareModalOpen(false); }} onOpen={() => setCompareModalOpen(true)} />
       <CompareModal models={comparedModels} open={compareModalOpen} onOpenChange={setCompareModalOpen} onRemove={handleToggleCompare} />
     </>
   );

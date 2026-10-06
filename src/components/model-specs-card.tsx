@@ -4,18 +4,15 @@ import * as React from "react";
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-function formatContext(ctx: number): string {
-  if (ctx >= 1000000) return `${(ctx / 1000000).toFixed(0)}M`;
-  if (ctx >= 1000) return `${(ctx / 1000).toFixed(0)}K`;
-  return ctx.toString();
-}
+import { formatContext } from "@/lib/format-price";
+import { defaultParameterLabels } from "@/lib/default-parameters";
 
 interface Props {
   model: Model;
 }
 
 export function ModelSpecsCard({ model }: Props) {
+  const defaults = defaultParameterLabels(model.default_parameters);
   return (
     <Card className="p-6 space-y-4">
       <h2 className="font-heading text-lg">Specifications</h2>
@@ -92,11 +89,11 @@ export function ModelSpecsCard({ model }: Props) {
             ))}
           </div>
         </div>
-        {model.default_parameters && model.default_parameters.length > 0 && (
+        {defaults.length > 0 && (
           <div>
             <span className="text-muted-foreground text-sm">Default Parameters</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {model.default_parameters.map((p) => (
+              {defaults.map((p) => (
                 <Badge key={p} variant="outline" className="text-xs font-mono">
                   {p}
                 </Badge>

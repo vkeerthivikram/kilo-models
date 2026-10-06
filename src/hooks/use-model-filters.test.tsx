@@ -20,10 +20,10 @@ const models: Model[] = Array.from({ length: 30 }, (_, index) => ({
   isFree: true,
 }));
 
-function inspect(searchParams: string, favorites: string[] = []) {
+function inspect(searchParams: string, favorites: string[] = [], catalog: Model[] = models) {
   let result: ReturnType<typeof useModelFilters> | undefined;
   function Probe() {
-    result = useModelFilters(models, favorites);
+    result = useModelFilters(catalog, favorites);
     return null;
   }
   renderToStaticMarkup(<NuqsTestingAdapter searchParams={searchParams}><Probe /></NuqsTestingAdapter>);
@@ -36,6 +36,12 @@ test("favorites filter runs before pagination", () => {
   assert.equal(result.sortedModels.length, 1);
   assert.equal(result.page, 1);
   assert.equal(result.paginatedModels[0]?.id, "test/model-29");
+});
+
+test("unknown prices sort after known prices in either direction", () => {
+  const catalog = ["-1", "0", "0.000003"].map((prompt, index) => ({ ...models[index], pricing: { prompt, completion: "0" } }));
+  assert.deepEqual(inspect("?sort=price-asc", [], catalog).sortedModels.map((m) => m.pricing.prompt), ["0", "0.000003", "-1"]);
+  assert.deepEqual(inspect("?sort=price-desc", [], catalog).sortedModels.map((m) => m.pricing.prompt), ["0.000003", "0", "-1"]);
 });
 
 test("empty favorites has no results", () => {

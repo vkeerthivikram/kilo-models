@@ -2,38 +2,22 @@ import * as React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Model } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { ModelSpecsCard } from "@/components/model-specs-card";
 import { ModelPricingCard } from "@/components/model-pricing-card";
 import { ModelSafetyCard } from "@/components/model-safety-card";
 import { SimilarModels } from "@/components/similar-models";
+import { PricingCalculator } from "@/components/pricing-calculator";
+import { findModel, getModels } from "@/lib/get-models";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  try {
-    const res = await fetch("https://api.kilo.ai/api/gateway/models", {
-      next: { revalidate: 3600 },
-    });
-    const data = await res.json();
-    return (data.data ?? []).map((m: Model) => ({ id: encodeURIComponent(m.id) }));
-  } catch {
-    return [];
-  }
-}
-
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
-  const decoded = decodeURIComponent(id);
   try {
-    const res = await fetch("https://api.kilo.ai/api/gateway/models", {
-      next: { revalidate: 3600 },
-    });
-    const data = await res.json();
-    const model = (data.data ?? []).find((m: Model) => m.id === decoded);
+    const model = findModel(await getModels(), id);
     if (!model) return {};
     return {
       title: `${model.name} — Kilo Models`,
@@ -51,19 +35,9 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ModelPage({ params }: Props) {
   const { id } = await params;
-  const decoded = decodeURIComponent(id);
 
-  let model: Model | null = null;
-  let allModels: Model[] = [];
-
-  try {
-    const res = await fetch("https://api.kilo.ai/api/gateway/models", {
-      next: { revalidate: 3600 },
-    });
-    const data = await res.json();
-    allModels = data.data ?? [];
-    model = allModels.find((m: Model) => m.id === decoded) ?? null;
-  } catch {}
+  const allModels = await getModels();
+  const model = findModel(allModels, id);
 
   if (!model) notFound();
 
@@ -116,7 +90,7 @@ export default async function ModelPage({ params }: Props) {
 
         <ModelSafetyCard model={model} />
 
-        {/* PricingCalculator will be added in Task 5 */}
+        <PricingCalculator model={model} />
 
         <SimilarModels models={similar} />
       </div>
