@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Model, ViewMode } from "@/lib/types";
 import { ModelCard } from "./model-card-v2";
+import { ModelActions } from "./model-actions";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Cpu } from "lucide-react";
 import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
@@ -34,12 +36,13 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
   if (viewMode === "list") {
     return (
       <div className="overflow-x-auto rounded-xl border bg-card">
-        <table className="w-full min-w-[560px] border-collapse text-sm">
+        <table className="w-full table-fixed border-collapse text-sm md:table-auto">
+          <caption className="sr-only">Models with input and output pricing per million tokens and context length in tokens</caption>
           <thead>
             <tr className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-              <th scope="col" className="px-4 py-3 font-semibold">Model</th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">Input</th>
-              <th scope="col" className="px-4 py-3 text-right font-semibold">Output</th>
+              <th scope="col" className="w-[56%] px-3 py-3 font-semibold md:w-auto md:px-4">Model</th>
+              <th scope="col" className="px-2 py-3 text-right font-semibold md:px-4">Input</th>
+              <th scope="col" className="px-2 py-3 text-right font-semibold md:px-4">Output</th>
               <th scope="col" className="hidden px-4 py-3 text-right font-semibold md:table-cell">Context</th>
               <th scope="col" className="hidden px-4 py-3 font-semibold lg:table-cell">Capabilities</th>
             </tr>
@@ -48,19 +51,27 @@ export function ModelGrid({ models, viewMode, isComparedModels, onToggleCompare,
             {models.map((model) => {
               const hasReasoning = (model.supported_parameters ?? []).some((p) => p === "reasoning" || p === "include_reasoning");
               const hasTools = (model.supported_parameters ?? []).includes("tools");
+              const isCompared = isComparedModels?.some((item) => item.id === model.id);
               return (
-                <tr key={model.id} className="border-b last:border-b-0 hover:bg-muted/30">
-                  <td className="px-4 py-3">
-                    <Link href={`/models/${encodeURIComponent(model.id)}`} className="font-medium hover:underline hover:underline-offset-4">
+                <tr key={model.id} className={cn("border-b last:border-b-0 hover:bg-muted/30", isCompared && "bg-muted/50")}>
+                  <td className="px-3 py-3 md:px-4">
+                    <Link href={`/models/${encodeURIComponent(model.id)}`} className="break-words font-medium hover:underline hover:underline-offset-4">
                       {model.name}
                     </Link>
                     {model.isFree && (
                       <Badge className="ml-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[9px]">FREE</Badge>
                     )}
-                    <p className="truncate text-[11px] font-mono text-muted-foreground">{model.id}</p>
+                    <p className="mt-1 truncate text-[11px] font-mono text-muted-foreground" title={model.id}>{model.id}</p>
+                    <p className="mt-1 text-xs text-muted-foreground md:hidden">{formatContext(model.context_length)} context tokens</p>
+                    <div className="mt-1">
+                      <ModelActions model={model} isCompared={isCompared}
+                        compareDisabled={(isComparedModels?.length ?? 0) >= COMPARE_LIMIT && !isCompared}
+                        onToggleCompare={onToggleCompare} isFavorite={isFavoriteModel?.(model.id)}
+                        onToggleFavorite={() => onToggleFavorite?.(model.id)} />
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{formatPrice(model.pricing?.prompt)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{formatPrice(model.pricing?.completion)}</td>
+                  <td className="break-words px-2 py-3 text-right text-xs tabular-nums md:px-4 md:text-sm">{formatPrice(model.pricing?.prompt)}</td>
+                  <td className="break-words px-2 py-3 text-right text-xs tabular-nums md:px-4 md:text-sm">{formatPrice(model.pricing?.completion)}</td>
                   <td className="hidden px-4 py-3 text-right tabular-nums text-muted-foreground md:table-cell">{formatContext(model.context_length)}</td>
                   <td className="hidden px-4 py-3 lg:table-cell">
                     <span className="flex flex-wrap items-center gap-1">

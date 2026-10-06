@@ -31,7 +31,7 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" className="h-9 justify-between gap-2 text-xs font-medium" />
+          <Button variant="outline" aria-label={`Sort models: ${SORT_LABELS[value]}`} className="h-11 justify-between gap-2 text-xs font-medium" />
         }
       >
         <span className="flex items-center gap-1.5">

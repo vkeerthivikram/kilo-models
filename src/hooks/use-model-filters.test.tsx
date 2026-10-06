@@ -42,6 +42,11 @@ test("empty favorites has no results", () => {
   assert.equal(inspect("?fav=true").sortedModels.length, 0);
 });
 
+test("favorites tab does not count as a removable model filter", () => {
+  assert.equal(inspect("?fav=true").activeFilterCount, 0);
+  assert.equal(inspect("?fav=true&free=true&reasoning=true").activeFilterCount, 2);
+});
+
 test("page stays within available results", () => {
   assert.equal(inspect("?page=-2").page, 1);
   assert.equal(inspect("?page=999").page, 2);

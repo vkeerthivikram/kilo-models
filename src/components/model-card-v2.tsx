@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Model } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
+import { ModelActions, type ModelActionsProps } from "./model-actions";
+import { formatPrice, formatContext } from "@/lib/format-price";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -14,18 +14,9 @@ import {
   Shield,
   Sparkles,
   Wrench,
-  Scale,
-  Heart,
 } from "lucide-react";
 
-interface ModelCardProps {
-  model: Model;
-  isCompared?: boolean;
-  compareDisabled?: boolean;
-  onToggleCompare?: (model: Model) => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: () => void;
-}
+type ModelCardProps = ModelActionsProps;
 
 function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
   if (mods.length === 0) return null;
@@ -57,13 +48,13 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
   return (
     <Card
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden transition-colors border-border/70 hover:border-foreground/25 bg-card",
-        isCompared && "border-foreground/40"
+        "group relative flex h-full flex-col gap-0 overflow-hidden border border-border bg-card py-0 ring-0 transition-colors hover:border-foreground/30",
+        isCompared && "border-foreground/50 bg-muted/30"
       )}
     >
       <div className="flex items-start justify-between gap-2 p-5 pb-0">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold leading-snug">
+          <h3 className="text-base font-semibold leading-snug break-words">
             <Link
               href={`/models/${encodeURIComponent(model.id)}`}
               className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring"
@@ -127,35 +118,8 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
         </div>
 
         <div className="relative z-10 mt-auto flex items-center gap-2 border-t pt-3">
-          <button
-            type="button"
-            onClick={() => !compareDisabled && onToggleCompare?.(model)}
-            disabled={compareDisabled}
-            aria-pressed={isCompared}
-            title={compareDisabled ? `Compare up to ${COMPARE_LIMIT} models` : isCompared ? `Remove ${model.name} from comparison` : `Add ${model.name} to comparison`}
-            className={cn(
-              "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border transition-colors disabled:pointer-events-none disabled:opacity-40",
-              isCompared
-                ? "border-foreground/40 bg-muted text-foreground"
-                : "border-transparent text-muted-foreground hover:border-foreground/25 hover:text-foreground"
-            )}
-          >
-            <Scale className="size-4" aria-hidden="true" />
-            <span className="sr-only">{isCompared ? `Remove ${model.name} from comparison` : `Add ${model.name} to comparison`}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggleFavorite?.()}
-            aria-pressed={isFavorite}
-            title={isFavorite ? `Remove ${model.name} from favorites` : `Add ${model.name} to favorites`}
-            className={cn(
-              "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-transparent transition-colors",
-              isFavorite ? "bg-red-500/10 text-red-600 dark:text-red-400" : "text-muted-foreground hover:border-foreground/25 hover:text-foreground"
-            )}
-          >
-            <Heart className={cn("size-4", isFavorite && "fill-current")} aria-hidden="true" />
-            <span className="sr-only">{isFavorite ? `Remove ${model.name} from favorites` : `Add ${model.name} to favorites`}</span>
-          </button>
+          <ModelActions model={model} isCompared={isCompared} compareDisabled={compareDisabled}
+            onToggleCompare={onToggleCompare} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
           <Link
             href={`/models/${encodeURIComponent(model.id)}`}
             title={`View ${model.name} details`}

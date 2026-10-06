@@ -131,16 +131,13 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setParams({
       search: "",
-      sort: "name-asc",
       free: false,
       inputModalities: [],
       outputModalities: [],
       providers: [],
       reasoning: false,
       tools: false,
-      view: "grid",
       page: 1,
-      fav: false,
     });
   };
 
@@ -150,8 +147,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     outputModalities.length +
     providers.length +
     (reasoning ? 1 : 0) +
-    (tools ? 1 : 0) +
-    (fav ? 1 : 0);
+    (tools ? 1 : 0);
 
   const filteredModels = React.useMemo(() => {
     return models.filter((model) => {

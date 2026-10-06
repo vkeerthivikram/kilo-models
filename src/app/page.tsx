@@ -38,6 +38,15 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   } = useModelFilters(models, favorites);
   const availableProviders = [...new Set(models.map((model) => model.id.split("/")[0]))].sort();
   const hasFilters = activeFilterCount > 0 || search.length > 0;
+  const activeFilters = [
+    ...(search ? [{ key: "search", label: `Search: ${search}`, remove: () => setSearch("") }] : []),
+    ...(free ? [{ key: "free", label: "Free only", remove: () => setFree(false) }] : []),
+    ...inputModalities.map((value) => ({ key: `input-${value}`, label: `Input: ${value}`, remove: () => setInputModalities(inputModalities.filter((item) => item !== value)) })),
+    ...outputModalities.map((value) => ({ key: `output-${value}`, label: `Output: ${value}`, remove: () => setOutputModalities(outputModalities.filter((item) => item !== value)) })),
+    ...providers.map((value) => ({ key: `provider-${value}`, label: `Provider: ${value}`, remove: () => setProviders(providers.filter((item) => item !== value)) })),
+    ...(reasoning ? [{ key: "reasoning", label: "Reasoning", remove: () => setReasoning(false) }] : []),
+    ...(tools ? [{ key: "tools", label: "Tool calling", remove: () => setTools(false) }] : []),
+  ];
 
   const handleToggleCompare = (model: Model) => {
     setComparedModels((previous) => previous.some((item) => item.id === model.id)
@@ -139,15 +148,27 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             {search && <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></button>}
           </div>
 
+          {activeFilters.length > 0 && (
+            <div aria-label="Active filters" className="flex flex-wrap items-center gap-2">
+              {activeFilters.map((filter) => (
+                <button key={filter.key} type="button" onClick={filter.remove} aria-label={`Remove filter: ${filter.label}`}
+                  className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border bg-muted/40 px-3 text-xs transition-colors hover:bg-muted">
+                  <span className="truncate">{filter.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" />
+                </button>
+              ))}
+              <button type="button" onClick={clearFilters} className="min-h-11 px-2 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">Clear all</button>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p role="status" className="text-sm text-muted-foreground">
-              {loading ? "Loading models..." : <><span className="font-semibold tabular-nums text-foreground">{sortedModels.length}</span> {fav ? "favorite" : "available"} {sortedModels.length === 1 ? "model" : "models"}</>}
+              {loading ? "Loading models..." : <><span className="font-semibold tabular-nums text-foreground">{sortedModels.length}</span> {fav ? "favorite" : "available"} {sortedModels.length === 1 ? "model" : "models"}<span className="mt-1 block text-xs">Prices in USD per million tokens · Context in tokens</span></>}
             </p>
             <div className="flex items-center gap-2">
               <SortDropdown value={sort} onChange={setSort} />
               <div className="flex items-center rounded-lg border p-1" role="group" aria-label="Results view">
-                <Button variant={view === "grid" ? "secondary" : "ghost"} size="icon" className="size-8" onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"}><LayoutGrid className="size-4" /></Button>
-                <Button variant={view === "list" ? "secondary" : "ghost"} size="icon" className="size-8" onClick={() => setView("list")} aria-label="List view" aria-pressed={view === "list"}><List className="size-4" /></Button>
+                <Button variant={view === "grid" ? "secondary" : "ghost"} size="icon" className="size-11" onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"}><LayoutGrid className="size-4" /></Button>
+                <Button variant={view === "list" ? "secondary" : "ghost"} size="icon" className="size-11" onClick={() => setView("list")} aria-label="List view" aria-pressed={view === "list"}><List className="size-4" /></Button>
               </div>
             </div>
           </div>
@@ -167,7 +188,8 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
               <Search className="mb-5 size-7 text-muted-foreground" aria-hidden="true" />
               <h2 className="font-heading text-3xl">{fav && favorites.length === 0 ? "Your shortlist starts here" : "No models found"}</h2>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{fav && favorites.length === 0 ? "Save a model with the heart button to find it here later." : "Try a different search or remove a filter to see more models."}</p>
-              <Button variant="outline" onClick={clearFilters} className="mt-6 h-11">{fav && favorites.length === 0 ? "Browse all models" : "Clear search and filters"}</Button>
+              <Button variant="outline" onClick={() => { clearFilters(); if (fav && favorites.length === 0) setFav(false); }} className="mt-6 h-11">{fav && favorites.length === 0 ? "Browse all models" : "Clear search and filters"}</Button>
+              {fav && favorites.length > 0 && <Button variant="ghost" onClick={() => { clearFilters(); setFav(false); }} className="mt-2 h-11">Browse all models</Button>}
             </div>
           ) : (
             <>
@@ -180,7 +202,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
         </section>
       </div>
 
-      <CompareTray models={comparedModels} onRemove={handleToggleCompare} onOpen={() => setCompareModalOpen(true)} />
+      <CompareTray models={comparedModels} onRemove={handleToggleCompare} onClear={() => setComparedModels([])} onOpen={() => setCompareModalOpen(true)} />
       <CompareModal models={comparedModels} open={compareModalOpen} onOpenChange={setCompareModalOpen} onRemove={handleToggleCompare} />
     </>
   );
@@ -193,7 +215,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <a href="#directory" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-4 focus:py-3 focus:text-foreground">Skip to models</a>
       <header className="border-b bg-background">
-        <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-4 px-5 sm:px-8">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-4 px-5 sm:px-8">
           <Link href="/" aria-label="Kilo Models home" className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/favicon.svg" alt="" className="size-9" width={36} height={36} />
@@ -206,8 +228,8 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 pb-28 sm:px-8">
-        <div className="flex flex-col justify-between gap-5 py-10 sm:py-14 lg:flex-row lg:items-end lg:gap-12">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 pb-44 sm:px-8">
+        <div className="flex flex-col justify-between gap-4 py-8 sm:py-10 lg:flex-row lg:items-end lg:gap-12">
           <h1 className="max-w-xl text-balance font-heading text-4xl leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">Discover your next <span className="italic">AI model.</span></h1>
           <p className="max-w-sm text-sm leading-7 text-muted-foreground sm:text-base">Explore models from the Kilo Gateway. Compare pricing, context length, and capabilities in one place.</p>
         </div>
