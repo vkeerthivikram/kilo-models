@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Model } from "@/lib/types";
 import { useTheme } from "next-themes";
-import { getPricingData } from "@/lib/chart-data";
+import { getPricingData, formatPricingTooltip, pricingAxisLabel } from "@/lib/chart-data";
 
 interface Props {
   models: Model[];
@@ -31,11 +31,11 @@ export function PricingBarChart({ models }: Props) {
     <div>
     <p className="text-xs text-muted-foreground mb-3">USD per 1M tokens. Unavailable prices are omitted.</p>
     <ResponsiveContainer width="100%" height={Math.max(300, models.length * 48)}>
-      <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
+      <BarChart data={data} layout="vertical" margin={{ left: 0 }}>
         <XAxis type="number" tickFormatter={(v) => `$${v}`} />
-        <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
+        <YAxis type="category" dataKey="name" width={128} tick={{ fontSize: 12 }} tickFormatter={pricingAxisLabel} />
         <Tooltip
-          formatter={(value, name) => [`$${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 12 })} / 1M tokens`, name]}
+          formatter={(value, name) => [formatPricingTooltip(value), name]}
           contentStyle={{
             backgroundColor: isDark ? "#1e1e2e" : "#fff",
             border: "none",

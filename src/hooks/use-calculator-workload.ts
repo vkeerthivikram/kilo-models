@@ -1,13 +1,10 @@
 "use client";
 
-import { createParser, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { DEFAULT_WORKLOAD, type CalculatorWorkload } from "@/lib/calculator-workload";
+import { createParser, useQueryStates } from "nuqs";
+import { DEFAULT_WORKLOAD, parseCount, parsePercent, parseWorkloadPeriod, type CalculatorWorkload } from "@/lib/calculator-workload";
 
 const countParser = (minimum: number, fallback: number) => createParser({
-  parse: (value) => {
-    const count = value.trim() === "" ? NaN : Number(value);
-    return Number.isSafeInteger(count) && count >= minimum ? count : null;
-  }, serialize: String,
+  parse: (value) => parseCount(value, minimum), serialize: String,
 }).withDefault(fallback);
 
 const parsers = {
@@ -16,12 +13,9 @@ const parsers = {
   requests: countParser(1, DEFAULT_WORKLOAD.requests),
   images: countParser(0, 0), searches: countParser(0, 0), cacheWriteTokens: countParser(0, 0),
   cachePercent: createParser({
-    parse: (value) => {
-      const percent = value.trim() === "" ? NaN : Number(value);
-      return Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : null;
-    }, serialize: String,
+    parse: parsePercent, serialize: String,
   }).withDefault(0),
-  period: parseAsStringLiteral(["batch", "month"] as const).withDefault("batch"),
+  period: createParser({ parse: parseWorkloadPeriod, serialize: String }).withDefault(DEFAULT_WORKLOAD.period),
 };
 
 export function useCalculatorWorkload() {

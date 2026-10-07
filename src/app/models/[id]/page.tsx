@@ -71,7 +71,7 @@ export default async function ModelPage({ params }: Props) {
               Added {new Date(model.created * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
             </p>
           )}
-          <React.Suspense fallback={<p className="mt-5 text-sm text-muted-foreground">Loading model actions...</p>}>
+          <React.Suspense fallback={<p role="status" className="mt-5 text-sm text-muted-foreground">Loading model actions...</p>}>
             <ModelDetailActions {...getModelDetailActionProps(model, allModels)} />
           </React.Suspense>
         </div>

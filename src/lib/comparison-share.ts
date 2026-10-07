@@ -42,7 +42,7 @@ export function comparisonCsv(models: Model[], workload: CalculatorWorkload): st
     "Input tokens/request", "Output tokens/request", "Requests", "Period", "Cached input (%)",
     "Images/request", "Searches/request", "Cache-write tokens/request", "Image price (USD/image)", "Search price (USD/search)",
     "Cache-write cost/request (USD)", "Image cost/request (USD)", "Search cost/request (USD)",
-    "Input cost/request (USD)", "Output cost/request (USD)", "Request cost (USD)", "Total cost/request (USD)", "Workload cost (USD)", "Feasibility", "Limit warnings",
+    "Input cost/request (USD)", "Output cost/request (USD)", "Request cost (USD)", "Total cost/request (USD)", "Workload cost (USD)", "Feasibility", "Limit warnings", "Discount treatment",
   ];
   const rows = models.map((model) => {
     const costs = calculateWorkloadCost(model.pricing, workload);
@@ -53,12 +53,13 @@ export function comparisonCsv(models: Model[], workload: CalculatorWorkload): st
       model.architecture?.input_modalities?.join(", "), model.architecture?.output_modalities?.join(", "), model.architecture?.tokenizer,
       model.supported_parameters?.join(", "), model.top_provider?.is_moderated, model.mayTrainOnYourPrompts,
       parsePrice(model.pricing?.prompt), parsePrice(model.pricing?.completion), parsePrice(model.pricing?.input_cache_read),
-      parsePrice(model.pricing?.input_cache_write), model.pricing?.request === undefined ? 0 : parsePrice(model.pricing.request),
+      parsePrice(model.pricing?.input_cache_write), costs.requestCost,
       workload.inputTokens, workload.outputTokens, workload.requests, workload.period, workload.cachePercent,
       workload.images, workload.searches, workload.cacheWriteTokens, parsePrice(model.pricing?.image), parsePrice(model.pricing?.web_search),
       cost(costs.cacheWriteCost), cost(costs.imageCost), cost(costs.searchCost),
       cost(costs.inputCost), cost(costs.outputCost), cost(costs.requestCost), cost(costs.perRequest), cost(costs.total),
       warnings.length ? "Hypothetical estimate" : "No reported limit exceeded", warnings.join(" "),
+      (model.pricing?.discount ?? 0) > 0 ? "Pre-discount estimate; listed discount not applied" : "No listed discount",
     ];
   });
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";

@@ -12,7 +12,7 @@ export function RetirementBadge({ expirationDate }: { expirationDate?: string | 
   const exact = status.dateOnly ? `${date}, end of day UTC` : new Date(status.deadline).toISOString();
   return (
     <Badge variant="outline" className={`max-w-full whitespace-normal text-[11px] ${status.retired ? "border-destructive/40 text-destructive" : status.soon ? "border-amber-500/40 text-amber-800 dark:text-amber-300" : "text-muted-foreground"}`} title={`Retirement date: ${exact}`}>
-      {status.retired ? "Retired" : "Retires"} {date} (UTC)
+      {status.retired ? "Retired" : status.soon ? "Retires soon" : "Retires"} {date} (UTC)
     </Badge>
   );
 }

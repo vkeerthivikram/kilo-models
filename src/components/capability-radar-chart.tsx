@@ -74,7 +74,7 @@ export function CapabilityRadarChart({ models }: Props) {
       Hover the chart or focus it and use arrow keys for actual values.
     </p>
     <ResponsiveContainer width="100%" height={400}>
-      <RadarChart data={data} outerRadius="55%">
+      <RadarChart data={data} outerRadius="55%" accessibilityLayer>
         <PolarGrid stroke={isDark ? "#374151" : "#e5e7eb"} />
         <PolarAngleAxis dataKey="capability" tick={{ fontSize: 11 }}
           tickFormatter={(value) => value === "Supported parameters" ? "Parameters" : value} />

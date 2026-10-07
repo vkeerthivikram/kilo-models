@@ -35,7 +35,7 @@ The everyday path is find a model, understand its capabilities and price, compar
 
 Run `bun test`, `bun run lint`, `bun run build`, and `bun run test:e2e`. Browser tests use a synthetic catalog on isolated ports 3210/3211, not the live upstream data. `workflow-refinements.e2e.ts` exercises reset scope, provider ordering, shortcut guards, targeted recovery, setup previews, comparison export, view precedence, and persistent warnings. Existing suites cover billing calculations, draft editing, navigation, sharing, setup management, and refresh recovery. Accessibility scans cover default light/dark themes in the four configured browser projects.
 
-Local Windows Firefox may require the existing ignored diagnostic runtime config; normal CI continues to use the official browser engine.
+Browser engines installed by Playwright are the supported test path. A machine-specific, git-ignored diagnostic runtime override was used for local Windows Firefox checks; it is not part of this repository or required by CI.
 
 ## Human usability validation
 

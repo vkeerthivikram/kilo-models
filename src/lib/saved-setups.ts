@@ -50,8 +50,8 @@ export function savedViewSummary(query: string): string {
     if (key === "providers") return value ? `Providers: ${value.split(",").join(", ")}` : "";
     if (key === "inputModalities" || key === "outputModalities") return value ? `${key === "inputModalities" ? "Input" : "Output"} types: ${value.split(",").join(", ")}` : "";
     if (key === "minContext") return `Context ≥ ${Number(value).toLocaleString("en-US")} tokens`;
-    if (key === "maxBudget") return `Total budget ≤ $${value}`;
-    if (key === "maxInputPrice" || key === "maxOutputPrice") return `${key === "maxInputPrice" ? "Input" : "Output"} ≤ $${value}/1M tokens`;
+    if (key === "maxBudget") return `Total budget ≤ $${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 21 })}`;
+    if (key === "maxInputPrice" || key === "maxOutputPrice") return `${key === "maxInputPrice" ? "Input" : "Output"} ≤ $${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 21 })}/1M tokens`;
     return "";
   }).filter(Boolean).join(" · ") || "Default search, filters, and view";
 }

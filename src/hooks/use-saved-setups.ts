@@ -48,7 +48,8 @@ export function useSavedSetups() {
   }
 
   function saveSetup(name: string, workload: CalculatorWorkload, directoryQuery?: string | URLSearchParams) {
-    return mutate((current) => addSavedSetup(current, name, workload, directoryQuery, crypto.randomUUID()));
+    return mutate((current) => addSavedSetup(current, name, workload, directoryQuery,
+      globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`));
   }
 
   function renameSetup(id: string, name: string) {
@@ -76,11 +77,16 @@ export function useSavedSetups() {
   }
 
   function exportBackup(): { ok: true; backup: string } | { ok: false; error: string } {
+    let current: SavedSetup[];
     try {
-      const current = parseSavedSetups(window.localStorage.getItem(SAVED_SETUPS_STORAGE_KEY));
+      current = parseSavedSetups(window.localStorage.getItem(SAVED_SETUPS_STORAGE_KEY));
+    } catch {
+      return { ok: false, error: "Could not read saved setups. Allow browser storage, then try again." };
+    }
+    try {
       return { ok: true, backup: exportSavedSetupsBackup(current) };
     } catch (error) {
-      return { ok: false, error: error instanceof Error && error.message.startsWith("This backup") ? error.message : "Could not read saved setups. Allow browser storage, then try again." };
+      return { ok: false, error: error instanceof Error ? error.message : "Could not create the backup. Try exporting again." };
     }
   }
 

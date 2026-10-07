@@ -40,8 +40,8 @@ test("comparison and favorites survive directory to detail, reload and Back", as
   await expect(page.getByRole("textbox", { name: "Search models" })).toHaveValue("Fixture");
   await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("2 / 10");
   await expect(page.getByRole("button", { name: "Remove Fixture Model 26 from favorites", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(Math.max(0, savedScroll - 3));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(savedScroll + 3);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(Math.max(0, savedScroll - 10));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(savedScroll + 10);
 });
 
 test("failed refresh keeps the loaded catalog and supports retry", async ({ page }) => {

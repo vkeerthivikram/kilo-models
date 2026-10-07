@@ -3,6 +3,10 @@ import { test } from "node:test";
 import { DEFAULT_WORKLOAD } from "./calculator-workload";
 import { advancedUsageSummary, workloadSummary, resetAdvancedUsage } from "./workload-summary";
 
+test("batch summaries describe request count as a batch total", () => {
+  assert.equal(workloadSummary(DEFAULT_WORKLOAD), "2,000 input · 500 output tokens/request · 1,000 requests (batch total)");
+});
+
 test("summaries describe exact advanced assumptions, omitting unused charges", () => {
   assert.equal(advancedUsageSummary(DEFAULT_WORKLOAD), "");
   const workload = { ...DEFAULT_WORKLOAD, period: "month" as const, cachePercent: 25.5, images: 2, searches: 1, cacheWriteTokens: 300 };

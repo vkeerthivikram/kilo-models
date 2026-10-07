@@ -82,10 +82,10 @@ export function ModelGrid({ models, viewMode, workload, isComparedModels, onTogg
                   <td className="hidden px-4 py-3 text-right tabular-nums text-muted-foreground md:table-cell">{formatContext(model.context_length)}</td>
                   <td className="hidden px-4 py-3 lg:table-cell">
                     <span className="flex flex-wrap items-center gap-1">
-                      {(model.architecture?.input_modalities ?? []).filter((modality) => modality !== "text").map((m) => (
+                      {[...new Set(model.architecture?.input_modalities ?? [])].filter((modality) => modality !== "text").map((m) => (
                         <Badge key={`in-${m}`} variant="outline" className="text-[10px] capitalize">{m} input</Badge>
                       ))}
-                      {(model.architecture?.output_modalities ?? []).filter((modality) => modality !== "text").map((m) => (
+                      {[...new Set(model.architecture?.output_modalities ?? [])].filter((modality) => modality !== "text").map((m) => (
                         <Badge key={`out-${m}`} variant="outline" className="text-[10px] capitalize">{m} output</Badge>
                       ))}
                       {hasReasoning && <Badge variant="secondary" className="text-[10px]">Reasoning</Badge>}

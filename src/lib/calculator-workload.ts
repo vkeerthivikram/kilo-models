@@ -34,19 +34,29 @@ export const WORKLOAD_PRESETS = [
   { label: "Long document", inputTokens: 50000, outputTokens: 2000 },
 ] as const;
 
+export function parseCount(value: string | null, minimum = 0): number | null {
+  const count = value === null || value.trim() === "" ? NaN : Number(value);
+  return Number.isSafeInteger(count) && count >= minimum ? count : null;
+}
+
+export function parsePercent(value: string | null): number | null {
+  const percent = value === null || value.trim() === "" ? NaN : Number(value);
+  return Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : null;
+}
+
+export function parseWorkloadPeriod(value: string | null): CalculatorWorkload["period"] | null {
+  return value === "batch" || value === "month" ? value : null;
+}
+
 export function parseCalculatorWorkload(search: string): CalculatorWorkload {
   const params = new URLSearchParams(search);
   const count = (key: "inputTokens" | "outputTokens" | "requests" | "images" | "searches" | "cacheWriteTokens", min: number) => {
-    const raw = params.get(key);
-    const value = raw === null || raw.trim() === "" ? NaN : Number(raw);
-    return Number.isSafeInteger(value) && value >= min ? value : DEFAULT_WORKLOAD[key];
+    return parseCount(params.get(key), min) ?? DEFAULT_WORKLOAD[key];
   };
-  const cache = params.get("cachePercent");
-  const cachePercent = cache === null || cache.trim() === "" ? NaN : Number(cache);
   return {
     inputTokens: count("inputTokens", 0), outputTokens: count("outputTokens", 0), requests: count("requests", 1),
-    period: params.get("period") === "month" ? "month" : "batch",
-    cachePercent: Number.isFinite(cachePercent) && cachePercent >= 0 && cachePercent <= 100 ? cachePercent : 0,
+    period: parseWorkloadPeriod(params.get("period")) ?? DEFAULT_WORKLOAD.period,
+    cachePercent: parsePercent(params.get("cachePercent")) ?? DEFAULT_WORKLOAD.cachePercent,
     images: count("images", 0), searches: count("searches", 0), cacheWriteTokens: count("cacheWriteTokens", 0),
   };
 }
@@ -79,10 +89,11 @@ export function getWorkloadWarnings(model: Model, workload: CalculatorWorkload):
 
 export function getBillingWarnings(pricing: ModelPricing | undefined, workload: CalculatorWorkload): string[] {
   const warnings: string[] = [];
+  const discount = pricing?.discount;
   const reads = Math.round(workload.inputTokens * workload.cachePercent / 100);
   if (workload.inputTokens - reads - workload.cacheWriteTokens > 0 && parsePrice(pricing?.prompt) === null) warnings.push("No valid input token rate is listed. Choose a model with a published input price or set input usage to zero.");
   if (workload.outputTokens > 0 && parsePrice(pricing?.completion) === null) warnings.push("No valid output token rate is listed. Choose a model with a published output price or set output usage to zero.");
-  if (pricing?.request !== undefined && parsePrice(pricing.request) === null) warnings.push("The listed request fee is invalid. Choose a model with a valid request fee to estimate the total.");
+  if (pricing?.request != null && parsePrice(pricing.request) === null) warnings.push("The listed request fee is invalid. Choose a model with a valid request fee to estimate the total.");
   if (reads + workload.cacheWriteTokens > workload.inputTokens) warnings.push("Cache reads and writes exceed total input. Reduce cached input or cache-write tokens.");
   for (const [units, rate, label] of [
     [reads, pricing?.input_cache_read, "cache read"],
@@ -92,5 +103,6 @@ export function getBillingWarnings(pricing: ModelPricing | undefined, workload: 
   ] as const) {
     if (units > 0 && parsePrice(rate) === null) warnings.push(`No ${label} rate is listed. Set this usage to zero to estimate the remaining charges.`);
   }
+  if (discount != null && discount > 0) warnings.push(`Estimates are pre-discount. The listed ${discount}% discount is not applied because its billing scope is unspecified.`);
   return warnings;
 }

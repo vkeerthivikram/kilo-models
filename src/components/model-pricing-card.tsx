@@ -17,6 +17,7 @@ export function ModelPricingCard({ model }: Props) {
     <Card className="p-6 space-y-4">
       <h2 className="font-heading text-lg">Published prices</h2>
       <p className="text-xs text-muted-foreground">Token prices in USD per million tokens.</p>
+      {(p?.discount ?? 0) > 0 && <p className="text-xs text-muted-foreground">Estimates are pre-discount; the listed discount is not applied.</p>}
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Input</span>
@@ -26,35 +27,35 @@ export function ModelPricingCard({ model }: Props) {
           <span className="text-muted-foreground">Output</span>
           <span className="font-medium tabular-nums">{formatPrice(p?.completion)}</span>
         </div>
-        {p?.request !== undefined && <p className="text-xs text-muted-foreground">Request fee: {formatCost(parsePrice(p.request))}/request, included in estimates.</p>}
+        {p?.request != null && <p className="text-xs text-muted-foreground">Request fee: {formatCost(parsePrice(p.request))}/request, {parsePrice(p.request) === null ? "total estimate unavailable" : "included in estimates"}.</p>}
         <details hidden={!hasOtherRates} className="border-t pt-2">
           <summary className="min-h-11 cursor-pointer rounded py-3 font-medium focus-visible:outline-2 focus-visible:outline-ring">Other published rates</summary>
           <div className="space-y-3 pt-2">
-        {p?.input_cache_read && (
+        {p?.input_cache_read != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Cache Read</span>
             <span className="font-medium">{formatPrice(p.input_cache_read)}</span>
           </div>
         )}
-        {p?.input_cache_write && (
+        {p?.input_cache_write != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Cache Write</span>
             <span className="font-medium">{formatPrice(p.input_cache_write)}</span>
           </div>
         )}
-        {p?.image && (
+        {p?.image != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Image</span>
             <span className="font-medium">{formatCost(parsePrice(p.image))}/image</span>
           </div>
         )}
-        {p?.web_search && (
+        {p?.web_search != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Web Search</span>
             <span className="font-medium">{formatCost(parsePrice(p.web_search))}/search</span>
           </div>
         )}
-        {p?.internal_reasoning && (
+        {p?.internal_reasoning != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Internal Reasoning</span>
             <span className="font-medium">{formatPrice(p.internal_reasoning)}</span>

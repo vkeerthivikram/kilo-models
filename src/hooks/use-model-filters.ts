@@ -194,28 +194,31 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     setPendingSearch(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setParams({
-      search: "",
-      free: false,
-      hideRetired: false,
-      fitsWorkload: false,
+      search: null,
+      free: null,
+      hideRetired: null,
+      fitsWorkload: null,
       maxBudget: null,
-      inputModalities: [],
-      outputModalities: [],
-      providers: [],
+      inputModalities: null,
+      outputModalities: null,
+      providers: null,
       minContext: null,
       maxInputPrice: null,
       maxOutputPrice: null,
-      reasoning: false,
-      tools: false,
-      page: 1,
+      reasoning: null,
+      tools: null,
+      page: null,
     });
   };
 
-  const directoryQuery = new URLSearchParams();
-  for (const [key, value] of Object.entries({ ...params, search })) {
-    if (key !== "page" && value !== null) directoryQuery.set(key, parsers[key as keyof typeof parsers].serialize(value as never));
-  }
-  directoryQuery.set("view", view);
+  const directoryQuery = React.useMemo(() => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries({ ...params, search })) {
+      if (key !== "page" && value !== null) query.set(key, parsers[key as keyof typeof parsers].serialize(value as never));
+    }
+    query.set("view", view);
+    return query;
+  }, [params, search, view]);
   const applyDirectoryQuery = (query: URLSearchParams) => {
     setPendingSearch(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);

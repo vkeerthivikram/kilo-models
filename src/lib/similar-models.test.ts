@@ -23,3 +23,12 @@ test("unknown rates and limits produce a stable bounded shortlist with no duplic
   assert.equal(new Set(getSimilarModels([...models, ...models], source).map((m) => m.id)).size, 6);
   assert.equal(getSimilarModels([], source).length, 0);
 });
+
+test("missing modalities are not positive evidence of similarity", () => {
+  const unknown = { ...source, architecture: { ...source.architecture, input_modalities: [], output_modalities: [] } };
+  const alsoUnknown = { ...unknown, id: "b/unknown", name: "Z unknown" };
+  const known = { ...source, id: "b/known", name: "A known" };
+  assert.deepEqual(getSimilarModels([alsoUnknown, known], unknown).map((model) => model.id), [known.id, alsoUnknown.id]);
+  // A known output requirement still excludes unknown or incompatible candidates.
+  assert.deepEqual(getSimilarModels([alsoUnknown, known], source).map((model) => model.id), [known.id]);
+});

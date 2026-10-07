@@ -71,8 +71,11 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     activeFilterCount, sortedModels, paginatedModels, totalPages, directoryQuery, applyDirectoryQuery,
   } = useModelFilters(models, favorites, workload);
   const availableProviders = React.useMemo(() => [...new Set(models.map((model) => model.id.split("/")[0]))].sort(), [models]);
-  const matchingProviders = availableProviders.filter((provider) => provider.toLowerCase().includes(providerSearch.trim().toLowerCase()))
-    .sort((a, b) => Number(providers.includes(b)) - Number(providers.includes(a)) || a.localeCompare(b));
+  const matchingProviders = React.useMemo(() => {
+    const needle = providerSearch.trim().toLowerCase();
+    return availableProviders.filter((provider) => provider.toLowerCase().includes(needle))
+      .sort((a, b) => Number(providers.includes(b)) - Number(providers.includes(a)) || a.localeCompare(b));
+  }, [availableProviders, providerSearch, providers]);
   const editBudgetWorkload = () => {
     if (!workloadPanel.current) return;
     workloadPanel.current.open = true;
@@ -267,7 +270,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
           </div>
 
           {activeFilters.length > 0 && (
-            <div aria-label="Active filters" className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="Active filters" className="flex flex-wrap items-center gap-2">
               {activeFilters.map((filter) => (
                 <button key={filter.key} type="button" onClick={filter.remove} aria-label={`Remove filter: ${filter.label}`}
                   className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border bg-muted/40 px-3 text-xs transition-colors hover:bg-muted">

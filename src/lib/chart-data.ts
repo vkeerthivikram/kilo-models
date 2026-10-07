@@ -1,6 +1,16 @@
 import type { Model } from "./types";
 import { parsePrice } from "./format-price";
 
+export function pricingAxisLabel(name: string): string {
+  const characters = Array.from(name);
+  return characters.length > 16 ? `${characters.slice(0, 15).join("")}…` : name;
+}
+
+export function formatPricingTooltip(value: unknown): string {
+  const price = parsePrice(value);
+  return price === null ? "Unavailable" : `$${price.toLocaleString("en-US", { maximumSignificantDigits: 12 })} / 1M tokens`;
+}
+
 export function getPricingData(models: Model[]) {
   const perMillion = (value: unknown) => {
     const rate = parsePrice(value);

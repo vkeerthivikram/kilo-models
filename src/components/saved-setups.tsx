@@ -129,7 +129,7 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
     } catch {
       setError("Could not start the backup download. Try exporting again.");
     } finally {
-      if (url) { const downloadUrl = url; setTimeout(() => URL.revokeObjectURL(downloadUrl), 0); }
+      if (url) { const downloadUrl = url; setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000); }
     }
   }
 

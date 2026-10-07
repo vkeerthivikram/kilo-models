@@ -2,6 +2,7 @@ import type { Model } from "./types";
 import { parsePrice } from "./format-price";
 
 const overlap = (first: string[], second: string[]) => {
+  if (!first.length || !second.length) return 0;
   const combined = new Set([...first, ...second]);
   return combined.size ? new Set(first.filter((item) => second.includes(item))).size / combined.size : 1;
 };

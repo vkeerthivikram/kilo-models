@@ -3,7 +3,7 @@ const DAY = 86_400_000;
 /** A date-only value is the last available UTC day; a zoned timestamp is an exact deadline. */
 export function parseRetirementDate(value: unknown): { deadline: number; dateOnly: boolean; date: number } | null {
   if (typeof value !== "string") return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2}))?$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/.exec(value);
   if (!match) return null;
   const calendarDate = Date.parse(`${match[1]}-${match[2]}-${match[3]}T00:00:00Z`);
   const calendar = new Date(calendarDate);

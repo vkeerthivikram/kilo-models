@@ -30,7 +30,7 @@ export function ComparisonActions({ models, workload }: { models: Model[]; workl
   const exportCsv = () => {
     let downloadUrl: string | undefined;
     try {
-      downloadUrl = URL.createObjectURL(new Blob([comparisonCsv(models, workload)], { type: "text/csv;charset=utf-8" }));
+      downloadUrl = URL.createObjectURL(new Blob(["\uFEFF", comparisonCsv(models, workload)], { type: "text/csv;charset=utf-8" }));
       const link = document.createElement("a");
       link.href = downloadUrl;
       link.download = "kilo-model-comparison.csv";

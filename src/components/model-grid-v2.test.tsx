@@ -14,6 +14,15 @@ const models: Model[] = Array.from({ length: COMPARE_LIMIT + 1 }, (_, index) => 
 }));
 
 for (const viewMode of ["grid", "list"] as const) {
+  test(`${viewMode} view shows each input and output capability only once`, () => {
+    const model = { ...models[0], architecture: { ...models[0].architecture,
+      input_modalities: ["text", "image", "image"], output_modalities: ["audio", "audio"],
+    } };
+    const html = renderToStaticMarkup(<ModelGrid models={[model]} viewMode={viewMode} />);
+    assert.equal((html.match(/image input/gi) ?? []).length, 1);
+    assert.equal((html.match(/audio output/gi) ?? []).length, 1);
+  });
+
   test(`${viewMode} view summarizes provider and useful capabilities without technical clutter`, () => {
     const model = { ...models[0], id: "test/opaque-internal-model-id", architecture: {
       ...models[0].architecture, input_modalities: ["text", "image"], output_modalities: ["text"],

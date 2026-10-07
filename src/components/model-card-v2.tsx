@@ -22,7 +22,7 @@ import {
 type ModelCardProps = ModelActionsProps & { workload?: CalculatorWorkload };
 
 function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
-  const capabilities = mods.filter((modality) => modality !== "text");
+  const capabilities = [...new Set(mods)].filter((modality) => modality !== "text");
   if (capabilities.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-1">

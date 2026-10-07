@@ -58,7 +58,7 @@ test("saved setup preview identifies applied and changed usage", async ({ page }
   const setups = page.getByRole("region", { name: "Saved setups", exact: true });
   await setups.getByRole("textbox", { name: "Setup name", exact: true }).fill("Daily chat");
   await setups.getByRole("button", { name: "Save setup", exact: true }).click();
-  await expect(setups.getByText(/^Preview:/)).toContainText("1,000 requests/batch");
+  await expect(setups.getByText(/^Preview:/)).toContainText("1,000 requests (batch total)");
   await setups.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(setups.getByText("Active setup: Daily chat", { exact: true })).toBeVisible();
   await page.getByRole("spinbutton", { name: "Requests", exact: true }).fill("7");
@@ -89,6 +89,7 @@ test("comparison opens with essentials and keeps detailed tools discoverable", a
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
   const csv = await readFile(downloadPath!, "utf8");
+  expect(csv.charCodeAt(0)).toBe(0xFEFF);
   expect(csv).toContain("Fixture Model 01");
   expect(csv).toContain("Fixture Model 02");
   await page.keyboard.press("/");

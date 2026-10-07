@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { addSavedSetup, applySavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, parseSavedSetups, readSavedSetups, renameSavedSetup, restoreDeletedSetup, sanitizeSavedSetupQuery, serializeSavedSetups, updateSavedSetup, writeSavedSetups } from "./saved-setups";
+import { addSavedSetup, applySavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, parseSavedSetups, readSavedSetups, renameSavedSetup, restoreDeletedSetup, sanitizeSavedSetupQuery, savedViewSummary, serializeSavedSetups, updateSavedSetup, writeSavedSetups } from "./saved-setups";
 import { DEFAULT_WORKLOAD } from "./calculator-workload";
 
 test("a named workload and directory view survive storage without comparison or page state", () => {
@@ -277,6 +277,13 @@ test("tiny scientific budget and price caps survive saved setup roundtrip", () =
   assert.equal(query.get("maxInputPrice"), "2e-7");
   assert.equal(query.get("maxOutputPrice"), ".0000003");
   assert.equal(query.get("minContext"), "1e3");
+});
+
+test("saved view summaries show decimal money without losing tiny caps", () => {
+  assert.equal(savedViewSummary("maxBudget=2e-7&maxInputPrice=3e-8&maxOutputPrice=4e-16"),
+    "Input ≤ $0.00000003/1M tokens · Output ≤ $0.0000000000000004/1M tokens · Total budget ≤ $0.0000002");
+  assert.equal(savedViewSummary("maxBudget=12345.6789012345&maxInputPrice=0"),
+    "Input ≤ $0/1M tokens · Total budget ≤ $12,345.6789012345");
 });
 
 test("storage never writes an oversized payload which would be unreadable on the next visit", () => {

@@ -13,7 +13,7 @@ export function advancedUsageSummary(workload: CalculatorWorkload): string {
 }
 
 export function workloadSummary(workload: CalculatorWorkload): string {
-  const basic = `${count(workload.inputTokens)} input · ${count(workload.outputTokens)} output tokens/request · ${count(workload.requests)} requests/${workload.period}`;
+  const basic = `${count(workload.inputTokens)} input · ${count(workload.outputTokens)} output tokens/request · ${count(workload.requests)} requests${workload.period === "month" ? "/month" : " (batch total)"}`;
   const advanced = advancedUsageSummary(workload).replace(/^Monthly(?: · )?/, "");
   return advanced ? `${basic} · ${advanced}` : basic;
 }

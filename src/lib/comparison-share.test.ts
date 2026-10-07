@@ -62,6 +62,16 @@ test("export contains raw specifications and an independently worked monthly wor
   assert.equal(csv.includes('"100000"'), true);
 });
 
+test("CSV labels discount assumptions and treats a null request fee as absent", () => {
+  const plain = { ...model, description: "Plain description", pricing: { prompt: "0.000003", completion: "0.000006", request: null, discount: 20 } };
+  const csv = comparisonCsv([plain], DEFAULT_WORKLOAD);
+  assert.match(csv, /"Discount treatment"/);
+  assert.match(csv, /"Pre-discount estimate; listed discount not applied"/);
+  const cells = csv.split("\r\n").map((row): string[] => row.match(/"(?:[^"]|"")*"/g) ?? []);
+  const fee = cells[0].indexOf('"Request fee (USD)"');
+  assert.equal(cells[1][fee], '"0"');
+});
+
 test("missing prices are exported as unavailable, and malicious model strings stay inert", () => {
   const csv = comparisonCsv([{ ...model, id: "=cmd", name: "@SUM(A1)", pricing: { prompt: "-1", completion: "0" } }], workload);
   assert.equal(csv.includes('"Unavailable"'), true);

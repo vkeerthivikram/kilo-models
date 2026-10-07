@@ -92,3 +92,77 @@ test("blocked writes cannot rename, replace, delete, restore, or import saved da
     else Reflect.deleteProperty(globalThis, "window");
   }
 });
+
+test("saving works when insecure HTTP does not expose randomUUID", () => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  const values = new Map<string, string>();
+  let actions: ReturnType<typeof useSavedSetups> | undefined;
+  function Probe() { actions = useSavedSetups(); return null; }
+  try {
+    Object.defineProperty(globalThis, "window", { configurable: true, value: {
+      localStorage: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) },
+      dispatchEvent: () => true,
+    } });
+    Object.defineProperty(globalThis, "crypto", { configurable: true, value: {} });
+    renderToStaticMarkup(<Probe />);
+    assert.ok(actions);
+    assert.equal(actions.saveSetup("First HTTP setup", DEFAULT_WORKLOAD).ok, true);
+    assert.equal(actions.saveSetup("Second HTTP setup", DEFAULT_WORKLOAD).ok, true);
+    const setups = parseSavedSetups(values.get(SAVED_SETUPS_STORAGE_KEY) ?? null);
+    assert.equal(setups.length, 2);
+    assert.notEqual(setups[0].id, setups[1].id);
+    assert.ok(setups.every((setup) => setup.id.length > 0));
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
+    else Reflect.deleteProperty(globalThis, "window");
+    if (cryptoDescriptor) Object.defineProperty(globalThis, "crypto", cryptoDescriptor);
+    else Reflect.deleteProperty(globalThis, "crypto");
+  }
+});
+
+test("backup storage errors cannot masquerade as backup validation errors", () => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  let actions: ReturnType<typeof useSavedSetups> | undefined;
+  function Probe() { actions = useSavedSetups(); return null; }
+  try {
+    Object.defineProperty(globalThis, "window", { configurable: true, value: {
+      localStorage: { getItem: () => { throw new Error("This backup storage read failed"); } },
+    } });
+    renderToStaticMarkup(<Probe />);
+    assert.ok(actions);
+    assert.deepEqual(actions.exportBackup(), {
+      ok: false, error: "Could not read saved setups. Allow browser storage, then try again.",
+    });
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
+test("backup export reports validation errors from readable stored setups", () => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  let actions: ReturnType<typeof useSavedSetups> | undefined;
+  function Probe() { actions = useSavedSetups(); return null; }
+  const query = new URLSearchParams({ providers: "a".repeat(2000), inputModalities: "a".repeat(2000),
+    outputModalities: "a".repeat(2000), minContext: `${"0".repeat(1999)}1`, maxInputPrice: "1" });
+  const setups = Array.from({ length: 20 }, (_, index) => ({ id: String(index), name: `Fixture ${index}`,
+    workload: DEFAULT_WORKLOAD, directoryQuery: query.toString(), includesDirectoryView: true }));
+  const padding = Math.floor((198_500 - JSON.stringify({ version: 1, setups }).length) / setups.length);
+  assert.ok(padding > 0 && padding < 2000);
+  query.set("maxInputPrice", `${"0".repeat(padding)}1`);
+  const stored = JSON.stringify({ version: 1, setups: setups.map((setup) => ({ ...setup, directoryQuery: query.toString() })) });
+  assert.ok(stored.length < 200_000);
+  assert.equal(parseSavedSetups(stored).length, 20);
+  try {
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: { getItem: () => stored } } });
+    renderToStaticMarkup(<Probe />);
+    assert.ok(actions);
+    assert.deepEqual(actions.exportBackup(), {
+      ok: false, error: "This backup is too large. Shorten saved filters before exporting.",
+    });
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+});

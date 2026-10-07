@@ -55,7 +55,7 @@ export function getVisibleComparisonRows(models: Model[], workload?: CalculatorW
   const rows = getComparisonRows(models).filter((row) => fullSpecifications || essential.includes(row.key));
   if (workload) {
     const totals = models.map((model) => calculateWorkloadCost(model.pricing, workload).total);
-    rows.splice(3, 0, { key: "workload-cost", label: `Estimated ${workload.period === "month" ? "monthly" : "batch"} cost · USD`, values: totals.map(formatCost), different: totals.some((value) => value !== totals[0]) });
+    rows.splice(3, 0, { key: "workload-cost", label: `Estimated ${workload.period === "month" ? "monthly" : "batch"} cost · USD${models.some((model) => (model.pricing?.discount ?? 0) > 0) ? " · pre-discount" : ""}`, values: totals.map(formatCost), different: totals.some((value) => value !== totals[0]) });
     const fit = models.map((model) => getWorkloadSuitability(model, workload));
     rows.push({ key: "workload-fit", label: "Workload fit", values: fit.map((value) => value === "fits" ? "Fits published token limits" : value === "exceeds" ? "Exceeds limits · hypothetical cost" : "Limits unknown"), different: fit.some((value) => value !== fit[0]) });
   }

@@ -194,8 +194,16 @@ export function isThemeAvailableInMode(
   return variantMatchesMode(getVariant(theme, mode), mode);
 }
 
+const pickerThemes = new Map<ThemeMode, readonly ThemeOption[]>();
 export function getThemesForMode(mode: ThemeMode): readonly ThemeOption[] {
-  return THEMES.filter((theme) => isThemeAvailableInMode(theme.id, mode));
+  let themes = pickerThemes.get(mode);
+  if (!themes) {
+    themes = THEMES.filter((theme) => isThemeAvailableInMode(theme.id, mode)).map((theme) => ({
+      ...theme, swatch: { ...theme.swatch, [mode]: buildColorThemeVariables(theme.id, mode)["--primary"] },
+    }));
+    pickerThemes.set(mode, themes);
+  }
+  return themes;
 }
 
 export function getDefaultColorThemeForMode(mode: ThemeMode): ColorTheme {

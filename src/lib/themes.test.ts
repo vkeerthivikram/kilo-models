@@ -2,6 +2,14 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { buildColorThemeVariables, getThemesForMode, type ColorTheme } from "./themes";
 
+test("picker swatches match the applied primary color in each selectable mode", () => {
+  for (const mode of ["light", "dark"] as const) {
+    for (const theme of getThemesForMode(mode)) {
+      assert.equal(theme.swatch[mode], buildColorThemeVariables(theme.id, mode)["--primary"], `${theme.id}/${mode}`);
+    }
+  }
+});
+
 // WCAG 2.2 relative luminance, independently checked against black/white (21:1).
 function contrast(first: string, second: string): number {
   const luminance = (hex: string) => {

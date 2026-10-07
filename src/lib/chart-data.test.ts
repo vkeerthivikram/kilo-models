@@ -1,11 +1,21 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { getCapabilityData, getPricingData, getSpecificationValue } from "./chart-data";
+import { getCapabilityData, getPricingData, getSpecificationValue, formatPricingTooltip, pricingAxisLabel } from "./chart-data";
 import type { Model } from "./types";
 
 const models = ["0.000002", "0.000006", "-1"].map((prompt, index) => ({ id: `test/${index}`, name: `Model ${index}`, context_length: 1000, pricing: { prompt, completion: prompt }, supported_parameters: [] } as unknown as Model));
 test("price charts use per-million units and preserve unavailable rates", () => {
   assert.deepEqual(getPricingData(models).map((row) => row.prompt), [2, 6, null]);
+});
+
+test("pricing ticks fit the axis while tooltip values distinguish missing from free", () => {
+  assert.equal(pricingAxisLabel("openai/computer-use-preview"), "openai/computer…");
+  assert.equal(pricingAxisLabel("Short name"), "Short name");
+  assert.equal(formatPricingTooltip(null), "Unavailable");
+  assert.equal(formatPricingTooltip(undefined), "Unavailable");
+  assert.equal(formatPricingTooltip(0), "$0 / 1M tokens");
+  assert.equal(formatPricingTooltip(2), "$2 / 1M tokens");
+  assert.equal(getPricingData([{ ...models[0], name: "openai/computer-use-preview" }])[0].name, "openai/computer-use-preview");
 });
 
 test("profile values retain actual units and small prices without rounding to free", () => {

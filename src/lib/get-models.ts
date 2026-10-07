@@ -1,5 +1,5 @@
 import { revalidateTag, unstable_cache } from "next/cache";
-import { CATALOG_CACHE_SECONDS, CATALOG_CACHE_TAG, fetchCatalog, type CatalogEnvelope } from "./catalog-freshness";
+import { CATALOG_CACHE_SECONDS, CATALOG_CACHE_TAG, CATALOG_REFRESH_MIN_AGE_MS, fetchCatalog, type CatalogEnvelope } from "./catalog-freshness";
 import type { Model } from "./types";
 
 export function findModel(models: Model[], id: string) {
@@ -32,10 +32,16 @@ let pendingRefresh: Promise<CatalogEnvelope> | null = null;
 
 export function refreshCatalog(): Promise<CatalogEnvelope> {
   if (pendingRefresh) return pendingRefresh;
-  // Immediate expiry makes the next read a blocking upstream fetch and writes
-  // its envelope back to the same canonical cache used by normal reads.
-  revalidateTag(CATALOG_CACHE_TAG, { expire: 0 });
-  pendingRefresh = getCatalog().finally(() => { pendingRefresh = null; });
+  pendingRefresh = (async () => {
+    const current = await getCatalog();
+    // Use persisted freshness so sequential requests (including other workers)
+    // cannot force another upstream read immediately after a successful fetch.
+    if (Date.now() - Date.parse(current.fetchedAt) < CATALOG_REFRESH_MIN_AGE_MS) return current;
+    // Failed refreshes never replace fetchedAt, so users can retry immediately.
+    // Immediate expiry makes the next read blocking and updates canonical cache.
+    revalidateTag(CATALOG_CACHE_TAG, { expire: 0 });
+    return getCatalog();
+  })().finally(() => { pendingRefresh = null; });
   return pendingRefresh;
 }
 

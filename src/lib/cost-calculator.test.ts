@@ -1,6 +1,14 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { calculateCost, tokenCount, formatCost } from "./cost-calculator";
+import { calculateCost, formatCost } from "./cost-calculator";
+import { parseModelsResponse } from "./models-response";
+
+test("nullable catalog request fees are absent and do not poison token estimates", () => {
+  const [model] = parseModelsResponse({ data: [{ id: "test/null-fee", name: "Null fee", description: "", pricing: { prompt: "0.004", completion: "0.008", request: null } }] });
+  const result = calculateCost(model.pricing, 100, 10, 2);
+  assert.equal(result.requestCost, 0);
+  assert.ok(Math.abs(result.total! - 0.96) < 1e-12);
+});
 
 test("expanded billing replaces cache-write input and adds image and search charges", () => {
   const result = calculateCost({ prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" }, 100, 10, 2, 50, { cacheWriteTokens: 20, images: 2, searches: 3 });
@@ -38,10 +46,6 @@ test("invalid workloads and arithmetic overflow never display NaN or Infinity", 
   assert.equal(calculateCost({ prompt: "1e308", completion: "0" }, 2, 0, 1).total, null);
   assert.equal(calculateCost({ prompt: "0", completion: "0" }, -1, 0, 1).total, null);
   assert.equal(calculateCost({ prompt: "0", completion: "0" }, 1, 0, Infinity).total, null);
-  assert.equal(tokenCount("1e3"), 1000);
-  assert.equal(tokenCount("-2"), 0);
-  assert.equal(tokenCount("Infinity", 1), 1);
-  assert.equal(tokenCount("2.9"), 2);
   assert.equal(formatCost(Infinity), "Unavailable");
 });
 

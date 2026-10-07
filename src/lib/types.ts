@@ -1,13 +1,13 @@
 export interface ModelPricing {
   prompt: string;
   completion: string;
-  input_cache_read?: string;
-  input_cache_write?: string;
-  request?: string;
-  image?: string;
-  web_search?: string;
-  internal_reasoning?: string;
-  discount?: number;
+  input_cache_read?: string | null;
+  input_cache_write?: string | null;
+  request?: string | null;
+  image?: string | null;
+  web_search?: string | null;
+  internal_reasoning?: string | null;
+  discount?: number | null;
 }
 
 export interface ModelArchitecture {

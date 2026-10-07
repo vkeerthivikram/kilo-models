@@ -10,6 +10,14 @@ test("date-only retirement remains available through its UTC date", () => {
   assert.equal(getRetirementStatus("2026-10-31T12:00:00Z", Date.parse("2026-10-31T12:00:00Z"))?.retired, true);
 });
 
+test("zoned retirement timestamps accept RFC 3339 fractional seconds beyond milliseconds", () => {
+  for (const value of ["2026-10-31T12:00:00.123456Z", "2026-10-31T14:00:00.123456789123+02:00"]) {
+    assert.equal(parseRetirementDate(value)?.deadline, Date.parse("2026-10-31T12:00:00.123Z"));
+    assert.equal(getRetirementStatus(value, Date.parse("2026-10-31T12:00:00.122Z"))?.retired, false);
+    assert.equal(getRetirementStatus(value, Date.parse("2026-10-31T12:00:00.124Z"))?.retired, true);
+  }
+});
+
 test("invalid or missing dates do not imply retirement and upcoming dates use 30 days", () => {
   for (const value of [null, undefined, "", "soon", "2026-02-30", "2026-13-01", "2026-10-31T12:00:00", "2026-02-30T12:00:00Z"])
     assert.equal(parseRetirementDate(value), null);

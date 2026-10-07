@@ -12,6 +12,23 @@ test("accepts object-shaped defaults used by the live catalog", () => {
   assert.equal(parseModelsResponse({ data: [model] })[0].id, "test/model");
 });
 
+test("catalog errors identify the entry and nested field without dumping its data", () => {
+  const base = { id: "test/model", name: "Test", description: "private description" };
+  assert.throws(() => parseModelsResponse({ data: [{ ...base, pricing: { prompt: {} } }] }),
+    /entry 0 \(test\/model\): pricing\.prompt/);
+  assert.throws(() => parseModelsResponse({ data: [{ ...base, opencode: { variants: { high: { reasoning: { effort: {} } } } } }] }),
+    /entry 0 \(test\/model\): opencode\.variants\.high\.reasoning\.effort/);
+  assert.throws(() => parseModelsResponse({ data: [base, base] }), /entry 1 \(test\/model\): id/);
+  assert.throws(() => parseModelsResponse({ data: [null] }), /entry 0: entry/);
+});
+
+test("catalog accepts high precision retirement and safety timestamps", () => {
+  const timestamp = "2026-01-30T12:00:00.123456789123Z";
+  const model = { id: "test/model", name: "Test", description: "", expiration_date: timestamp,
+    enkrypt: { ingestedAt: timestamp, evaluatedAt: timestamp, lastCheckedAt: timestamp, staleAfter: timestamp } };
+  assert.deepEqual(parseModelsResponse({ data: [model] }), [model]);
+});
+
 test("rejects unsafe optional metadata before it reaches formatters", () => {
   const base = { id: "test/model", name: "Test", description: "" };
   for (const extra of [

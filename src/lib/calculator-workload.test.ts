@@ -2,6 +2,23 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { DEFAULT_WORKLOAD, parseCalculatorWorkload, getWorkloadWarnings, getBillingWarnings, WORKLOAD_PRESETS, buildWorkloadHref } from "./calculator-workload";
 import type { Model } from "./types";
+import { parseModelsResponse } from "./models-response";
+
+test("nullable catalog request fees do not produce invalid billing warnings", () => {
+  const [model] = parseModelsResponse({ data: [{ id: "test/null-fee", name: "Null fee", description: "", pricing: { prompt: "0", completion: "0", request: null } }] });
+  assert.deepEqual(getBillingWarnings(model.pricing, DEFAULT_WORKLOAD), []);
+});
+
+test("advertised discounts explain that estimates use pre-discount published rates", () => {
+  assert.deepEqual(getBillingWarnings({ prompt: "0", completion: "0", discount: 20 }, DEFAULT_WORKLOAD), [
+    "Estimates are pre-discount. The listed 20% discount is not applied because its billing scope is unspecified.",
+  ]);
+  assert.deepEqual(getBillingWarnings({ prompt: "0", completion: "0", discount: 0 }, DEFAULT_WORKLOAD), []);
+});
+
+test("missing billing rates take priority over discount notices", () => {
+  assert.match(getBillingWarnings({ prompt: "-1", completion: "0", discount: 20 }, DEFAULT_WORKLOAD)[0], /No valid input token rate/);
+});
 
 test("shared workloads preserve monthly volume and cached input, with safe defaults", () => {
   assert.deepEqual(parseCalculatorWorkload("?inputTokens=5000&outputTokens=200&requests=3000&period=month&cachePercent=50"), {

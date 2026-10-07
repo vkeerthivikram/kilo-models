@@ -40,7 +40,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
   const [calculatorVisited, setCalculatorVisited] = React.useState(false);
   const [fullSpecifications, setFullSpecifications] = React.useState(false);
   const { workload, setWorkload } = useCalculatorWorkload();
-  const rows = getVisibleComparisonRows(models, workload, fullSpecifications);
+  const rows = React.useMemo(() => getVisibleComparisonRows(models, workload, fullSpecifications), [models, workload, fullSpecifications]);
   const differenceCount = rows.filter((row) => row.different).length;
   if (models.length === 0) return null;
 
@@ -112,7 +112,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
               </p>
             </div>
             <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">Scroll across to compare models. Published prices: USD / 1M tokens. Estimates use: {workloadSummary(workload)}. Differences use full precision.</p>
-            <ComparisonTable models={models} differencesOnly={differencesOnly} onRemove={onRemove} fullSpecifications={fullSpecifications} workload={workload} />
+            <ComparisonTable models={models} rows={rows} differencesOnly={differencesOnly} onRemove={onRemove} fullSpecifications={fullSpecifications} workload={workload} />
           </TabsContent>
 
           <TabsContent value="charts" className="flex-1 min-h-0 overflow-y-auto">

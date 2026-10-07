@@ -13,6 +13,12 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
     await expect(page.locator("html")).toHaveAttribute("data-kilo-theme", theme);
     await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${mode}\\b`));
     await expect(page).toHaveTitle(/\S/);
+    await page.evaluate(() => document.fonts.ready);
+    // Axe must inspect final colors, not a frame inside theme/dialog transitions.
+    await expect.poll(() => page.evaluate(() => document.getAnimations().some((animation) =>
+      (animation.playState === "running" || animation.pending) &&
+      Number.isFinite(animation.effect?.getComputedTiming().endTime),
+    )), { message: "Wait for finite UI transitions before checking accessibility" }).toBe(false);
     const titleBefore = await page.evaluate(() => ({
       title: document.title,
       elements: Array.from(document.querySelectorAll("title"), (element) => ({ html: element.outerHTML, parent: element.parentElement?.tagName })),

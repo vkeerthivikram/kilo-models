@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Model } from "@/lib/types";
-import { getVisibleComparisonRows } from "@/lib/comparison";
+import { getVisibleComparisonRows, type ComparisonRow } from "@/lib/comparison";
 import { buildWorkloadHref, type CalculatorWorkload } from "@/lib/calculator-workload";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, X } from "lucide-react";
@@ -13,10 +13,11 @@ interface ComparisonTableProps {
   onRemove: (model: Model) => void;
   workload?: CalculatorWorkload;
   fullSpecifications?: boolean;
+  rows?: ComparisonRow[];
 }
 
-export function ComparisonTable({ models, differencesOnly, onRemove, workload, fullSpecifications = true }: ComparisonTableProps) {
-  const allRows = getVisibleComparisonRows(models, workload, fullSpecifications);
+export function ComparisonTable({ models, differencesOnly, onRemove, workload, fullSpecifications = true, rows: suppliedRows }: ComparisonTableProps) {
+  const allRows = suppliedRows ?? getVisibleComparisonRows(models, workload, fullSpecifications);
   const rows = differencesOnly && models.length > 1 ? allRows.filter((row) => row.different) : allRows;
 
   return (
