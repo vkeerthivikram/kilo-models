@@ -5,11 +5,20 @@ import { Model } from "@/lib/types";
 
 const STORAGE_KEY = "kilo-models-favorites";
 
+export function parseFavorites(stored: string | null): string[] {
+  try {
+    const value: unknown = stored ? JSON.parse(stored) : [];
+    return Array.isArray(value) ? [...new Set(value.filter((id): id is string => typeof id === "string" && id.length > 0))] : [];
+  } catch {
+    return [];
+  }
+}
+
 function getInitialFavorites(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    return parseFavorites(stored);
   } catch {
     return [];
   }
@@ -27,9 +36,9 @@ export function useFavorites(): UseFavoritesResult {
 
   React.useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
+      if (e.key === STORAGE_KEY || e.key === null) {
         try {
-          setFavorites(JSON.parse(e.newValue));
+          if (e.storageArea === localStorage) setFavorites(parseFavorites(e.newValue));
         } catch {}
       }
     };

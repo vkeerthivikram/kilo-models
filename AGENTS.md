@@ -39,3 +39,24 @@ The Kilo API is called server-side only. The client fetches from the local `/api
 - Multiple color themes are defined as CSS classes in `src/app/globals.css` (e.g. `.catppuccin`, `.nord`, `.dracula`). New themes go there, not in Tailwind config.
 - Add shadcn components with `bunx shadcn@latest add <component>` — they land in `src/components/ui/`
 - ESLint uses the flat config format (`eslint.config.mjs`), not `.eslintrc`
+
+## UX: simple by default, advanced when needed
+
+- Make the everyday path easy for people: find a model, understand its price and capabilities, and compare it. Keep common actions visible and use plain labels.
+- Preserve advanced functionality behind clearly named disclosures such as Advanced filters, Advanced usage, and Manage setups. Do not expose every option or management action at once.
+- Start calculators with input tokens, output tokens, and request count. Put period, cache, image, search, and cache-write settings under Advanced usage.
+- Keep Save and Apply easy to reach. Group update, rename, delete, and backup actions under Manage setups.
+- Keep model summaries focused on provider, prices, context, key capabilities, and estimated cost. Put technical IDs, moderation details, and complete specifications on the detail page.
+- Make active advanced filters and usage discoverable, including values restored from URLs and saved setups. Show active summaries and preserve a clear way to remove or reset them.
+- Prefer fewer visible decisions over adding controls. Before adding a feature, decide whether it belongs in the everyday path or the advanced path, and reuse existing controls where possible.
+- Keep both paths accessible with keyboard controls, clear labels, visible focus, and mobile layouts. Simplification must not remove useful functionality or hide cost and suitability warnings.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -33,7 +33,7 @@ export function ThemeSelector() {
 
   if (!mounted) {
     return (
-      <div className="inline-flex shrink-0 items-center justify-center rounded-lg border border-input bg-background hover:bg-muted hover:text-foreground size-9">
+      <div className="inline-flex shrink-0 items-center justify-center rounded-lg border border-input bg-background hover:bg-muted hover:text-foreground size-11">
         <Palette className="h-4 w-4" />
       </div>
     );
@@ -49,7 +49,7 @@ export function ThemeSelector() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center rounded-lg border border-input bg-background hover:bg-muted hover:text-foreground size-9 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+      <DropdownMenuTrigger className="inline-flex shrink-0 items-center justify-center rounded-lg border border-input bg-background hover:bg-muted hover:text-foreground size-11 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
         <div className="relative h-4 w-4 overflow-hidden rounded-full border border-border/70">
           <span className="absolute inset-0" style={{ backgroundColor: selectedSwatch }} />
           <span

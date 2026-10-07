@@ -30,6 +30,9 @@ export function ModelSafetyCard({ model }: { model: Model }) {
           </Badge>
         )}
       </div>
+      <details>
+        <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">View safety metrics ({rows.filter(([, value]) => value != null).length})</summary>
+        <p className="mb-3 max-w-prose text-xs leading-relaxed text-muted-foreground">These published measurements describe specific evaluations, not a guarantee of safety for your application.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
         {rows
           .filter(([, v]) => v != null)
@@ -37,6 +40,7 @@ export function ModelSafetyCard({ model }: { model: Model }) {
             <SafetyScoreBar key={label} label={label} score={score as number} />
           ))}
       </div>
+      </details>
     </Card>
   );
 }

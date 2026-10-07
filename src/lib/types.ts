@@ -1,13 +1,13 @@
 export interface ModelPricing {
   prompt: string;
   completion: string;
-  input_cache_read?: string;
-  input_cache_write?: string;
-  request?: string;
-  image?: string;
-  web_search?: string;
-  internal_reasoning?: string;
-  discount?: number;
+  input_cache_read?: string | null;
+  input_cache_write?: string | null;
+  request?: string | null;
+  image?: string | null;
+  web_search?: string | null;
+  internal_reasoning?: string | null;
+  discount?: number | null;
 }
 
 export interface ModelArchitecture {
@@ -88,7 +88,7 @@ export interface Model {
   expiration_date?: string | null;
   canonical_slug?: string;
   hugging_face_id?: string;
-  default_parameters?: string[];
+  default_parameters?: string[] | Record<string, unknown>;
   terminalBench?: TerminalBench;
   enkrypt?: EnkryptSafety;
 }

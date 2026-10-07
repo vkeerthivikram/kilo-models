@@ -4,34 +4,38 @@ import * as React from "react";
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-function formatContext(ctx: number): string {
-  if (ctx >= 1000000) return `${(ctx / 1000000).toFixed(0)}M`;
-  if (ctx >= 1000) return `${(ctx / 1000).toFixed(0)}K`;
-  return ctx.toString();
-}
+import { formatContext } from "@/lib/format-price";
+import { defaultParameterLabels } from "@/lib/default-parameters";
+import { InlineHelp } from "./inline-help";
 
 interface Props {
   model: Model;
 }
 
 export function ModelSpecsCard({ model }: Props) {
+  const defaults = defaultParameterLabels(model.default_parameters);
   return (
     <Card className="p-6 space-y-4">
-      <h2 className="font-heading text-lg">Specifications</h2>
+      <h2 className="font-heading text-lg">Key capabilities</h2>
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Context Length</span>
+          <span className="text-muted-foreground">Context · tokens</span>
           <span className="font-medium">{formatContext(model.context_length)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Max Completion</span>
+          <span className="text-muted-foreground">Max output · tokens</span>
           <span className="font-medium">
             {model.top_provider?.max_completion_tokens
               ? formatContext(model.top_provider.max_completion_tokens)
               : "—"}
           </span>
         </div>
+        <p className="text-muted-foreground">Input: {(model.architecture?.input_modalities ?? []).join(", ") || "Unknown"} · Output: {(model.architecture?.output_modalities ?? []).join(", ") || "Unknown"}</p>
+        <p className="text-muted-foreground">Reasoning: {model.supported_parameters ? model.supported_parameters.some((parameter) => ["reasoning", "include_reasoning"].includes(parameter)) ? "Yes" : "No" : "Unknown"} · Tool calling: {model.supported_parameters ? model.supported_parameters.includes("tools") ? "Yes" : "No" : "Unknown"}</p>
+        <InlineHelp title="About capabilities"><p>Context holds input and output together in one request. Reasoning indicates reasoning controls; tool calling lets your application execute actions requested by the model. Neither capability is an answer-quality score.</p></InlineHelp>
+        <details className="border-t pt-2">
+          <summary className="min-h-11 cursor-pointer rounded py-3 font-medium focus-visible:outline-2 focus-visible:outline-ring">Full specifications</summary>
+          <div className="space-y-3 pt-3">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tokenizer</span>
           <span className="font-medium font-mono text-xs">
@@ -63,7 +67,7 @@ export function ModelSpecsCard({ model }: Props) {
           </span>
         </div>
         <div>
-          <span className="text-muted-foreground text-sm">Input Modalities</span>
+          <span className="text-muted-foreground text-sm">Input types</span>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {(model.architecture?.input_modalities ?? []).map((m) => (
               <Badge key={m} variant="outline" className="text-xs capitalize">
@@ -73,7 +77,7 @@ export function ModelSpecsCard({ model }: Props) {
           </div>
         </div>
         <div>
-          <span className="text-muted-foreground text-sm">Output Modalities</span>
+          <span className="text-muted-foreground text-sm">Output types</span>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {(model.architecture?.output_modalities ?? []).map((m) => (
               <Badge key={m} variant="outline" className="text-xs capitalize">
@@ -92,11 +96,11 @@ export function ModelSpecsCard({ model }: Props) {
             ))}
           </div>
         </div>
-        {model.default_parameters && model.default_parameters.length > 0 && (
+        {defaults.length > 0 && (
           <div>
             <span className="text-muted-foreground text-sm">Default Parameters</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {model.default_parameters.map((p) => (
+              {defaults.map((p) => (
                 <Badge key={p} variant="outline" className="text-xs font-mono">
                   {p}
                 </Badge>
@@ -127,7 +131,7 @@ export function ModelSpecsCard({ model }: Props) {
         <div className="flex justify-between">
           <span className="text-muted-foreground">Moderated</span>
           <span className="font-medium">
-            {model.top_provider?.is_moderated ? "Yes" : "No"}
+            {model.top_provider?.is_moderated == null ? "Unknown" : model.top_provider.is_moderated ? "Yes" : "No"}
           </span>
         </div>
         {model.opencode?.family && (
@@ -182,6 +186,8 @@ export function ModelSpecsCard({ model }: Props) {
             </a>
           </div>
         )}
+          </div>
+        </details>
       </div>
     </Card>
   );

@@ -50,8 +50,12 @@ function ColorThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [storedTheme, setStoredTheme] = React.useState<ColorTheme>(() => {
     if (typeof window === "undefined") return DEFAULT_COLOR_THEME;
-    const stored = localStorage.getItem(COLOR_THEME_KEY);
-    return stored && isValidColorTheme(stored) ? stored : DEFAULT_COLOR_THEME;
+    try {
+      const stored = localStorage.getItem(COLOR_THEME_KEY);
+      return stored && isValidColorTheme(stored) ? stored : DEFAULT_COLOR_THEME;
+    } catch {
+      return DEFAULT_COLOR_THEME;
+    }
   });
 
   const mode: ThemeMode = resolvedTheme === "dark" ? "dark" : "light";
@@ -71,7 +75,11 @@ function ColorThemeProvider({ children }: { children: React.ReactNode }) {
   const setColorTheme = React.useCallback(
     (theme: ColorTheme) => {
       setStoredTheme(theme);
-      localStorage.setItem(COLOR_THEME_KEY, theme);
+      try {
+        localStorage.setItem(COLOR_THEME_KEY, theme);
+      } catch {
+        // Keep the in-memory theme when persistence is unavailable.
+      }
     },
     [],
   );

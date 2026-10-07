@@ -46,8 +46,12 @@ function Button({
   size = "default",
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  // Firefox otherwise restores dynamic disabled state before React hydrates.
+  // Opt out with the native autoComplete attribute.
+  const browserStateAttributes = { autoComplete: "off" }
   return (
     <ButtonPrimitive
+      {...browserStateAttributes}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}

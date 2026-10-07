@@ -16,6 +16,8 @@ const SORT_LABELS: Record<SortOption, string> = {
   "name-desc": "Name (Z→A)",
   "price-asc": "Input price (low → high)",
   "price-desc": "Input price (high → low)",
+  "cost-asc": "Estimated cost (low → high)",
+  "cost-desc": "Estimated cost (high → low)",
   "context-desc": "Context length",
   "created-desc": "Newest",
   "created-asc": "Oldest",
@@ -31,7 +33,7 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" className="h-9 justify-between gap-2 text-xs font-medium" />
+          <Button variant="outline" aria-label={`Sort models: ${SORT_LABELS[value]}`} className="h-11 justify-between gap-2 text-xs font-medium" />
         }
       >
         <span className="flex items-center gap-1.5">

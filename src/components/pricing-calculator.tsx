@@ -1,127 +1,60 @@
 "use client";
 
 import * as React from "react";
-import { Model } from "@/lib/types";
+import type { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { CalculatorInputs } from "./calculator-inputs";
+import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
 import { ChevronDown } from "lucide-react";
+import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
+import { getBillingWarnings, getWorkloadSuitability, getWorkloadWarnings } from "@/lib/calculator-workload";
+import { CostBreakdown } from "./cost-breakdown";
+import { SavedSetups } from "./saved-setups";
+import { parsePrice } from "@/lib/format-price";
+import { workloadSummary } from "@/lib/workload-summary";
 
-function formatPrice(price: string | undefined): string {
-  if (!price || price === "0") return "Free";
-  const num = parseFloat(price);
-  if (num < 0.00001) return `$${(num * 1000000).toFixed(2)}/M`;
-  if (num < 0.001) return `$${(num * 1000).toFixed(4)}/K`;
-  return `$${num.toFixed(4)}/K`;
-}
-
-function formatCost(cost: number): string {
-  if (cost < 0.00001) return `$${cost.toExponential(2)}`;
-  if (cost < 0.01) return `$${cost.toFixed(6)}`;
-  return `$${cost.toFixed(4)}`;
-}
-
-interface Props {
-  model: Model;
-  className?: string;
-}
-
-export function PricingCalculator({ model, className }: Props) {
-  const [inputTokens, setInputTokens] = React.useState(100000);
-  const [outputTokens, setOutputTokens] = React.useState(50000);
-  const [requests, setRequests] = React.useState(1000);
+export function PricingCalculator({ model, className }: { model: Model; className?: string }) {
+  const { workload, setWorkload } = useCalculatorWorkload();
   const [open, setOpen] = React.useState(true);
-
-  const p = model.pricing;
-  const inputPrice = parseFloat(p?.prompt ?? "0") || 0;
-  const outputPrice = parseFloat(p?.completion ?? "0") || 0;
-
-  const inputCost = (inputTokens / 1000) * inputPrice;
-  const outputCost = (outputTokens / 1000) * outputPrice;
-  const totalPerRequest = inputCost + outputCost;
-  const totalCost = totalPerRequest * requests;
+  const id = React.useId();
+  const costs = calculateWorkloadCost(model.pricing, workload);
+  const warnings = getWorkloadWarnings(model, workload);
+  const billingWarnings = getBillingWarnings(model.pricing, workload);
+  const suitability = getWorkloadSuitability(model, workload);
 
   return (
-    <Card className={`p-6 ${className ?? ""}`}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between"
-      >
-        <h2 className="font-heading text-lg">Cost Calculator</h2>
-        <ChevronDown
-          className={`h-5 w-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Input Tokens</label>
-              <Input
-                type="number"
-                value={inputTokens}
-                onChange={(e) => setInputTokens(Math.max(0, parseInt(e.target.value) || 0))}
-                className="h-9"
-              />
-              <input
-                type="range"
-                min={0}
-                max={1000000}
-                step={1000}
-                value={inputTokens}
-                onChange={(e) => setInputTokens(parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Output Tokens</label>
-              <Input
-                type="number"
-                value={outputTokens}
-                onChange={(e) => setOutputTokens(Math.max(0, parseInt(e.target.value) || 0))}
-                className="h-9"
-              />
-              <input
-                type="range"
-                min={0}
-                max={500000}
-                step={1000}
-                value={outputTokens}
-                onChange={(e) => setOutputTokens(parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Requests</label>
-              <Input
-                type="number"
-                value={requests}
-                onChange={(e) => setRequests(Math.max(1, parseInt(e.target.value) || 1))}
-                className="h-9"
-              />
-            </div>
+    <Card className={`p-4 sm:p-6 ${className ?? ""}`}>
+      <h2>
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={`${id} ${id}-saved`} className="min-h-11 w-full flex items-center justify-between font-heading text-lg rounded focus-visible:outline-2 focus-visible:outline-ring">
+          Cost Calculator
+          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </h2>
+      <p className="text-xs leading-relaxed text-muted-foreground">Estimates in USD · {workloadSummary(workload)}</p>
+      <div id={id} hidden={!open} className="space-y-6">
+        <CalculatorInputs workload={workload} onChange={setWorkload} showCache={parsePrice(model.pricing?.input_cache_read) !== null} />
+      </div>
+        {(warnings.length > 0 || billingWarnings.length > 0) && <div role="status" className="space-y-2 rounded-lg border bg-muted/40 p-4 text-sm">
+          {warnings.map((warning) => <p key={warning}>{warning}</p>)}
+          {warnings.length > 0 && <p className="text-muted-foreground">This is a hypothetical cost; reduce token counts to fit a single request.</p>}
+          {billingWarnings.map((warning) => <p key={warning}>{warning}</p>)}
+        </div>}
+        {suitability === "unknown" && <p className="text-sm text-muted-foreground">Limits unknown: published context or output limit is missing. Verify request size with the provider.</p>}
+        {costs.total === null && billingWarnings.length === 0 && <p role="status" className="text-sm text-muted-foreground">Estimate exceeds supported numeric range. Reduce usage to calculate a total.</p>}
+        <dl aria-live="polite" aria-atomic="true" className="space-y-3 border-t pt-4 text-sm">
+          <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Per request</dt><dd className="font-semibold tabular-nums">{formatCost(costs.perRequest)}</dd></div>
+          <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{workload.period === "month" ? "Monthly total" : "Total"} ({workload.requests.toLocaleString("en-US")} requests)</dt><dd className="font-semibold tabular-nums">{formatCost(costs.total)}</dd></div>
+        </dl>
+      <div id={`${id}-saved`} hidden={!open} className="space-y-6">
+        <SavedSetups workload={workload} onWorkloadChange={setWorkload} />
+        <details className="border-t pt-2">
+          <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Full cost breakdown</summary>
+          <div className="space-y-3 pt-2">
+            <CostBreakdown costs={costs} workload={workload} />
+            <p className="text-xs text-muted-foreground">Uses published rates. Reasoning, routing, and tiered pricing may change actual charges.</p>
           </div>
-
-          <div className="border-t pt-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Input cost</span>
-              <span className="font-medium">{formatCost(inputCost)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Output cost</span>
-              <span className="font-medium">{formatCost(outputCost)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-muted-foreground">Per request</span>
-              <span className="font-semibold">{formatCost(totalPerRequest)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-muted-foreground font-medium">Total ({requests.toLocaleString()} req)</span>
-              <span className="font-bold text-primary">{formatCost(totalCost)}</span>
-            </div>
-          </div>
-        </div>
-      )}
+        </details>
+      </div>
     </Card>
   );
 }

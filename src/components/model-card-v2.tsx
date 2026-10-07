@@ -2,51 +2,45 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Model } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { formatPrice, formatContext, COMPARE_LIMIT } from "@/lib/format-price";
+import { ModelActions, type ModelActionsProps } from "./model-actions";
+import { formatPrice, formatContext } from "@/lib/format-price";
+import { rememberDirectoryPosition } from "@/lib/directory-navigation";
+import { RetirementBadge } from "./retirement-badge";
+import { ModelCostEstimate } from "./model-cost-estimate";
+import { buildWorkloadHref, type CalculatorWorkload } from "@/lib/calculator-workload";
 import {
   ArrowUpRight,
   ArrowDownRight,
   Hash,
-  Shield,
   Sparkles,
   Wrench,
-  Scale,
-  Heart,
 } from "lucide-react";
 
-interface ModelCardProps {
-  model: Model;
-  isCompared?: boolean;
-  compareDisabled?: boolean;
-  onToggleCompare?: (model: Model) => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: () => void;
-}
+type ModelCardProps = ModelActionsProps & { workload?: CalculatorWorkload };
 
 function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
-  if (mods.length === 0) return null;
+  const capabilities = [...new Set(mods)].filter((modality) => modality !== "text");
+  if (capabilities.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {kind === "in" ? "In" : "Out"}
-      </span>
-      {mods.map((m) => (
+      {capabilities.map((m) => (
         <span
           key={m}
-          className="rounded border bg-muted/50 px-1.5 py-0.5 text-[10px] capitalize text-foreground"
+          className="rounded border bg-muted/50 px-1.5 py-0.5 text-xs capitalize text-foreground"
         >
-          {m}
+          {m} {kind === "in" ? "input" : "output"}
         </span>
       ))}
     </span>
   );
 }
 
-export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
+export function ModelCard({ model, workload, isCompared, compareDisabled, onToggleCompare, isFavorite, onToggleFavorite }: ModelCardProps) {
+  const detailPath = `/models/${encodeURIComponent(model.id)}`;
+  const detailHref = workload ? buildWorkloadHref(detailPath, workload) : detailPath;
   const inputMods = model.architecture?.input_modalities ?? [];
   const outputMods = model.architecture?.output_modalities ?? [];
   const hasReasoning = (model.supported_parameters ?? []).some(
@@ -57,15 +51,16 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
   return (
     <Card
       className={cn(
-        "group relative flex h-full flex-col overflow-hidden transition-colors border-border/70 hover:border-foreground/25 bg-card",
-        isCompared && "border-foreground/40"
+        "group relative flex h-full flex-col gap-0 overflow-hidden border border-border bg-card py-0 ring-0 transition-colors hover:border-foreground/30",
+        isCompared && "border-foreground/50 bg-muted/30"
       )}
     >
       <div className="flex items-start justify-between gap-2 p-5 pb-0">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold leading-snug">
+          <h3 className="text-base font-semibold leading-snug break-words">
             <Link
-              href={`/models/${encodeURIComponent(model.id)}`}
+              href={detailHref}
+              onClick={rememberDirectoryPosition}
               className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring"
             >
               <span className="group-hover:underline group-hover:underline-offset-4">
@@ -73,7 +68,7 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
               </span>
             </Link>
           </h3>
-          <p className="mt-1 truncate text-xs font-mono text-muted-foreground">{model.id}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">{model.id.split("/")[0]}</p>
         </div>
         {model.isFree && (
           <Badge className="shrink-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
@@ -83,23 +78,24 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-5">
+        {model.expiration_date && <div><RetirementBadge expirationDate={model.expiration_date} /></div>}
         <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{model.description}</p>
 
         <dl className="grid grid-cols-3 divide-x divide-border rounded-lg border text-center">
           <div className="px-2 py-2.5">
-            <dt className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               <ArrowUpRight className="size-3" aria-hidden="true" /> Input
             </dt>
             <dd className="mt-1 text-sm font-semibold tabular-nums">{formatPrice(model.pricing?.prompt)}</dd>
           </div>
           <div className="px-2 py-2.5">
-            <dt className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               <ArrowDownRight className="size-3" aria-hidden="true" /> Output
             </dt>
             <dd className="mt-1 text-sm font-semibold tabular-nums">{formatPrice(model.pricing?.completion)}</dd>
           </div>
           <div className="px-2 py-2.5">
-            <dt className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               <Hash className="size-3" aria-hidden="true" /> Context
             </dt>
             <dd className="mt-1 text-sm font-semibold tabular-nums">{formatContext(model.context_length)}</dd>
@@ -119,45 +115,15 @@ export function ModelCard({ model, isCompared, compareDisabled, onToggleCompare,
               <Wrench className="size-3" aria-hidden="true" /> Tools
             </span>
           )}
-          {model.top_provider?.is_moderated && (
-            <span className="inline-flex items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-[11px]" title="Provider moderates this model">
-              <Shield className="size-3" aria-hidden="true" /> Moderated
-            </span>
-          )}
         </div>
 
+        {workload && <ModelCostEstimate model={model} workload={workload} />}
         <div className="relative z-10 mt-auto flex items-center gap-2 border-t pt-3">
-          <button
-            type="button"
-            onClick={() => !compareDisabled && onToggleCompare?.(model)}
-            disabled={compareDisabled}
-            aria-pressed={isCompared}
-            title={compareDisabled ? `Compare up to ${COMPARE_LIMIT} models` : isCompared ? `Remove ${model.name} from comparison` : `Add ${model.name} to comparison`}
-            className={cn(
-              "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border transition-colors disabled:pointer-events-none disabled:opacity-40",
-              isCompared
-                ? "border-foreground/40 bg-muted text-foreground"
-                : "border-transparent text-muted-foreground hover:border-foreground/25 hover:text-foreground"
-            )}
-          >
-            <Scale className="size-4" aria-hidden="true" />
-            <span className="sr-only">{isCompared ? `Remove ${model.name} from comparison` : `Add ${model.name} to comparison`}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggleFavorite?.()}
-            aria-pressed={isFavorite}
-            title={isFavorite ? `Remove ${model.name} from favorites` : `Add ${model.name} to favorites`}
-            className={cn(
-              "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-transparent transition-colors",
-              isFavorite ? "bg-red-500/10 text-red-600 dark:text-red-400" : "text-muted-foreground hover:border-foreground/25 hover:text-foreground"
-            )}
-          >
-            <Heart className={cn("size-4", isFavorite && "fill-current")} aria-hidden="true" />
-            <span className="sr-only">{isFavorite ? `Remove ${model.name} from favorites` : `Add ${model.name} to favorites`}</span>
-          </button>
+          <ModelActions model={model} isCompared={isCompared} compareDisabled={compareDisabled}
+            onToggleCompare={onToggleCompare} isFavorite={isFavorite} onToggleFavorite={onToggleFavorite} />
           <Link
-            href={`/models/${encodeURIComponent(model.id)}`}
+            href={detailHref}
+            onClick={rememberDirectoryPosition}
             title={`View ${model.name} details`}
             className="relative z-10 ml-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
           >

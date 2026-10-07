@@ -1,95 +1,70 @@
 "use client";
 
-import * as React from "react";
-import { Model } from "@/lib/types";
-import { Input } from "@/components/ui/input";
-import { ArrowUpDown } from "lucide-react";
+import type { Model } from "@/lib/types";
+import { CalculatorInputs } from "./calculator-inputs";
+import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
+import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
+import { getBillingWarnings, getWorkloadSuitability, getWorkloadWarnings, type CalculatorWorkload } from "@/lib/calculator-workload";
+import { CostBreakdown } from "./cost-breakdown";
+import { parsePrice } from "@/lib/format-price";
+import { SavedSetups } from "./saved-setups";
+import { InlineHelp } from "./inline-help";
+import { workloadSummary } from "@/lib/workload-summary";
 
-function formatCost(cost: number): string {
-  if (cost < 0.00001) return `$${cost.toExponential(2)}`;
-  if (cost < 0.01) return `$${cost.toFixed(6)}`;
-  return `$${cost.toFixed(4)}`;
-}
-
-interface Props {
-  models: Model[];
-}
-
-export function CompareCostTable({ models }: Props) {
-  const [inputTokens, setInputTokens] = React.useState(100000);
-  const [outputTokens, setOutputTokens] = React.useState(50000);
-  const [requests, setRequests] = React.useState(1000);
-
-  const rows = React.useMemo(() => {
-    return models
-      .map((m) => {
-        const inputPrice = parseFloat(m.pricing?.prompt ?? "0") || 0;
-        const outputPrice = parseFloat(m.pricing?.completion ?? "0") || 0;
-        const inputCost = (inputTokens / 1000) * inputPrice;
-        const outputCost = (outputTokens / 1000) * outputPrice;
-        const total = (inputCost + outputCost) * requests;
-        return { model: m, total, inputCost, outputCost };
-      })
-      .sort((a, b) => a.total - b.total);
-  }, [models, inputTokens, outputTokens, requests]);
+export function CompareCostTable({ models, workload: controlledWorkload, onWorkloadChange }: {
+  models: Model[]; workload?: CalculatorWorkload; onWorkloadChange?: (workload: CalculatorWorkload) => void;
+}) {
+  const local = useCalculatorWorkload();
+  const workload = controlledWorkload ?? local.workload;
+  const setWorkload = onWorkloadChange ?? local.setWorkload;
+  const { requests, period } = workload;
+  const rows = models.map((model) => ({ model, warnings: getWorkloadWarnings(model, workload), billingWarnings: getBillingWarnings(model.pricing, workload), ...calculateWorkloadCost(model.pricing, workload) }))
+    .sort((a, b) => (a.total ?? Infinity) - (b.total ?? Infinity));
+  const cheapest = rows.filter((row) => row.total !== null && getWorkloadSuitability(row.model, workload) === "fits").reduce<number | null>((best, row) => best === null ? row.total : Math.min(best, row.total!), null);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Input Tokens</label>
-          <Input
-            type="number"
-            value={inputTokens}
-            onChange={(e) => setInputTokens(Math.max(0, parseInt(e.target.value) || 0))}
-            className="h-9"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Output Tokens</label>
-          <Input
-            type="number"
-            value={outputTokens}
-            onChange={(e) => setOutputTokens(Math.max(0, parseInt(e.target.value) || 0))}
-            className="h-9"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Requests</label>
-          <Input
-            type="number"
-            value={requests}
-            onChange={(e) => setRequests(Math.max(1, parseInt(e.target.value) || 1))}
-            className="h-9"
-          />
-        </div>
-      </div>
-
-      <div className="rounded-lg border overflow-hidden">
-        <table className="w-full text-sm">
+      <CalculatorInputs workload={workload} onChange={setWorkload} showCache={models.some((model) => parsePrice(model.pricing?.input_cache_read) !== null)} />
+      <SavedSetups workload={workload} onWorkloadChange={setWorkload} />
+      <p className="text-xs leading-relaxed text-muted-foreground">Estimates in USD · {workloadSummary(workload)}. Highlighted totals are the lowest estimate among models that fit the listed limits.</p>
+      <InlineHelp title="About cost estimates"><p>Input and output costs are per request. Totals include selected cache, image, search, and request charges. Used units without a listed rate show Unavailable. Extra reasoning and tiered pricing are excluded.</p></InlineHelp>
+      <div role="region" aria-label="Cost estimates" tabIndex={0} className="rounded-lg border overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring">
+        <table className="w-full min-w-[600px] text-sm">
+          <caption className="sr-only">Estimated costs, lowest available total first</caption>
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left p-3 font-medium">Model</th>
-              <th className="text-right p-3 font-medium">Input</th>
-              <th className="text-right p-3 font-medium">Output</th>
-              <th className="text-right p-3 font-medium">Total ({requests.toLocaleString()})</th>
+              <th scope="col" className="text-left p-3 font-medium">Model</th>
+              <th scope="col" className="text-right p-3 font-medium">Input / request</th>
+              <th scope="col" className="text-right p-3 font-medium">Output / request</th>
+              <th scope="col" className="text-right p-3 font-medium">{period === "month" ? "Monthly total" : "Total"} ({requests.toLocaleString("en-US")} requests)</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ model, inputCost, outputCost, total }, i) => (
-              <tr key={model.id} className={i === 0 ? "bg-primary/5" : ""}>
-                <td className="p-3 font-medium">
-                  {i === 0 && <ArrowUpDown className="inline h-3 w-3 mr-1.5 text-primary" />}
-                  {model.name.split("/").pop()}
-                </td>
-                <td className="text-right p-3">{formatCost(inputCost)}</td>
-                <td className="text-right p-3">{formatCost(outputCost)}</td>
-                <td className="text-right p-3 font-semibold">{formatCost(total)}</td>
+            {rows.map(({ model, warnings, billingWarnings, inputCost, outputCost, total }) => (
+              <tr key={model.id} className={total !== null && total === cheapest && getWorkloadSuitability(model, workload) === "fits" ? "bg-primary/5" : ""}>
+                <th scope="row" className="sticky left-0 z-10 bg-background text-left p-3 font-medium">{model.name}
+                  {warnings.length > 0 && <div className="mt-2 space-y-1 text-xs font-normal text-muted-foreground">{warnings.map((warning) => <p key={warning}>{warning}</p>)}<p>Hypothetical cost; workload does not fit.</p></div>}
+                  {getWorkloadSuitability(model, workload) === "unknown" && <p className="mt-2 text-xs font-normal text-muted-foreground">Limits unknown: context or output cap is not published.</p>}
+                  {billingWarnings.length > 0 && <div className="mt-2 space-y-1 text-xs font-normal text-muted-foreground">{billingWarnings.map((warning) => <p key={warning}>{warning}</p>)}</div>}
+                  {total === null && billingWarnings.length === 0 && <p className="mt-2 text-xs font-normal text-muted-foreground">Estimate exceeds supported numeric range. Reduce usage.</p>}
+                </th>
+                <td className="text-right p-3 tabular-nums">{formatCost(inputCost)}</td>
+                <td className="text-right p-3 tabular-nums">{formatCost(outputCost)}</td>
+                <td className="text-right p-3 font-semibold tabular-nums">{formatCost(total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <details className="border-y py-1">
+        <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Full cost breakdown</summary>
+        <ul className="divide-y">
+          {rows.map((row) => <li key={row.model.id} className="space-y-3 py-5">
+            <h3 className="text-sm font-semibold">{row.model.name}</h3>
+            <CostBreakdown costs={row} workload={workload} />
+          </li>)}
+        </ul>
+      </details>
     </div>
   );
 }
