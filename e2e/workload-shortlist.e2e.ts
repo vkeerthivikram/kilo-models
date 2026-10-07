@@ -23,7 +23,9 @@ test("workload and complete budget filters survive reload and can be removed", a
   await page.getByRole("button", { name: "Remove filter: Fits workload", exact: true }).click();
   await page.getByRole("button", { name: "Remove filter: Batch budget ≤ $0.8", exact: true }).click();
   await expect(links).toHaveCount(24);
-  await expect(page).toHaveURL((url) => url.searchParams.get("fitsWorkload") === "false" && !url.searchParams.has("maxBudget"));
+  await expect(page).toHaveURL((url) => !url.searchParams.has("fitsWorkload") && !url.searchParams.has("maxBudget") &&
+    url.searchParams.get("requests") === "100" && url.searchParams.get("images") === "2" &&
+    url.searchParams.get("searches") === "1" && url.searchParams.get("outputTokens") === "9000");
 });
 
 test("unknown limits stay labeled and are excluded from a verified workload shortlist", async ({ page }) => {

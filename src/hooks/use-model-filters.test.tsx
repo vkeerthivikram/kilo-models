@@ -32,18 +32,73 @@ function inspect(searchParams: string, favorites: string[] = [], catalog: Model[
   return result;
 }
 
-function updateQuery(searchParams: string, update: (filters: ReturnType<typeof useModelFilters>) => void) {
-  return new Promise<URLSearchParams>((resolve) => {
-    let result: ReturnType<typeof useModelFilters> | undefined;
-    function Probe() {
-      result = useModelFilters(models);
-      return null;
+function updateQuery(searchParams: string, update: (filters: ReturnType<typeof useModelFilters>, advance: (milliseconds: number) => void) => void) {
+  let result: ReturnType<typeof useModelFilters> | undefined;
+  let query: URLSearchParams | undefined;
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const timers = new Map<ReturnType<typeof setTimeout>, { due: number; callback: () => void }>();
+  let now = 0;
+  globalThis.setTimeout = ((callback: () => void, delay = 0) => {
+    const handle = {} as ReturnType<typeof setTimeout>;
+    timers.set(handle, { due: now + delay, callback });
+    return handle;
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((handle) => {
+    timers.delete(handle as ReturnType<typeof setTimeout>);
+  }) as typeof clearTimeout;
+  const advance = (milliseconds: number) => {
+    const target = now + milliseconds;
+    let callbacks = 0;
+    while (true) {
+      const next = [...timers].sort((a, b) => a[1].due - b[1].due)[0];
+      if (!next || next[1].due > target) break;
+      assert.ok(++callbacks <= 100, "Query test exceeded 100 timer callbacks; possible rescheduling loop.");
+      const [handle, timer] = next;
+      now = timer.due;
+      timers.delete(handle);
+      timer.callback();
     }
-    renderToStaticMarkup(<NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={({ searchParams }) => resolve(searchParams)}><Probe /></NuqsTestingAdapter>);
+    now = target;
+  };
+  function Probe() {
+    result = useModelFilters(models);
+    return null;
+  }
+  try {
+    // Static rendering exposes setters without mounting effects or rerendering.
+    // nuqs still queues a zero-delay tick with rateLimitFactor=0; after driving it,
+    // this adapter calls onUrlUpdate synchronously. Search must advance its own
+    // 400ms debounce explicitly. No await occurs while globals are replaced.
+    renderToStaticMarkup(<NuqsTestingAdapter rateLimitFactor={0} searchParams={searchParams} onUrlUpdate={({ searchParams }) => { query = searchParams; }}><Probe /></NuqsTestingAdapter>);
     assert.ok(result);
-    update(result);
-  });
+    update(result, advance);
+    advance(0);
+    assert.ok(query, "Expected synchronous NuqsTestingAdapter onUrlUpdate after draining its queue; advance any debounce inside the update callback.");
+    return query;
+  } finally {
+    // Static renders have no unmount cleanup; discard every captured timeout,
+    // including pending search callbacks, even when updates or assertions throw.
+    timers.clear();
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
 }
+
+test("query helper fails immediately with a useful diagnostic when no URL update is emitted", () => {
+  assert.throws(() => updateQuery("?page=2", () => {}), /Expected synchronous NuqsTestingAdapter onUrlUpdate/);
+});
+
+test("query helper propagates driven callback failures and restores global timers", () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const failure = new Error("Driven callback failed");
+  assert.throws(() => updateQuery("", () => {
+    setTimeout(() => { throw failure; }, 0);
+  }), (error) => error === failure);
+  assert.equal(globalThis.setTimeout, originalSetTimeout);
+  assert.equal(globalThis.clearTimeout, originalClearTimeout);
+});
 
 test("removing one boolean filter removes its query key and pagination while preserving other state", async () => {
   const query = await updateQuery("?free=true&reasoning=true&page=2&fav=true&view=list&sort=cost-desc&requests=7&compare=test/model-01", (filters) => filters.setFree(false));
@@ -74,8 +129,18 @@ test("all boolean controls remove disabled filters instead of retaining false UR
   }
 });
 
-test("clearing search removes its query key and leaves selected filters and browsing scope intact", async () => {
-  const query = await updateQuery("?search=Model&page=2&providers=test&fav=true&view=list&sort=cost-desc&requests=7&compare=test/model-01", (filters) => filters.setSearch(""));
+test("search does not emit a URL update before its 400ms debounce", () => {
+  assert.throws(() => updateQuery("?search=Model", (filters, advance) => {
+    filters.setSearch("");
+    advance(399);
+  }), /Expected synchronous NuqsTestingAdapter onUrlUpdate/);
+});
+
+test("clearing search removes its query key after explicitly driving debounce and preserves other state", () => {
+  const query = updateQuery("?search=Model&page=2&providers=test&fav=true&view=list&sort=cost-desc&requests=7&compare=test/model-01", (filters, advance) => {
+    filters.setSearch("");
+    advance(400);
+  });
   assert.equal(query.has("search"), false);
   assert.equal(query.has("page"), false);
   assert.equal(query.get("providers"), "test");
