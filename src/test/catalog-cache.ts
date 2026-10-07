@@ -1,11 +1,11 @@
 import { workAsyncStorage, type WorkStore } from "next/dist/server/app-render/work-async-storage.external";
 import { version as nextVersion } from "next/package.json";
 
-// Written against Next 16.3.3's WorkStore pendingRevalidatedTags ({ tag }) and
+// Written against Next 16.3.6's WorkStore pendingRevalidatedTags ({ tag }) and
 // pendingRevalidates (promise bag). Recheck both contracts on any Next upgrade.
 export function assertCatalogTestCompatibility(version: string, runtime: unknown): void {
   const storage = runtime as { run?: unknown; getStore?: unknown } | null;
-  if (version !== "16.3.3" || typeof storage?.run !== "function" || typeof storage?.getStore !== "function") {
+  if (version !== "16.3.6" || typeof storage?.run !== "function" || typeof storage?.getStore !== "function") {
     throw new Error("Catalog-cache test helper incompatible with installed Next; recheck src/test/catalog-cache.ts");
   }
 }
