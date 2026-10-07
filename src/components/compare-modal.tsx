@@ -6,9 +6,9 @@ import { Model } from "@/lib/types";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CompareCostTable } from "@/components/compare-cost-table";
 import { ComparisonTable } from "@/components/comparison-table";
-import { getComparisonRows } from "@/lib/comparison";
+import { getVisibleComparisonRows } from "@/lib/comparison";
+import { workloadSummary } from "@/lib/workload-summary";
 import { ComparisonActions } from "@/components/comparison-actions";
 import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
 import {
@@ -31,12 +31,16 @@ const ComparisonCharts = dynamic(
   () => import("@/components/comparison-charts").then((module) => module.ComparisonCharts),
   { ssr: false, loading: () => <p role="status" className="p-4 sm:p-6 text-sm text-muted-foreground">Loading comparison charts…</p> },
 );
+const CompareCostTable = dynamic(() => import("@/components/compare-cost-table").then((module) => module.CompareCostTable),
+  { loading: () => <p role="status" className="p-4 text-sm text-muted-foreground">Loading cost calculator…</p> });
 
 export function CompareModal({ models, open, onOpenChange, onRemove }: CompareModalProps) {
   const [differencesOnly, setDifferencesOnly] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("overview");
+  const [calculatorVisited, setCalculatorVisited] = React.useState(false);
+  const [fullSpecifications, setFullSpecifications] = React.useState(false);
   const { workload, setWorkload } = useCalculatorWorkload();
-  const rows = getComparisonRows(models);
+  const rows = getVisibleComparisonRows(models, workload, fullSpecifications);
   const differenceCount = rows.filter((row) => row.different).length;
   if (models.length === 0) return null;
 
@@ -74,7 +78,7 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
         <ComparisonActions models={models} workload={workload} />
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(String(value))} className="flex-1 min-h-0 flex flex-col overflow-clip">
+        <Tabs value={activeTab} onValueChange={(value) => { const tab = String(value); setActiveTab(tab); if (tab === "calculator") setCalculatorVisited(true); }} className="flex-1 min-h-0 flex flex-col overflow-clip">
           <div className="shrink-0 px-4 sm:px-6 pt-1">
             <TabsList className="w-full group-data-horizontal/tabs:h-11 sm:w-auto">
               <TabsTrigger value="overview">
@@ -94,6 +98,10 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
 
           <TabsContent value="overview" className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 sm:px-6 sm:pb-6">
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                <input type="checkbox" checked={fullSpecifications} onChange={(event) => setFullSpecifications(event.target.checked)} className="size-4 accent-primary" />
+                Full specifications
+              </label>
               <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:text-muted-foreground">
                 <input type="checkbox" checked={differencesOnly && models.length > 1} disabled={models.length < 2}
                   onChange={(event) => setDifferencesOnly(event.target.checked)} className="size-4 accent-primary" />
@@ -103,16 +111,16 @@ export function CompareModal({ models, open, onOpenChange, onRemove }: CompareMo
                 {models.length < 2 ? "Add another model to see differences" : `${differencesOnly ? differenceCount : rows.length} of ${rows.length} specifications shown`}
               </p>
             </div>
-            <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">Scroll across to compare models. Prices in USD / 1M tokens; differences use full precision.</p>
-            <ComparisonTable models={models} differencesOnly={differencesOnly} onRemove={onRemove} />
+            <p className="shrink-0 text-xs leading-relaxed text-muted-foreground">Scroll across to compare models. Published prices: USD / 1M tokens. Estimates use: {workloadSummary(workload)}. Differences use full precision.</p>
+            <ComparisonTable models={models} differencesOnly={differencesOnly} onRemove={onRemove} fullSpecifications={fullSpecifications} workload={workload} />
           </TabsContent>
 
           <TabsContent value="charts" className="flex-1 min-h-0 overflow-y-auto">
             {open && activeTab === "charts" && <ComparisonCharts models={models} />}
           </TabsContent>
 
-          <TabsContent value="calculator" keepMounted className="flex-1 min-h-0 overflow-y-auto p-6">
-            <CompareCostTable models={models} workload={workload} onWorkloadChange={setWorkload} />
+          <TabsContent value="calculator" keepMounted className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+            {open && calculatorVisited && <CompareCostTable models={models} workload={workload} onWorkloadChange={setWorkload} />}
           </TabsContent>
         </Tabs>
       </SheetContent>

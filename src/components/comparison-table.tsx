@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import type { Model } from "@/lib/types";
-import { getComparisonRows } from "@/lib/comparison";
+import { getVisibleComparisonRows } from "@/lib/comparison";
+import { buildWorkloadHref, type CalculatorWorkload } from "@/lib/calculator-workload";
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, X } from "lucide-react";
 
@@ -10,17 +11,19 @@ interface ComparisonTableProps {
   models: Model[];
   differencesOnly: boolean;
   onRemove: (model: Model) => void;
+  workload?: CalculatorWorkload;
+  fullSpecifications?: boolean;
 }
 
-export function ComparisonTable({ models, differencesOnly, onRemove }: ComparisonTableProps) {
-  const allRows = getComparisonRows(models);
+export function ComparisonTable({ models, differencesOnly, onRemove, workload, fullSpecifications = true }: ComparisonTableProps) {
+  const allRows = getVisibleComparisonRows(models, workload, fullSpecifications);
   const rows = differencesOnly && models.length > 1 ? allRows.filter((row) => row.different) : allRows;
 
   return (
     <div role="region" aria-label="Comparison specifications" tabIndex={0}
-      className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border [--comparison-label-width:8rem] sm:[--comparison-label-width:11rem]">
+      className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border focus-visible:outline-2 focus-visible:outline-ring [--comparison-label-width:7rem] [--comparison-model-width:12rem] sm:[--comparison-label-width:11rem] sm:[--comparison-model-width:15rem]">
       <table className="w-full table-fixed border-separate border-spacing-0 text-sm"
-        style={{ minWidth: `calc(var(--comparison-label-width) + ${models.length * 15}rem)` }}>
+        style={{ minWidth: `calc(var(--comparison-label-width) + ${models.length} * var(--comparison-model-width))` }}>
         <caption className="sr-only">Side-by-side model specifications. Prices are USD per million tokens.</caption>
         <colgroup>
           <col style={{ width: "var(--comparison-label-width)" }} />
@@ -32,7 +35,7 @@ export function ComparisonTable({ models, differencesOnly, onRemove }: Compariso
             {models.map((model) => (
               <th key={model.id} scope="col" className="sticky top-0 z-20 border-b border-r bg-card px-4 py-4 text-left align-top last:border-r-0">
                 <div className="flex items-start gap-2">
-                  <Link href={`/models/${encodeURIComponent(model.id)}`} className="min-w-0 flex-1 break-words font-semibold leading-snug hover:underline hover:underline-offset-4">
+                  <Link href={workload ? buildWorkloadHref(`/models/${encodeURIComponent(model.id)}`, workload) : `/models/${encodeURIComponent(model.id)}`} className="min-h-11 min-w-0 flex-1 break-words rounded font-semibold leading-snug hover:underline hover:underline-offset-4">
                     {model.name}<ArrowUpRight className="ml-1 inline size-3.5" aria-hidden="true" />
                   </Link>
                   <button type="button" onClick={() => onRemove(model)} aria-label={`Remove ${model.name} from comparison`}
@@ -40,7 +43,7 @@ export function ComparisonTable({ models, differencesOnly, onRemove }: Compariso
                     <X className="size-4" aria-hidden="true" />
                   </button>
                 </div>
-                <p className="mt-2 break-all font-mono text-xs font-normal text-muted-foreground">{model.id}</p>
+                <p className="mt-2 break-words text-xs font-normal text-muted-foreground">{fullSpecifications ? model.id : model.id.split("/")[0]}</p>
               </th>
             ))}
           </tr>

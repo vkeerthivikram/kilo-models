@@ -36,7 +36,9 @@ test("unknown limits stay labeled and are excluded from a verified workload shor
   }));
   await page.goto("/?view=list");
   await expect(page.getByText(/Limits unknown/)).toBeVisible();
-  if (!await page.getByRole("button", { name: "Fits workload", exact: true }).isVisible()) await page.getByRole("button", { name: /^Filters/ }).click();
+  const filters = page.getByRole("button", { name: /^Filters/ });
+  if (await filters.isVisible()) await filters.click();
+  await page.locator("summary").filter({ hasText: "Advanced filters" }).click();
   await page.getByRole("button", { name: "Fits workload", exact: true }).click();
   const links = page.getByRole("link", { name: /^Fixture Model \d+$/ });
   await expect(links).toHaveCount(1);

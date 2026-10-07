@@ -1,5 +1,7 @@
 import type { Model } from "./types";
 import { formatPrice, parsePrice as price } from "./format-price";
+import { getWorkloadSuitability, type CalculatorWorkload } from "./calculator-workload";
+import { calculateWorkloadCost, formatCost } from "./cost-calculator";
 
 export interface ComparisonRow {
   key: string;
@@ -37,13 +39,25 @@ export function getComparisonRows(models: Model[]): ComparisonRow[] {
   add("output-price", "Output price / 1M tokens", (model) => price(model.pricing?.completion), (value) => formatPrice(value ?? undefined));
   add("context", "Context window (tokens)", (model) => tokens(model.context_length), formatTokens);
   add("max-output", "Max output (tokens)", (model) => tokens(model.top_provider?.max_completion_tokens), formatTokens);
-  add("input-modalities", "Input modalities", (model) => modalities(model.architecture?.input_modalities), formatModality);
-  add("output-modalities", "Output modalities", (model) => modalities(model.architecture?.output_modalities), formatModality);
+  add("input-modalities", "Input types", (model) => modalities(model.architecture?.input_modalities), formatModality);
+  add("output-modalities", "Output types", (model) => modalities(model.architecture?.output_modalities), formatModality);
   add("reasoning", "Reasoning", (model) => model.supported_parameters ? model.supported_parameters.some((value) => value === "reasoning" || value === "include_reasoning") : null, booleanLabel);
   add("tools", "Tool calling", (model) => model.supported_parameters ? model.supported_parameters.includes("tools") : null, booleanLabel);
   add("moderation", "Provider moderation", (model) => model.top_provider?.is_moderated ?? null, booleanLabel);
   add("prompt-training", "May train on prompts", (model) => model.mayTrainOnYourPrompts ?? null, booleanLabel);
   add("tokenizer", "Tokenizer", (model) => model.architecture?.tokenizer || null, (value) => value ?? "—");
   add("released", "Released (UTC)", (model) => releaseDate(model.created), (value) => value ?? "—");
+  return rows;
+}
+
+export function getVisibleComparisonRows(models: Model[], workload?: CalculatorWorkload, fullSpecifications = true): ComparisonRow[] {
+  const essential = ["provider", "input-price", "output-price", "context", "max-output", "input-modalities", "output-modalities", "reasoning", "tools"];
+  const rows = getComparisonRows(models).filter((row) => fullSpecifications || essential.includes(row.key));
+  if (workload) {
+    const totals = models.map((model) => calculateWorkloadCost(model.pricing, workload).total);
+    rows.splice(3, 0, { key: "workload-cost", label: `Estimated ${workload.period === "month" ? "monthly" : "batch"} cost · USD`, values: totals.map(formatCost), different: totals.some((value) => value !== totals[0]) });
+    const fit = models.map((model) => getWorkloadSuitability(model, workload));
+    rows.push({ key: "workload-fit", label: "Workload fit", values: fit.map((value) => value === "fits" ? "Fits published token limits" : value === "exceeds" ? "Exceeds limits · hypothetical cost" : "Limits unknown"), different: fit.some((value) => value !== fit[0]) });
+  }
   return rows;
 }

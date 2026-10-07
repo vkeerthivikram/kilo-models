@@ -1,4 +1,4 @@
-import type { CalculatorWorkload } from "./calculator-workload";
+import { WORKLOAD_QUERY_KEYS, type CalculatorWorkload } from "./calculator-workload";
 import { parseNumericFilter } from "./model-filtering";
 
 export const SAVED_SETUPS_STORAGE_KEY = "kilo-models-saved-setups";
@@ -19,6 +19,41 @@ export interface SavedSetup {
   workload: SavedSetupWorkload;
   directoryQuery: string;
   includesDirectoryView: boolean;
+}
+
+/** Compare effective settings, ignoring pagination and explicit default values. */
+export function savedSetupMatches(setup: SavedSetup, workload: CalculatorWorkload, query?: string | URLSearchParams): boolean {
+  if (WORKLOAD_QUERY_KEYS.some((key) => workload[key] !== setup.workload[key])) return false;
+  if (!setup.includesDirectoryView || query === undefined) return true;
+  const canonical = (source: string | URLSearchParams) => {
+    const params = sanitizeSavedSetupQuery(source);
+    for (const [key, value] of [...params.entries()]) {
+      if (!value || (booleans.includes(key) && value === "false") || (key === "view" && value === "grid") || (key === "sort" && value === "name-asc")) params.delete(key);
+      else if (["providers", "inputModalities", "outputModalities"].includes(key)) params.set(key, [...new Set(value.split(","))].sort().join(","));
+      else if (["minContext", "maxInputPrice", "maxOutputPrice", "maxBudget"].includes(key)) params.set(key, String(Number(value)));
+    }
+    params.sort();
+    return params.toString();
+  };
+  return canonical(setup.directoryQuery) === canonical(query);
+}
+
+export function savedViewSummary(query: string): string {
+  const params = sanitizeSavedSetupQuery(query);
+  const labels: Record<string, string> = { free: "Free only", hideRetired: "Hide retired", reasoning: "Reasoning", tools: "Tool calling", fav: "Favorites", fitsWorkload: "Fits workload" };
+  const sorts: Record<string, string> = { "name-asc": "Name A–Z", "name-desc": "Name Z–A", "price-asc": "Lowest input price", "price-desc": "Highest input price", "cost-asc": "Lowest estimated cost", "cost-desc": "Highest estimated cost", "context-desc": "Largest context", "created-desc": "Newest first", "created-asc": "Oldest first" };
+  return Array.from(params, ([key, value]) => {
+    if (labels[key]) return value === "true" ? labels[key] : "";
+    if (key === "search") return value ? `Search: ${value}` : "";
+    if (key === "sort") return `Sort: ${sorts[value]}`;
+    if (key === "view") return value === "list" ? "List view" : "";
+    if (key === "providers") return value ? `Providers: ${value.split(",").join(", ")}` : "";
+    if (key === "inputModalities" || key === "outputModalities") return value ? `${key === "inputModalities" ? "Input" : "Output"} types: ${value.split(",").join(", ")}` : "";
+    if (key === "minContext") return `Context ≥ ${Number(value).toLocaleString("en-US")} tokens`;
+    if (key === "maxBudget") return `Total budget ≤ $${value}`;
+    if (key === "maxInputPrice" || key === "maxOutputPrice") return `${key === "maxInputPrice" ? "Input" : "Output"} ≤ $${value}/1M tokens`;
+    return "";
+  }).filter(Boolean).join(" · ") || "Default search, filters, and view";
 }
 
 export const SAVED_SETUP_QUERY_KEYS = [

@@ -26,7 +26,9 @@ async function openSavedSetups(page: Page) {
   const requests = page.getByRole("spinbutton", { name: "Requests", exact: true });
   if (!await requests.isVisible()) await page.locator("summary").filter({ hasText: "Estimate workload" }).click();
   await expect(requests).toBeVisible();
-  return page.getByRole("region", { name: "Saved setups", exact: true });
+  const setups = page.getByRole("region", { name: "Saved setups", exact: true });
+  await setups.locator("summary").filter({ hasText: "Manage setups" }).click();
+  return setups;
 }
 
 async function exportBackup(page: Page, setups: Locator): Promise<{ backup: Backup; buffer: Buffer }> {

@@ -15,7 +15,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Hash,
-  Shield,
   Sparkles,
   Wrench,
 } from "lucide-react";
@@ -23,18 +22,16 @@ import {
 type ModelCardProps = ModelActionsProps & { workload?: CalculatorWorkload };
 
 function ModalityIcons({ mods, kind }: { mods: string[]; kind: "in" | "out" }) {
-  if (mods.length === 0) return null;
+  const capabilities = mods.filter((modality) => modality !== "text");
+  if (capabilities.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {kind === "in" ? "In" : "Out"}
-      </span>
-      {mods.map((m) => (
+      {capabilities.map((m) => (
         <span
           key={m}
-          className="rounded border bg-muted/50 px-1.5 py-0.5 text-[10px] capitalize text-foreground"
+          className="rounded border bg-muted/50 px-1.5 py-0.5 text-xs capitalize text-foreground"
         >
-          {m}
+          {m} {kind === "in" ? "input" : "output"}
         </span>
       ))}
     </span>
@@ -71,7 +68,7 @@ export function ModelCard({ model, workload, isCompared, compareDisabled, onTogg
               </span>
             </Link>
           </h3>
-          <p className="mt-1 truncate text-xs font-mono text-muted-foreground">{model.id}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">{model.id.split("/")[0]}</p>
         </div>
         {model.isFree && (
           <Badge className="shrink-0 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
@@ -86,19 +83,19 @@ export function ModelCard({ model, workload, isCompared, compareDisabled, onTogg
 
         <dl className="grid grid-cols-3 divide-x divide-border rounded-lg border text-center">
           <div className="px-2 py-2.5">
-            <dt className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               <ArrowUpRight className="size-3" aria-hidden="true" /> Input
             </dt>
             <dd className="mt-1 text-sm font-semibold tabular-nums">{formatPrice(model.pricing?.prompt)}</dd>
           </div>
           <div className="px-2 py-2.5">
-            <dt className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               <ArrowDownRight className="size-3" aria-hidden="true" /> Output
             </dt>
             <dd className="mt-1 text-sm font-semibold tabular-nums">{formatPrice(model.pricing?.completion)}</dd>
           </div>
           <div className="px-2 py-2.5">
-            <dt className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               <Hash className="size-3" aria-hidden="true" /> Context
             </dt>
             <dd className="mt-1 text-sm font-semibold tabular-nums">{formatContext(model.context_length)}</dd>
@@ -116,11 +113,6 @@ export function ModelCard({ model, workload, isCompared, compareDisabled, onTogg
           {hasTools && (
             <span className="inline-flex items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-[11px]">
               <Wrench className="size-3" aria-hidden="true" /> Tools
-            </span>
-          )}
-          {model.top_provider?.is_moderated && (
-            <span className="inline-flex items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 text-[11px]" title="Provider moderates this model">
-              <Shield className="size-3" aria-hidden="true" /> Moderated
             </span>
           )}
         </div>

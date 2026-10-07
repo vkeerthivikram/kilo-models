@@ -14,6 +14,19 @@ const models: Model[] = Array.from({ length: COMPARE_LIMIT + 1 }, (_, index) => 
 }));
 
 for (const viewMode of ["grid", "list"] as const) {
+  test(`${viewMode} view summarizes provider and useful capabilities without technical clutter`, () => {
+    const model = { ...models[0], id: "test/opaque-internal-model-id", architecture: {
+      ...models[0].architecture, input_modalities: ["text", "image"], output_modalities: ["text"],
+    }, supported_parameters: ["tools", "reasoning"], top_provider: { ...models[0].top_provider, is_moderated: true } };
+    const html = renderToStaticMarkup(<ModelGrid models={[model]} viewMode={viewMode} />);
+    assert.match(html, />test<\/p>/);
+    assert.match(html, /Image input/i);
+    assert.match(html, /Reasoning/);
+    assert.match(html, /Tools/);
+    assert.doesNotMatch(html, />test\/opaque-internal-model-id<\/p>/);
+    assert.doesNotMatch(html, /Moderated/);
+  });
+
   test(`${viewMode} view keeps favorite and comparison controls available`, () => {
     const html = renderToStaticMarkup(<ModelGrid models={[models[0]]} viewMode={viewMode}
       isComparedModels={[models[0]]} isFavoriteModel={() => true}

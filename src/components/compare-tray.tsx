@@ -19,7 +19,7 @@ export function CompareTray({ models, onRemove, onClear, onOpen }: CompareTrayPr
 
   return (
     <section aria-label="Model comparison" className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid max-w-[1440px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-5 py-3 sm:px-8 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
+      <div className="mx-auto grid max-w-[1440px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-5 py-2 sm:px-8 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
         {/* Selection count */}
         <div className="flex min-w-0 items-center gap-3">
           <div className="hidden size-10 shrink-0 items-center justify-center rounded-lg bg-muted sm:flex">

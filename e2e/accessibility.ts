@@ -41,17 +41,24 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
   const directorySearch = scanGrid ? "" : "&search=Fixture%20Model%2001";
   await page.goto(`/?view=list${directorySearch}`);
   await expect(page.getByRole("link", { name: "Fixture Model 01", exact: true })).toBeVisible();
+  if (scanGrid) await scan("directory-simple");
   async function expandDirectoryControls() {
     const filters = page.getByRole("button", { name: /^Filters/ });
     if (await filters.isVisible()) await filters.click();
+    await page.locator("summary").filter({ hasText: "Advanced filters" }).click();
     await page.locator("summary").filter({ hasText: "Estimate workload" }).click();
     await expect(page.getByRole("spinbutton", { name: "Requests", exact: true })).toBeVisible();
-    await page.getByText("Additional billing", { exact: true }).click();
+    await page.locator("summary").filter({ hasText: "Advanced usage" }).click();
+    await page.locator("summary").filter({ hasText: "Manage setups" }).click();
     await expect(page.getByRole("spinbutton", { name: "Images per request", exact: true })).toBeVisible();
   }
   await expandDirectoryControls();
   await scan("directory-list");
   if (scanGrid) {
+    await page.getByRole("button", { name: "All providers", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: "Search providers", exact: true })).toBeVisible();
+    await scan("directory-providers");
+    await page.keyboard.press("Escape");
     // Scan a fully loaded grid; the user-facing view transition is covered by directory.e2e.ts.
     await page.goto("/?view=grid");
     await expect(page.getByRole("link", { name: "Fixture Model 01", exact: true })).toBeVisible();
@@ -64,7 +71,12 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
   await page.goto("/models/fixture%2Fmodel-01");
   await expect(page.getByRole("heading", { name: "Fixture Model 01", exact: true, level: 1 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy model ID", exact: true })).toBeEnabled();
-  await page.getByText("Additional billing", { exact: true }).click();
+  await page.locator("summary").filter({ hasText: "Advanced usage" }).click();
+  await page.locator("summary").filter({ hasText: "Manage setups" }).click();
+  await page.locator("summary").filter({ hasText: "Full cost breakdown" }).click();
+  for (const title of ["Full specifications", "Other published rates", "About capabilities", "About tokens", "About caching"]) {
+    await page.locator("summary").filter({ hasText: title }).click();
+  }
   await expect(page.getByRole("spinbutton", { name: "Images per request", exact: true })).toBeVisible();
   await scan("detail");
 
@@ -72,9 +84,13 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Compare Models", exact: true })).toBeVisible();
   await scan("comparison-overview");
+  await dialog.getByRole("checkbox", { name: "Full specifications", exact: true }).check();
+  await dialog.locator("summary").filter({ hasText: "More actions" }).click();
+  await scan("comparison-full");
   await dialog.getByRole("tab", { name: /Cost Calculator|Costs/ }).click();
   await expect(dialog.getByRole("spinbutton", { name: "Requests", exact: true })).toBeVisible();
-  await dialog.getByText("Additional billing", { exact: true }).click();
+  await dialog.locator("summary").filter({ hasText: "Advanced usage" }).click();
+  await dialog.locator("summary").filter({ hasText: "Manage setups" }).click();
   await expect(dialog.getByRole("spinbutton", { name: "Images per request", exact: true })).toBeVisible();
   await dialog.locator("summary").filter({ hasText: "Full cost breakdown" }).click();
   await expect(dialog.getByText("Uncached input", { exact: true }).first()).toBeVisible();

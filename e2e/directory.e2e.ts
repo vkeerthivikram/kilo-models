@@ -185,6 +185,7 @@ test("saved setups restore workload and filters after reload while preserving co
   await expect(page).toHaveURL((url) => url.searchParams.get("images") === "3" && url.searchParams.get("compare") === "fixture/model-02"
     && url.searchParams.get("requests") === "42" && url.searchParams.get("search") === "Fixture Model 0");
   await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("1 / 10");
+  await page.getByRole("region", { name: "Saved setups", exact: true }).locator("summary").filter({ hasText: "Manage setups" }).click();
   await page.getByRole("button", { name: "Delete Fixture workload", exact: true }).click();
   await expect(page.getByText("No saved setups yet. Name this workload and filter view to reuse it later.", { exact: true })).toBeVisible();
   await page.reload();
@@ -213,6 +214,7 @@ test("detail workload survives View comparison and Back; workload-only setups pr
   await dialog.getByRole("textbox", { name: "Setup name", exact: true }).fill("Comparison workload");
   await dialog.getByRole("button", { name: "Save setup", exact: true }).click();
   await expect(dialog.getByText("Saved “Comparison workload”.", { exact: true })).toBeVisible();
+  await dialog.locator("summary").filter({ hasText: "Manage setups" }).click();
   await dialog.getByRole("button", { name: "Delete Comparison workload", exact: true }).click();
   await expect(dialog.getByText("Deleted “Comparison workload”.", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Close comparison", exact: true }).click();

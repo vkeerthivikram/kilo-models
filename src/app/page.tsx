@@ -7,12 +7,6 @@ import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu";
 import { ModelGrid } from "@/components/model-grid-v2";
 import { Paginator } from "@/components/paginator";
 import { CompareTray } from "@/components/compare-tray";
@@ -29,12 +23,30 @@ import { CatalogStatus } from "@/components/catalog-status";
 import { CalculatorInputs } from "@/components/calculator-inputs";
 import { SavedSetups } from "@/components/saved-setups";
 import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
+import { workloadSummary } from "@/lib/workload-summary";
+import { InlineHelp } from "@/components/inline-help";
 
 function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [providerSearch, setProviderSearch] = React.useState("");
+  const [providersOpen, setProvidersOpen] = React.useState(false);
+  const providerToggle = React.useRef<HTMLButtonElement>(null);
+  const searchInput = React.useRef<HTMLInputElement>(null);
+  const providerInput = React.useRef<HTMLInputElement>(null);
+  const workloadPanel = React.useRef<HTMLDetailsElement>(null);
   const { comparedModels, toggleCompare, clearComparison, hasSharedComparison } = useComparison(models);
   const [compareModalOpen, setCompareModalOpen] = React.useState(false);
+  React.useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || compareModalOpen) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="dialog"]')) return;
+      event.preventDefault();
+      searchInput.current?.focus();
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, [compareModalOpen]);
   const openedSharedComparison = React.useRef(false);
   useDirectoryScrollRestoration(!loading);
   React.useEffect(() => {
@@ -58,9 +70,23 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
     page, setPage, fav, setFav, view, setView, clearFilters,
     activeFilterCount, sortedModels, paginatedModels, totalPages, directoryQuery, applyDirectoryQuery,
   } = useModelFilters(models, favorites, workload);
-  const availableProviders = [...new Set(models.map((model) => model.id.split("/")[0]))].sort();
-  const matchingProviders = availableProviders.filter((provider) => provider.toLowerCase().includes(providerSearch.trim().toLowerCase()));
+  const availableProviders = React.useMemo(() => [...new Set(models.map((model) => model.id.split("/")[0]))].sort(), [models]);
+  const matchingProviders = availableProviders.filter((provider) => provider.toLowerCase().includes(providerSearch.trim().toLowerCase()))
+    .sort((a, b) => Number(providers.includes(b)) - Number(providers.includes(a)) || a.localeCompare(b));
+  const editBudgetWorkload = () => {
+    if (!workloadPanel.current) return;
+    workloadPanel.current.open = true;
+    workloadPanel.current.querySelector<HTMLInputElement>('input[type="number"]')?.focus();
+  };
   const hasFilters = activeFilterCount > 0 || search.length > 0;
+  const advancedFilterCount = [hideRetired, fitsWorkload, maxBudget !== null, minContext !== null, maxInputPrice !== null, maxOutputPrice !== null].filter(Boolean).length + inputModalities.length + outputModalities.length;
+  const [initiallyAdvanced] = React.useState(advancedFilterCount > 0);
+  const advancedPanel = React.useRef<HTMLDetailsElement>(null);
+  const hasAdvancedFilters = advancedFilterCount > 0;
+  React.useEffect(() => {
+    // Saved views reveal active filters; clearing them must not close an editing panel.
+    if (hasAdvancedFilters && advancedPanel.current) advancedPanel.current.open = true;
+  }, [hasAdvancedFilters]);
   const activeFilters = [
     ...(search ? [{ key: "search", label: `Search: ${search}`, remove: () => setSearch("") }] : []),
     ...(free ? [{ key: "free", label: "Free only", remove: () => setFree(false) }] : []),
@@ -113,28 +139,6 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
           </div>
 
           <fieldset>
-            <legend className="mb-3 text-sm font-medium">Availability</legend>
-            <button type="button" onClick={() => setHideRetired(!hideRetired)} aria-pressed={hideRetired}
-              className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
-              <span className={cn("flex size-4 items-center justify-center rounded border", hideRetired ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{hideRetired && <Check className="size-3" aria-hidden="true" />}</span>
-              Hide retired models
-            </button>
-            <p className="text-xs leading-relaxed text-muted-foreground">Uses published retirement dates in UTC. Models with no date stay visible.</p>
-          </fieldset>
-
-          <fieldset className="space-y-3">
-            <legend className="mb-3 text-sm font-medium">Workload shortlist</legend>
-            <button type="button" onClick={() => setFitsWorkload(!fitsWorkload)} aria-pressed={fitsWorkload}
-              className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
-              <span className={cn("flex size-4 items-center justify-center rounded border", fitsWorkload ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{fitsWorkload && <Check className="size-3" aria-hidden="true" />}</span>
-              Fits workload
-            </button>
-            <p className="text-xs leading-relaxed text-muted-foreground">Checks published context and output limits. Unknown limits are excluded. Set usage in Estimate workload.</p>
-            <NumericFilterInput id="max-budget" label={`Total budget · USD / ${workload.period === "month" ? "month" : "batch"}`} value={maxBudget} onChange={setMaxBudget} />
-            <p className="text-xs leading-relaxed text-muted-foreground">Includes every selected charge for all requests. Unavailable estimates are excluded; limits are checked only with Fits workload.</p>
-          </fieldset>
-
-          <fieldset className="space-y-3">
             <legend className="mb-3 text-sm font-medium">Pricing</legend>
             <button type="button" onClick={() => setFree(!free)} aria-pressed={free}
               className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
@@ -142,35 +146,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
               Free models only
               <span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.free}</span>
             </button>
-            <NumericFilterInput id="max-input-price" label="Max input · USD / 1M tokens" value={maxInputPrice} onChange={setMaxInputPrice} />
-            <NumericFilterInput id="max-output-price" label="Max output · USD / 1M tokens" value={maxOutputPrice} onChange={setMaxOutputPrice} />
           </fieldset>
-
-          <fieldset>
-            <legend className="mb-3 text-sm font-medium">Context</legend>
-            <NumericFilterInput id="min-context" label="Minimum context · tokens" value={minContext} onChange={setMinContext} integer />
-          </fieldset>
-
-          {[
-            { label: "Input modalities", options: INPUT_MODALITIES, selected: inputModalities, set: setInputModalities, counts: filterCounts.inputModalities },
-            { label: "Output modalities", options: OUTPUT_MODALITIES, selected: outputModalities, set: setOutputModalities, counts: filterCounts.outputModalities },
-          ].map(({ label, options, selected, set, counts }) => (
-            <fieldset key={label}>
-              <legend className="mb-3 text-sm font-medium">{label}</legend>
-              <div className="flex flex-wrap gap-2">
-                {options.map((modality) => (
-                  <button key={modality} type="button" aria-pressed={selected.includes(modality)}
-                    onClick={() => set(selected.includes(modality) ? selected.filter((item) => item !== modality) : [...selected, modality])}
-                    className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs capitalize transition-colors", selected.includes(modality) ? "border-foreground bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground")}>
-                    {selected.includes(modality) && <Check className="size-3" aria-hidden="true" />}
-                    {modality}
-                    <span className="tabular-nums text-muted-foreground">{counts[modality] ?? 0}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Matches any selected modality.</p>
-            </fieldset>
-          ))}
 
           <fieldset>
             <legend className="mb-3 text-sm font-medium">Capabilities</legend>
@@ -181,35 +157,112 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
                 <span className="ml-auto text-xs tabular-nums text-muted-foreground">{count}</span>
               </button>
             ))}
+            <InlineHelp title="About capabilities"><p>Reasoning indicates support for reasoning controls. Tool calling lets a model request a tool action; your application must execute it. These features do not measure answer quality.</p></InlineHelp>
           </fieldset>
 
-          <div className="space-y-3 border-t pt-5">
+          <div className="space-y-3 border-t pt-5" onKeyDown={(event) => {
+            if (event.key === "Escape" && providersOpen) {
+              event.stopPropagation();
+              setProvidersOpen(false);
+              providerToggle.current?.focus();
+            }
+          }}>
             <h3 className="text-sm font-medium">Providers</h3>
-            <Input aria-label="Search providers" placeholder="Find provider..." value={providerSearch}
-              onChange={(event) => setProviderSearch(event.target.value)} className="h-11 text-base md:text-sm" />
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" className="h-11 w-full justify-between text-xs" />}>
+            <Button ref={providerToggle} type="button" variant="outline" className="h-11 w-full justify-between text-xs"
+              onClick={() => setProvidersOpen(!providersOpen)} aria-expanded={providersOpen} aria-controls="provider-options">
                 {providers.length ? `${providers.length} selected` : "All providers"}<ChevronDown className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="max-h-80 w-56" align="start">
+            </Button>
+            <div id="provider-options" hidden={!providersOpen} className="space-y-2">
+              <div className="relative">
+                <Input ref={providerInput} aria-label="Search providers" placeholder="Find provider..." value={providerSearch}
+                  onChange={(event) => setProviderSearch(event.target.value)} className="h-11 pr-11 text-base md:text-sm" />
+                {providerSearch && <button type="button" aria-label="Clear provider search" className="absolute right-0 top-0 flex size-11 items-center justify-center rounded text-muted-foreground hover:text-foreground" onClick={() => { setProviderSearch(""); providerInput.current?.focus(); }}><X className="size-4" aria-hidden="true" /></button>}
+              </div>
+              <div role="group" aria-label="Choose providers" className="max-h-64 overflow-y-auto">
                 {matchingProviders.map((provider) => (
-                  <DropdownMenuCheckboxItem key={provider} checked={providers.includes(provider)} closeOnClick={false}
-                    onCheckedChange={(checked) => setProviders(checked ? [...providers, provider] : providers.filter((item) => item !== provider))}
-                    className="min-h-11 capitalize"><span className="min-w-0 truncate">{provider}</span><span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.providers[provider] ?? 0}</span></DropdownMenuCheckboxItem>
+                  <label key={provider} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm capitalize">
+                    <input type="checkbox" checked={providers.includes(provider)}
+                      onChange={(event) => setProviders(event.target.checked ? [...providers, provider] : providers.filter((item) => item !== provider))}
+                      className="size-4 shrink-0 accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
+                    <span className="min-w-0 truncate">{provider}</span><span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.providers[provider] ?? 0}</span>
+                  </label>
                 ))}
                 {matchingProviders.length === 0 && <p className="px-3 py-4 text-xs text-muted-foreground">No providers match this search.</p>}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </div>
+            </div>
             {providers.length > 0 && <button type="button" onClick={() => setProviders([])} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Clear providers</button>}
-            <p className="text-xs leading-relaxed text-muted-foreground">Option counts match filters outside their group.</p>
           </div>
+          <details ref={advancedPanel} open={initiallyAdvanced || undefined} className="border-t pt-2">
+            <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+              Advanced filters{advancedFilterCount > 0 && <span className="ml-2 text-xs font-normal text-muted-foreground">{advancedFilterCount} active</span>}
+            </summary>
+            <div className="space-y-6 pt-3">
+              <fieldset>
+                <legend className="mb-3 text-sm font-medium">Availability</legend>
+                <button type="button" onClick={() => setHideRetired(!hideRetired)} aria-pressed={hideRetired}
+                  className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
+                  <span className={cn("flex size-4 items-center justify-center rounded border", hideRetired ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{hideRetired && <Check className="size-3" aria-hidden="true" />}</span>
+                  Hide retired models
+                </button>
+                <p className="text-xs leading-relaxed text-muted-foreground">Models without a retirement date stay visible.</p>
+              </fieldset>
+
+              <fieldset className="space-y-3">
+                <legend className="mb-3 text-sm font-medium">Workload shortlist</legend>
+                <button type="button" onClick={() => setFitsWorkload(!fitsWorkload)} aria-pressed={fitsWorkload}
+                  className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
+                  <span className={cn("flex size-4 items-center justify-center rounded border", fitsWorkload ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{fitsWorkload && <Check className="size-3" aria-hidden="true" />}</span>
+                  Fits workload
+                </button>
+                <p className="text-xs leading-relaxed text-muted-foreground">Uses your estimate and published token limits. Unknown limits are excluded.</p>
+                <NumericFilterInput id="max-budget" label={`Total budget · USD / ${workload.period === "month" ? "month" : "batch"}`} value={maxBudget} onChange={setMaxBudget} />
+                <p className="text-xs leading-relaxed text-muted-foreground">Total for all requests and selected charges. Unavailable estimates are excluded.</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">Budget uses: {workloadSummary(workload)}</p>
+                <button type="button" aria-label="Edit budget workload" onClick={editBudgetWorkload} className="min-h-11 rounded text-xs underline underline-offset-4">Edit workload</button>
+              </fieldset>
+
+              <fieldset className="space-y-3">
+                <legend className="mb-3 text-sm font-medium">Pricing</legend>
+                <NumericFilterInput id="max-input-price" label="Max input · USD / 1M tokens" value={maxInputPrice} onChange={setMaxInputPrice} />
+                <NumericFilterInput id="max-output-price" label="Max output · USD / 1M tokens" value={maxOutputPrice} onChange={setMaxOutputPrice} />
+              </fieldset>
+
+              <fieldset>
+                <legend className="mb-3 text-sm font-medium">Context</legend>
+                <NumericFilterInput id="min-context" label="Minimum context · tokens" value={minContext} onChange={setMinContext} integer />
+                <InlineHelp title="About context"><p>Context is the token space available for input and output together in one request. Published provider limits may be smaller than the model’s advertised context.</p></InlineHelp>
+              </fieldset>
+
+              {[
+                { label: "Input types", options: INPUT_MODALITIES, selected: inputModalities, set: setInputModalities, counts: filterCounts.inputModalities },
+                { label: "Output types", options: OUTPUT_MODALITIES, selected: outputModalities, set: setOutputModalities, counts: filterCounts.outputModalities },
+              ].map(({ label, options, selected, set, counts }) => (
+                <fieldset key={label}>
+                  <legend className="mb-3 text-sm font-medium">{label}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {options.map((modality) => (
+                      <button key={modality} type="button" aria-pressed={selected.includes(modality)}
+                        onClick={() => set(selected.includes(modality) ? selected.filter((item) => item !== modality) : [...selected, modality])}
+                        className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs capitalize transition-colors", selected.includes(modality) ? "border-foreground bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground")}>
+                        {selected.includes(modality) && <Check className="size-3" aria-hidden="true" />}
+                        {modality}
+                        <span className="tabular-nums text-muted-foreground">{counts[modality] ?? 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Matches any selected type.</p>
+                </fieldset>
+              ))}
+
+            </div>
+          </details>
         </aside>
 
         <section aria-label="Model results" aria-busy={loading} className="min-w-0 space-y-5">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input aria-label="Search models" placeholder="Search by model, provider, or keyword..." value={search}
-              onChange={(event) => setSearch(event.target.value)} className="h-12 rounded-lg bg-card pl-11 pr-12 text-sm placeholder:text-muted-foreground" />
+            <Input ref={searchInput} aria-label="Search models" aria-keyshortcuts="/" title="Press / to search when not editing a field" placeholder="Search models, providers, or keywords..." value={search}
+              onChange={(event) => setSearch(event.target.value)} className="h-12 rounded-lg bg-card pl-11 pr-12 text-base placeholder:text-muted-foreground md:text-sm" />
             {search && <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></button>}
           </div>
 
@@ -238,13 +291,13 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             </div>
           </div>
 
-          <details className="border-y py-1">
+          <details ref={workloadPanel} className="border-y py-1">
             <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
-              Estimate workload <span className="ml-2 text-xs font-normal text-muted-foreground">& saved setups</span>
-              <span className="mt-1 block text-xs font-normal tabular-nums text-muted-foreground">{workload.inputTokens.toLocaleString("en-US")} input · {workload.outputTokens.toLocaleString("en-US")} output · {workload.requests.toLocaleString("en-US")} requests{workload.period === "month" ? " / month" : " / batch"}</span>
+              Estimate workload
+              <span className="mt-1 block text-xs font-normal leading-relaxed tabular-nums text-muted-foreground">{workloadSummary(workload)}</span>
             </summary>
             <div className="space-y-6 py-4">
-              <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">Choose usage for every model estimate, then sort by estimated cost. Published rates may vary by provider or tier.</p>
+              <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">Set usage to compare estimated costs across models.</p>
               <CalculatorInputs workload={workload} onChange={setWorkload} showCache />
               <SavedSetups workload={workload} onWorkloadChange={setWorkload} directoryQuery={directoryQuery} onApplyDirectoryQuery={applyDirectoryQuery} />
             </div>
@@ -265,6 +318,10 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
               <Search className="mb-5 size-7 text-muted-foreground" aria-hidden="true" />
               <h2 className="font-heading text-3xl">{fav && favorites.length === 0 ? "Your shortlist starts here" : "No models found"}</h2>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{fav && favorites.length === 0 ? "Save a model with the heart button to find it here later." : "Try a different search or remove a filter to see more models."}</p>
+              {activeFilters.length > 0 && <p className="mt-3 max-w-prose text-xs leading-relaxed text-muted-foreground">Current conditions: {activeFilters.map((filter) => filter.label).join(" · ")}</p>}
+              {maxBudget !== null && <Button variant="outline" onClick={() => setMaxBudget(null)} className="mt-4 h-11">Remove budget limit</Button>}
+              {fitsWorkload && <Button variant="outline" onClick={() => setFitsWorkload(false)} className="mt-2 h-11">Include models with unknown or exceeded limits</Button>}
+              {search && <Button variant="outline" onClick={() => setSearch("")} className="mt-2 h-11">Remove search condition</Button>}
               <Button variant="outline" onClick={() => { clearFilters(); if (fav && favorites.length === 0) setFav(false); }} className="mt-6 h-11">{fav && favorites.length === 0 ? "Browse all models" : "Clear search and filters"}</Button>
               {fav && favorites.length > 0 && <Button variant="ghost" onClick={() => { clearFilters(); setFav(false); }} className="mt-2 h-11">Browse all models</Button>}
             </div>
@@ -306,9 +363,9 @@ export default function Home() {
       </header>
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 pb-44 sm:px-8">
-        <div className="flex flex-col justify-between gap-4 py-8 sm:py-10 lg:flex-row lg:items-end lg:gap-12">
-          <h1 className="max-w-xl text-balance font-heading text-4xl leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">Discover your next <span className="italic">AI model.</span></h1>
-          <p className="max-w-sm text-sm leading-7 text-muted-foreground sm:text-base">Explore models from the Kilo Gateway. Compare pricing, context length, and capabilities in one place.</p>
+        <div className="flex flex-col justify-between gap-2 py-4 sm:py-6 lg:flex-row lg:items-end lg:gap-12">
+          <h1 className="max-w-xl text-balance font-heading text-3xl leading-tight tracking-tight sm:text-4xl">Discover your next <span className="italic">AI model.</span></h1>
+          <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">Explore Kilo Gateway models. Compare prices, capabilities, and costs.</p>
         </div>
 
         <div id="directory" className="scroll-mt-6">

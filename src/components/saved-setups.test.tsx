@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { DEFAULT_WORKLOAD } from "../lib/calculator-workload";
 import { SavedSetups } from "./saved-setups";
 import { useSavedSetups } from "../hooks/use-saved-setups";
-import { parseSavedSetups, SAVED_SETUPS_STORAGE_KEY } from "../lib/saved-setups";
+import { parseSavedSetups, SAVED_SETUPS_STORAGE_KEY, savedSetupMatches, savedViewSummary, type SavedSetup } from "../lib/saved-setups";
 
 test("saved setups expose named saving and a clear empty state with accessible feedback", () => {
   const html = renderToStaticMarkup(<SavedSetups workload={DEFAULT_WORKLOAD} onWorkloadChange={() => {}} directoryQuery="tools=true" onApplyDirectoryQuery={() => {}} />);
@@ -60,4 +60,13 @@ test("server rendering is safe when browser storage is blocked", () => {
     if (descriptor) Object.defineProperty(globalThis, "window", descriptor);
     else Reflect.deleteProperty(globalThis, "window");
   }
+});
+
+test("setup matching ignores URL order and explicit defaults but detects changed filters and usage", () => {
+  const setup: SavedSetup = { id: "one", name: "One", workload: DEFAULT_WORKLOAD, directoryQuery: "tools=true&providers=b,a", includesDirectoryView: true };
+  assert.equal(savedSetupMatches(setup, DEFAULT_WORKLOAD, "providers=a,b&tools=true&free=false&view=grid&page=2"), true);
+  assert.equal(savedSetupMatches(setup, DEFAULT_WORKLOAD, "providers=a,b&tools=false"), false);
+  assert.equal(savedSetupMatches(setup, { ...DEFAULT_WORKLOAD, images: 2 }), false);
+  assert.equal(savedSetupMatches(setup, DEFAULT_WORKLOAD), true, "detail page compares usage only");
+  assert.equal(savedViewSummary("tools=true&inputModalities=image&maxBudget=2&view=list"), "Input types: image · Tool calling · List view · Total budget ≤ $2");
 });

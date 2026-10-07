@@ -36,6 +36,17 @@ type ViewOption = (typeof VIEW_OPTIONS)[number];
 const INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
 const OUTPUT_MODALITIES = ["text", "image", "audio"];
 const EMPTY_FILTERS: string[] = [];
+const VIEW_STORAGE_KEY = "kilo-models-result-view";
+const VIEW_EVENT = "kilo-models-view-change";
+const readView = (): ViewOption => {
+  try { return window.sessionStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "grid"; } catch { return "grid"; }
+};
+const subscribeView = (listener: () => void) => {
+  window.addEventListener(VIEW_EVENT, listener);
+  window.addEventListener("storage", listener);
+  return () => { window.removeEventListener(VIEW_EVENT, listener); window.removeEventListener("storage", listener); };
+};
+const serverView = (): ViewOption => "grid";
 const PAGE_SIZE = 24;
 
 interface FilterState {
@@ -132,7 +143,8 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const providers = params.providers ?? EMPTY_FILTERS;
   const reasoning = params.reasoning ?? false;
   const tools = params.tools ?? false;
-  const view = params.view ?? "grid";
+  const preferredView = React.useSyncExternalStore(subscribeView, readView, serverView);
+  const view = params.view ?? preferredView;
   const fav = params.fav ?? false;
   const minContext = params.minContext;
   const maxInputPrice = params.maxInputPrice;
@@ -167,7 +179,10 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const setProviders = (v: string[]) => setParams({ providers: v, page: 1 });
   const setReasoning = (v: boolean) => setParams({ reasoning: v, page: 1 });
   const setTools = (v: boolean) => setParams({ tools: v, page: 1 });
-  const setView = (v: ViewOption) => setParams({ view: v });
+  const setView = (v: ViewOption) => {
+    try { window.sessionStorage.setItem(VIEW_STORAGE_KEY, v); window.dispatchEvent(new Event(VIEW_EVENT)); } catch { /* URL state still works when storage is blocked. */ }
+    void setParams({ view: v });
+  };
   const setPage = (v: number) => setParams({ page: v });
   const setFav = (v: boolean) => setParams({ fav: v, page: 1 });
 
@@ -200,11 +215,12 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   for (const [key, value] of Object.entries({ ...params, search })) {
     if (key !== "page" && value !== null) directoryQuery.set(key, parsers[key as keyof typeof parsers].serialize(value as never));
   }
+  directoryQuery.set("view", view);
   const applyDirectoryQuery = (query: URLSearchParams) => {
     setPendingSearch(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const values = Object.fromEntries(Object.entries(parsers).map(([key, parser]) => [key, query.has(key) ? parser.parse(query.get(key)!) : null]));
-    void setParams({ ...values, page: 1 });
+    void setParams({ ...values, view: parsers.view.parse(query.get("view") ?? "") ?? "grid", page: 1 });
   };
 
   const activeFilterCount =

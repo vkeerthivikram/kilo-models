@@ -55,10 +55,13 @@ export function ComparisonActions({ models, workload }: { models: Model[]; workl
         <Button variant="outline" className="min-h-11 gap-2" disabled={copying} onClick={copyLink}>
           <Link className="size-4" />{copying ? "Copying…" : "Copy link"}
         </Button>
-        <Button variant="outline" className="min-h-11 gap-2" onClick={exportCsv}>
-          <Download className="size-4" />Export CSV
-        </Button>
-        <p className="text-xs text-muted-foreground">Includes selected models and current workload.</p>
+        <details>
+          <summary className="min-h-11 cursor-pointer rounded px-2 py-3 text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">More actions</summary>
+          <Button variant="outline" className="mb-2 min-h-11 gap-2" onClick={exportCsv}>
+            <Download className="size-4" />Export CSV
+          </Button>
+        </details>
+        <p className="text-xs text-muted-foreground">Models + current workload</p>
       </div>
       <p role="status" className={message ? "mt-2 text-xs leading-relaxed" : "sr-only"}>{message}</p>
       {manualUrl && <label className="mt-2 block text-xs">Comparison link

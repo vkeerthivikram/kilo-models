@@ -43,6 +43,14 @@ test("known free models have a zero estimate", () => {
   assert.match(render(<PricingCalculator model={free} />), /\$0\.00/);
 });
 
+test("detail calculator keeps totals visible before its optional full breakdown", () => {
+  const html = render(<PricingCalculator model={model} />);
+  assert.match(html, /<summary[^>]*>Full cost breakdown<\/summary>/);
+  const totals = html.slice(0, html.indexOf("Full cost breakdown"));
+  assert.match(totals, /Per request/);
+  assert.match(totals, /\$13\.5000/);
+});
+
 test("expanded comparison estimates identify missing extra rates and overlapping cache tokens", () => {
   const html = render(<CompareCostTable models={[model]} workload={{ ...DEFAULT_WORKLOAD, images: 1, searches: 1, cacheWriteTokens: 2001 }} />);
   assert.match(html, /image rate/i);

@@ -66,7 +66,7 @@ export function ModelGrid({ models, viewMode, workload, isComparedModels, onTogg
                     {model.isFree && (
                       <Badge className="ml-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[9px]">FREE</Badge>
                     )}
-                    <p className="mt-1 truncate text-[11px] font-mono text-muted-foreground" title={model.id}>{model.id}</p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{model.id.split("/")[0]}</p>
                     {model.expiration_date && <div className="mt-2"><RetirementBadge expirationDate={model.expiration_date} /></div>}
                     <p className="mt-1 text-xs text-muted-foreground md:hidden">{formatContext(model.context_length)} context tokens</p>
                     {workload && <div className="mt-2"><ModelCostEstimate model={model} workload={workload} /></div>}
@@ -82,8 +82,11 @@ export function ModelGrid({ models, viewMode, workload, isComparedModels, onTogg
                   <td className="hidden px-4 py-3 text-right tabular-nums text-muted-foreground md:table-cell">{formatContext(model.context_length)}</td>
                   <td className="hidden px-4 py-3 lg:table-cell">
                     <span className="flex flex-wrap items-center gap-1">
-                      {(model.architecture?.input_modalities ?? []).slice(0, 2).map((m) => (
-                        <Badge key={m} variant="outline" className="text-[10px] capitalize">{m}</Badge>
+                      {(model.architecture?.input_modalities ?? []).filter((modality) => modality !== "text").map((m) => (
+                        <Badge key={`in-${m}`} variant="outline" className="text-[10px] capitalize">{m} input</Badge>
+                      ))}
+                      {(model.architecture?.output_modalities ?? []).filter((modality) => modality !== "text").map((m) => (
+                        <Badge key={`out-${m}`} variant="outline" className="text-[10px] capitalize">{m} output</Badge>
                       ))}
                       {hasReasoning && <Badge variant="secondary" className="text-[10px]">Reasoning</Badge>}
                       {hasTools && <Badge variant="secondary" className="text-[10px]">Tools</Badge>}

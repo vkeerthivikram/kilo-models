@@ -73,7 +73,7 @@ export function ModelDetailActions({ model, catalog }: ModelDetailActionProps) {
         )}
       </div>
       {limitReached && <p id="detail-compare-limit" className="text-xs text-muted-foreground">Comparison holds up to {COMPARE_LIMIT} models. Remove one to add this model.</p>}
-      <p role="status" className="text-xs text-muted-foreground">{message}</p>
+      <p role="status" aria-live="polite" className={message ? "text-xs text-muted-foreground" : "sr-only"}>{message}</p>
     </div>
   );
 }

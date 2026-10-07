@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { DEFAULT_WORKLOAD, parseCalculatorWorkload, getWorkloadWarnings, WORKLOAD_PRESETS, buildWorkloadHref } from "./calculator-workload";
+import { DEFAULT_WORKLOAD, parseCalculatorWorkload, getWorkloadWarnings, getBillingWarnings, WORKLOAD_PRESETS, buildWorkloadHref } from "./calculator-workload";
 import type { Model } from "./types";
 
 test("shared workloads preserve monthly volume and cached input, with safe defaults", () => {
@@ -41,4 +41,11 @@ test("workload warnings catch output and combined context limits, including prov
   assert.equal(getWorkloadWarnings(model, { ...DEFAULT_WORKLOAD, inputTokens: 190000, outputTokens: 10000 }).length, 0);
   assert.equal(getWorkloadWarnings({} as Model, DEFAULT_WORKLOAD).length, 0);
   assert.ok(WORKLOAD_PRESETS.every((preset) => preset.outputTokens < 32768));
+});
+
+test("missing base rates explain unavailable costs while zero usage needs no rate", () => {
+  assert.ok(getBillingWarnings(undefined, DEFAULT_WORKLOAD).some((warning) => warning.includes("input token rate")));
+  assert.ok(getBillingWarnings(undefined, DEFAULT_WORKLOAD).some((warning) => warning.includes("output token rate")));
+  assert.deepEqual(getBillingWarnings(undefined, { ...DEFAULT_WORKLOAD, inputTokens: 0, outputTokens: 0 }), []);
+  assert.ok(getBillingWarnings({ prompt: "0", completion: "0", request: "bad" }, DEFAULT_WORKLOAD).some((warning) => warning.includes("request fee")));
 });

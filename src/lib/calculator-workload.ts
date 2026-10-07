@@ -69,10 +69,10 @@ export function getWorkloadWarnings(model: Model, workload: CalculatorWorkload):
   const warnings: string[] = [];
   const { outputLimit, contextLimit } = getWorkloadLimits(model);
   if (outputLimit !== null && workload.outputTokens > outputLimit) {
-    warnings.push(`Output exceeds this model's ${outputLimit.toLocaleString("en-US")}-token completion limit.`);
+    warnings.push(`Output exceeds this model's ${outputLimit.toLocaleString("en-US")}-token completion limit. Reduce output tokens per request from ${workload.outputTokens.toLocaleString("en-US")} to ${outputLimit.toLocaleString("en-US")} or less.`);
   }
   if (contextLimit !== null && workload.inputTokens + workload.outputTokens > contextLimit) {
-    warnings.push(`Combined input and output exceeds this model's ${contextLimit.toLocaleString("en-US")}-token context limit.`);
+    warnings.push(`Combined input and output exceeds this model's ${contextLimit.toLocaleString("en-US")}-token context limit. Reduce their combined ${(workload.inputTokens + workload.outputTokens).toLocaleString("en-US")} tokens per request to ${contextLimit.toLocaleString("en-US")} or less.`);
   }
   return warnings;
 }
@@ -80,6 +80,9 @@ export function getWorkloadWarnings(model: Model, workload: CalculatorWorkload):
 export function getBillingWarnings(pricing: ModelPricing | undefined, workload: CalculatorWorkload): string[] {
   const warnings: string[] = [];
   const reads = Math.round(workload.inputTokens * workload.cachePercent / 100);
+  if (workload.inputTokens - reads - workload.cacheWriteTokens > 0 && parsePrice(pricing?.prompt) === null) warnings.push("No valid input token rate is listed. Choose a model with a published input price or set input usage to zero.");
+  if (workload.outputTokens > 0 && parsePrice(pricing?.completion) === null) warnings.push("No valid output token rate is listed. Choose a model with a published output price or set output usage to zero.");
+  if (pricing?.request !== undefined && parsePrice(pricing.request) === null) warnings.push("The listed request fee is invalid. Choose a model with a valid request fee to estimate the total.");
   if (reads + workload.cacheWriteTokens > workload.inputTokens) warnings.push("Cache reads and writes exceed total input. Reduce cached input or cache-write tokens.");
   for (const [units, rate, label] of [
     [reads, pricing?.input_cache_read, "cache read"],

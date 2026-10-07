@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ComparisonTable } from "./comparison-table";
 import type { Model } from "../lib/types";
+import { DEFAULT_WORKLOAD } from "../lib/calculator-workload";
 
 const model: Model = {
   id: "test/first", name: "First model", description: "Test model", created: 0,
@@ -38,4 +39,12 @@ test("single selection retains specs even if differences were enabled for a prev
   const html = renderToStaticMarkup(<ComparisonTable models={[model]} differencesOnly onRemove={() => {}} />);
   assert.match(html, /Context window/);
   assert.doesNotMatch(html, /No differences/);
+});
+
+test("essential comparison includes workload cost and omits technical rows", () => {
+  const html = renderToStaticMarkup(<ComparisonTable models={[model]} differencesOnly={false} fullSpecifications={false} workload={DEFAULT_WORKLOAD} onRemove={() => {}} />);
+  assert.match(html, /Estimated batch cost/);
+  assert.match(html, /\$0\.00/);
+  assert.doesNotMatch(html, />Tokenizer</);
+  assert.match(html, /Context window/);
 });

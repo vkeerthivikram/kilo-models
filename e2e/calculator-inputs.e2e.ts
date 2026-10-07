@@ -24,6 +24,7 @@ test("calculator keeps a blank draft while typing and commits on blur", async ({
 });
 
 test("calculator commits fractional cache percentages with Enter and rejects invalid percentages", async ({ page }) => {
+  await page.locator("summary").filter({ hasText: "Advanced usage" }).click();
   const cache = page.getByRole("spinbutton", { name: "Cached input (%)", exact: true });
   await cache.fill("25.5");
   await expect(cache).toHaveValue("25.5");
@@ -65,7 +66,7 @@ test("blank or invalid count drafts retain the last committed safe integer", asy
   await requests.press("Enter");
   await expect(page).toHaveURL((url) => url.searchParams.get("requests") === "1");
 
-  await page.getByText("Additional billing", { exact: true }).click();
+  await page.locator("summary").filter({ hasText: "Advanced usage" }).click();
   for (const label of ["Input tokens per request", "Output tokens per request", "Images per request", "Searches per request", "Cache-write tokens per request"]) {
     const field = page.getByRole("spinbutton", { name: label, exact: true });
     const committed = await field.inputValue();

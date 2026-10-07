@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSavedSetups } from "@/hooks/use-saved-setups";
 import type { CalculatorWorkload } from "@/lib/calculator-workload";
-import { applySavedSetup, MAX_SETUP_BACKUP_SIZE, MAX_SETUP_NAME_LENGTH, MAX_SAVED_SETUPS, type DeletedSavedSetup } from "@/lib/saved-setups";
+import { applySavedSetup, savedSetupMatches, savedViewSummary, MAX_SETUP_BACKUP_SIZE, MAX_SETUP_NAME_LENGTH, MAX_SAVED_SETUPS, type DeletedSavedSetup } from "@/lib/saved-setups";
+import { workloadSummary } from "@/lib/workload-summary";
 
 export interface SavedSetupsProps {
   workload: CalculatorWorkload;
@@ -19,6 +20,7 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
   const { setups, saveSetup, renameSetup, updateSetup, deleteSetup, restoreSetup, importBackup, exportBackup } = useSavedSetups();
   const [name, setName] = useState("");
   const [selectedId, setSelectedId] = useState("");
+  const [activeId, setActiveId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [applying, setApplying] = useState(false);
@@ -32,6 +34,8 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
   const busy = applying || importing;
   const updatesView = includesView && Boolean(selected?.includesDirectoryView);
   const currentQuery = () => includesView ? directoryQuery ?? window.location.search : undefined;
+  const active = setups.find((setup) => setup.id === activeId);
+  const changed = active ? !savedSetupMatches(active, workload, currentQuery()) : false;
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,6 +45,7 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
     setError("");
     setName("");
     setSelectedId(result.setup.id);
+    setActiveId(result.setup.id);
     setRenaming(false);
     setMessage(`Saved “${result.setup.name}”.`);
   }
@@ -52,6 +57,7 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
     setApplying(true);
     try {
       await applySavedSetup(selected, onWorkloadChange, onApplyDirectoryQuery);
+      setActiveId(selected.id);
       setMessage(`Applied “${selected.name}”.`);
     } catch {
       setError("Could not apply the saved view. Try applying it again.");
@@ -102,6 +108,7 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
     if (!result.ok) { setError(result.error); return; }
     setError("");
     setMessage(`Updated “${result.setup.name}” with the current workload${updatesView ? " and view" : ""}.`);
+    setActiveId(selected.id);
   }
 
   function downloadBackup() {
@@ -168,38 +175,50 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
               <option value="">Choose a setup</option>
               {setups.map((setup) => <option key={setup.id} value={setup.id}>{setup.name} · {setup.includesDirectoryView ? "Workload + view" : "Workload only"}</option>)}
             </select>
-          </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Manage selected setup">
             <Button type="button" variant="outline" className="h-11" onClick={apply} disabled={!selected || busy}>{applying ? "Applying…" : "Apply"}</Button>
-            <Button type="button" variant="outline" className="h-11" onClick={update} disabled={!selected || busy}>{updatesView ? "Update workload & view" : "Update workload"}</Button>
-            <Button type="button" variant="ghost" className="h-11" disabled={!selected || busy} onClick={() => { if (selected) { setRenameName(selected.name); setRenaming(true); setError(""); } }}>Rename</Button>
-            <Button type="button" variant="ghost" className="h-11" onClick={remove} disabled={!selected || busy}
-              aria-label={selected ? `Delete ${selected.name}` : "Delete saved setup"}>Delete</Button>
           </div>
-          {selected && renaming && <form onSubmit={rename} className="space-y-2 pt-2">
-            <label htmlFor={`${id}-rename`} className="text-sm text-muted-foreground">New name for {selected.name}</label>
-            <div className="flex flex-wrap gap-2">
-              <Input id={`${id}-rename`} value={renameName} onChange={(event) => setRenameName(event.target.value)} maxLength={MAX_SETUP_NAME_LENGTH} autoFocus className="h-11 min-w-0 flex-1 basis-48" />
-              <Button type="submit" variant="outline" className="h-11" disabled={!renameName.trim() || busy}>Save name</Button>
-              <Button type="button" variant="ghost" className="h-11" disabled={busy} onClick={() => { setRenaming(false); setError(""); }}>Cancel</Button>
-            </div>
-          </form>}
         </div>
       ) : <p className="text-xs text-muted-foreground">No saved setups yet. Name this {includesView ? "workload and filter view" : "workload"} to reuse it later.</p>}
-      {setups.length > 0 && <p className="text-xs text-muted-foreground">{includesView ? selected && !selected.includesDirectoryView ? "Applies the workload only. Your current filters, sort, view, and comparison stay in place." : "Saves workload, filters, sort, and view. Applying keeps your current comparison." : "Saves and applies calculator workloads here. Saved directory views apply from the directory."}</p>}
-      {selected && <p className="text-xs text-muted-foreground">Update replaces this setup’s saved workload{updatesView ? " and directory view" : ""} with current values.{!includesView && selected.includesDirectoryView ? " Its saved directory view is kept." : ""}</p>}
+      {selected && <p className="text-xs text-muted-foreground">{updatesView ? "Applies workload and filters. Keeps your comparison." : "Applies workload only. Keeps your current filters and comparison."}</p>}
+      {selected && <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+        <p>Preview: {workloadSummary(selected.workload)}</p>
+        {updatesView && <p>Saved view: {savedViewSummary(selected.directoryQuery)}</p>}
+      </div>}
+      {active && <p className="text-xs text-muted-foreground">{changed ? `Changed since applying ${active.name}.` : `Active setup: ${active.name}`}</p>}
+      <details className="border-t pt-2">
+        <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Manage setups</summary>
+        <div className="space-y-3 pt-2">
+          {setups.length > 0 && <>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Manage selected setup">
+              <Button type="button" variant="outline" className="h-11" onClick={update} disabled={!selected || busy}>{updatesView ? "Update workload & view" : "Update workload"}</Button>
+              <Button type="button" variant="ghost" className="h-11" disabled={!selected || busy} onClick={() => { if (selected) { setRenameName(selected.name); setRenaming(true); setError(""); } }}>Rename</Button>
+              <Button type="button" variant="ghost" className="h-11" onClick={remove} disabled={!selected || busy}
+                aria-label={selected ? `Delete ${selected.name}` : "Delete saved setup"}>Delete</Button>
+            </div>
+            {selected && renaming && <form onSubmit={rename} className="space-y-2 pt-2">
+              <label htmlFor={`${id}-rename`} className="text-sm text-muted-foreground">New name for {selected.name}</label>
+              <div className="flex flex-wrap gap-2">
+                <Input id={`${id}-rename`} value={renameName} onChange={(event) => setRenameName(event.target.value)} maxLength={MAX_SETUP_NAME_LENGTH} autoFocus className="h-11 min-w-0 flex-1 basis-48" />
+                <Button type="submit" variant="outline" className="h-11" disabled={!renameName.trim() || busy}>Save name</Button>
+                <Button type="button" variant="ghost" className="h-11" disabled={busy} onClick={() => { setRenaming(false); setError(""); }}>Cancel</Button>
+              </div>
+            </form>}
+          </>}
+          {selected && <p className="text-xs text-muted-foreground">Update replaces this setup’s saved workload{updatesView ? " and directory view" : ""} with current values.{!includesView && selected.includesDirectoryView ? " Its saved directory view is kept." : ""}</p>}
+          <div className="space-y-2 border-t border-border pt-3">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="h-11" onClick={downloadBackup} disabled={setups.length === 0 || busy}>Export backup</Button>
+              <Button type="button" variant="outline" className="h-11" onClick={() => fileInput.current?.click()} disabled={busy}>{importing ? "Importing…" : "Import backup"}</Button>
+              <input ref={fileInput} type="file" accept=".json,application/json" aria-label="Choose a saved-setups JSON backup" onChange={readBackup} hidden />
+            </div>
+            <p className="text-xs text-muted-foreground">Import keeps existing setups and skips duplicates. JSON backups must be under 200 KB.</p>
+          </div>
+        </div>
+      </details>
       {deleted && <div className="flex flex-wrap items-center gap-2">
         <p className="break-words text-xs text-muted-foreground">Last deleted: {deleted.setup.name}</p>
         <Button type="button" variant="outline" className="h-11" onClick={undo} disabled={busy} aria-label={`Undo deletion of ${deleted.setup.name}`}>Undo delete</Button>
       </div>}
-      <div className="space-y-2 border-t border-border pt-3">
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" className="h-11" onClick={downloadBackup} disabled={setups.length === 0 || busy}>Export backup</Button>
-          <Button type="button" variant="outline" className="h-11" onClick={() => fileInput.current?.click()} disabled={busy}>{importing ? "Importing…" : "Import backup"}</Button>
-          <input ref={fileInput} type="file" accept=".json,application/json" aria-label="Choose a saved-setups JSON backup" onChange={readBackup} hidden />
-        </div>
-        <p className="text-xs text-muted-foreground">Import keeps existing setups and skips duplicate names or IDs. JSON backups hold up to {MAX_SAVED_SETUPS} setups, under 200 KB.</p>
-      </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <p role="status" aria-live="polite" className={message ? "text-sm text-muted-foreground" : "sr-only"}>{message}</p>
     </section>
