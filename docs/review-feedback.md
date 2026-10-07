@@ -39,3 +39,9 @@ GitHub Actions itself must run after these changes are pushed; local checks do n
 Local verification completed: 170 unit/component tests across 32 files, zero-warning ESLint, and the production build passed. Of 92 browser cases across desktop Chromium, mobile Chromium, Firefox, and WebKit, 84 passed in the integrated run, including all eight default-theme accessibility scans. Eight cases still used outdated batch wording or assumed an extra arrow press was needed after chart focus; their corrected expectations passed in a separate eight-case run. No product checks were skipped or assertions removed.
 
 Local Firefox used the machine-specific ignored diagnostic runtime described in `simple-first-workflows.md`; hosted CI continues to install the official engine. Diagnostics remain in ignored `.tmp/final-browser-results` and `.tmp/review-recheck-results` on this workspace.
+
+### Hosted retry-test follow-up
+
+The first hosted run after pushing the review fixes failed one unit assertion: the retry test counted four upstream reads instead of three. The test advanced `Date.now()` for the age gate but left `new Date()` (the successful snapshot timestamp) on real time. A fast runner could therefore treat the newly fetched retry snapshot as already 60 seconds old and force another read. Advancing the simulated age to 120 seconds reproduced the same failure deterministically locally.
+
+The test now restores the real clock before retrying, retains the status and exact read-count assertions, and additionally verifies an immediate repeated POST reuses the retry snapshot without another upstream read. Production behavior is unchanged. The corrected catalog test suite passes; hosted CI must rerun the follow-up commit.
