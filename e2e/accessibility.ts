@@ -14,6 +14,12 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
     await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${mode}\\b`));
     await expect(page).toHaveTitle(/\S/);
     await page.evaluate(() => document.fonts.ready);
+    // Base UI can expose its starting style before the transition is registered.
+    // Wait for the actual surface opacity as well as its animation bookkeeping.
+    for (const dialog of await page.getByRole("dialog").all()) {
+      await expect(dialog).not.toHaveAttribute("data-starting-style", "");
+      await expect(dialog).toHaveCSS("opacity", "1");
+    }
     // Axe must inspect final colors, not a frame inside theme/dialog transitions.
     await expect.poll(() => page.evaluate(() => document.getAnimations().some((animation) =>
       (animation.playState === "running" || animation.pending) &&

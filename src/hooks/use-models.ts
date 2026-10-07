@@ -9,6 +9,7 @@ interface UseModelsResult {
   loading: boolean;
   error: Error | null;
   fetchedAt: string | null;
+  excludedCount: number;
   revalidating: boolean;
   refresh: () => Promise<void>;
 }
@@ -18,6 +19,7 @@ export function useModels(): UseModelsResult {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
   const [fetchedAt, setFetchedAt] = React.useState<string | null>(null);
+  const [excludedCount, setExcludedCount] = React.useState(0);
   const [revalidating, setRevalidating] = React.useState(false);
   const client = React.useRef<ReturnType<typeof createCatalogClient> | null>(null);
 
@@ -28,6 +30,7 @@ export function useModels(): UseModelsResult {
       if (!catalog) return;
       setModels(catalog.data);
       setFetchedAt(catalog.fetchedAt);
+      setExcludedCount(catalog.excludedCount ?? 0);
       setLoading(false);
       setRevalidating(false);
     } catch (err) {
@@ -48,5 +51,5 @@ export function useModels(): UseModelsResult {
     return () => client.current?.cancel();
   }, [load]);
 
-  return { models, loading, error, fetchedAt, revalidating, refresh };
+  return { models, loading, error, fetchedAt, excludedCount, revalidating, refresh };
 }

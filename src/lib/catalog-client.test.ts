@@ -2,6 +2,16 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { createCatalogClient } from "./catalog-client";
 
+test("catalog client preserves validated exclusion counts without inventing missing models", async () => {
+  const payload = { data: [], fetchedAt: "2026-10-06T08:00:00.000Z", excludedCount: 2 };
+  const client = createCatalogClient(async () => Response.json(payload));
+  assert.deepEqual(await client.load(), payload);
+  for (const excludedCount of [-1, 1.5, "2", Number.MAX_SAFE_INTEGER + 1]) {
+    const invalid = createCatalogClient(async () => Response.json({ ...payload, excludedCount }));
+    await assert.rejects(invalid.load(), /Invalid catalog exclusion count/);
+  }
+});
+
 test("a refresh supersedes a slower initial catalog request", async () => {
   const responses: ((response: Response) => void)[] = [];
   const signals: AbortSignal[] = [];

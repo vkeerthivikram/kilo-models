@@ -1,5 +1,5 @@
 import type { Model, ModelPricing } from "./types";
-import { parsePrice } from "./format-price";
+import { formatDiscount, parsePrice } from "./format-price";
 
 export interface CalculatorWorkload {
   inputTokens: number;
@@ -103,6 +103,6 @@ export function getBillingWarnings(pricing: ModelPricing | undefined, workload: 
   ] as const) {
     if (units > 0 && parsePrice(rate) === null) warnings.push(`No ${label} rate is listed. Set this usage to zero to estimate the remaining charges.`);
   }
-  if (discount != null && discount > 0) warnings.push(`Estimates are pre-discount. The listed ${discount}% discount is not applied because its billing scope is unspecified.`);
+  if (discount != null && discount > 0) warnings.push(`Estimates are pre-discount. The listed ${formatDiscount(discount)} discount is not applied because its billing scope is unspecified.`);
   return warnings;
 }

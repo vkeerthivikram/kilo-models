@@ -166,29 +166,29 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setPendingSearch(null);
-      setParams({ search: v, page: 1 });
+      setParams({ search: v || null, page: null });
     }, 400);
   };
-  const setSort = (v: SortOption) => setParams({ sort: v, page: 1 });
-  const setFree = (v: boolean) => setParams({ free: v, page: 1 });
-  const setHideRetired = (v: boolean) => setParams({ hideRetired: v, page: 1 });
-  const setFitsWorkload = (v: boolean) => setParams({ fitsWorkload: v, page: 1 });
-  const setMaxBudget = (v: number | null) => setParams({ maxBudget: parseNumericFilter(v), page: 1 });
-  const setInputModalities = (v: string[]) => setParams({ inputModalities: v, page: 1 });
-  const setOutputModalities = (v: string[]) => setParams({ outputModalities: v, page: 1 });
-  const setProviders = (v: string[]) => setParams({ providers: v, page: 1 });
-  const setReasoning = (v: boolean) => setParams({ reasoning: v, page: 1 });
-  const setTools = (v: boolean) => setParams({ tools: v, page: 1 });
+  const setSort = (v: SortOption) => setParams({ sort: v, page: null });
+  const setFree = (v: boolean) => setParams({ free: v || null, page: null });
+  const setHideRetired = (v: boolean) => setParams({ hideRetired: v || null, page: null });
+  const setFitsWorkload = (v: boolean) => setParams({ fitsWorkload: v || null, page: null });
+  const setMaxBudget = (v: number | null) => setParams({ maxBudget: parseNumericFilter(v), page: null });
+  const setInputModalities = (v: string[]) => setParams({ inputModalities: v.length ? v : null, page: null });
+  const setOutputModalities = (v: string[]) => setParams({ outputModalities: v.length ? v : null, page: null });
+  const setProviders = (v: string[]) => setParams({ providers: v.length ? v : null, page: null });
+  const setReasoning = (v: boolean) => setParams({ reasoning: v || null, page: null });
+  const setTools = (v: boolean) => setParams({ tools: v || null, page: null });
   const setView = (v: ViewOption) => {
     try { window.sessionStorage.setItem(VIEW_STORAGE_KEY, v); window.dispatchEvent(new Event(VIEW_EVENT)); } catch { /* URL state still works when storage is blocked. */ }
     void setParams({ view: v });
   };
-  const setPage = (v: number) => setParams({ page: v });
-  const setFav = (v: boolean) => setParams({ fav: v, page: 1 });
+  const setPage = (v: number) => setParams({ page: v === 1 ? null : v });
+  const setFav = (v: boolean) => setParams({ fav: v || null, page: null });
 
-  const setMinContext = (v: number | null) => setParams({ minContext: parseNumericFilter(v, true), page: 1 });
-  const setMaxInputPrice = (v: number | null) => setParams({ maxInputPrice: parseNumericFilter(v), page: 1 });
-  const setMaxOutputPrice = (v: number | null) => setParams({ maxOutputPrice: parseNumericFilter(v), page: 1 });
+  const setMinContext = (v: number | null) => setParams({ minContext: parseNumericFilter(v, true), page: null });
+  const setMaxInputPrice = (v: number | null) => setParams({ maxInputPrice: parseNumericFilter(v), page: null });
+  const setMaxOutputPrice = (v: number | null) => setParams({ maxOutputPrice: parseNumericFilter(v), page: null });
 
   const clearFilters = () => {
     setPendingSearch(null);
@@ -223,7 +223,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     setPendingSearch(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const values = Object.fromEntries(Object.entries(parsers).map(([key, parser]) => [key, query.has(key) ? parser.parse(query.get(key)!) : null]));
-    void setParams({ ...values, view: parsers.view.parse(query.get("view") ?? "") ?? "grid", page: 1 });
+    void setParams({ ...values, view: parsers.view.parse(query.get("view") ?? "") ?? "grid", page: null });
   };
 
   const activeFilterCount =

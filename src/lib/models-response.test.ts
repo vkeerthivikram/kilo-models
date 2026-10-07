@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { parseModelsResponse } from "./models-response";
+import { parseModelsResponse, parseUpstreamModelsResponse } from "./models-response";
 
 test("malformed catalogs fail at the boundary instead of crashing rendering", () => {
   for (const value of [null, {}, { data: {} }, { data: [null] }, { data: [{ id: "x", name: 4 }] }, { data: [{ id: "x", name: "X", description: "", architecture: { input_modalities: {} } }] }]) assert.throws(() => parseModelsResponse(value));
@@ -52,4 +52,23 @@ test("accepts null and missing optional metadata, zero scores, and unknown prici
     opencode: { variants: { high: { reasoning: { enabled: true, effort: "high" } } } },
   };
   assert.equal(parseModelsResponse({ data: [model] })[0].id, model.id);
+});
+
+test("upstream parser keeps valid siblings and the first valid occurrence of an ID", () => {
+  const model = { id: "test/model", name: "Test", description: "", pricing: null };
+  const other = { ...model, id: "test/other" };
+  const result = parseUpstreamModelsResponse({ data: [{ ...model, name: 4 }, model, model, null, other] });
+  assert.deepEqual(result.data, [model, other]);
+  assert.equal(result.excludedCount, 3);
+  assert.deepEqual(result.diagnostics.map(({ index, field }) => ({ index, field })), [
+    { index: 0, field: "name" }, { index: 2, field: "id" }, { index: 3, field: "entry" },
+  ]);
+  assert.throws(() => parseModelsResponse({ data: [model, model] }), /entry 1.*id/);
+});
+
+test("upstream parser rejects broken envelopes and all-invalid nonempty catalogs", () => {
+  for (const value of [null, {}, { data: {} }, { data: [null, { id: "bad" }] }]) {
+    assert.throws(() => parseUpstreamModelsResponse(value));
+  }
+  assert.deepEqual(parseUpstreamModelsResponse({ data: [] }), { data: [], excludedCount: 0, diagnostics: [] });
 });

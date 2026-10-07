@@ -346,7 +346,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
 }
 
 export default function Home() {
-  const { models, loading, error, fetchedAt, revalidating, refresh } = useModels();
+  const { models, loading, error, fetchedAt, excludedCount, revalidating, refresh } = useModels();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -372,7 +372,7 @@ export default function Home() {
         </div>
 
         <div id="directory" className="scroll-mt-6">
-          <CatalogStatus fetchedAt={fetchedAt} loading={loading} revalidating={revalidating} error={error} onRefresh={() => void refresh()} />
+          <CatalogStatus fetchedAt={fetchedAt} loading={loading} revalidating={revalidating} error={error} excludedCount={excludedCount} onRefresh={() => void refresh()} />
           {error && fetchedAt === null ? (
             <div role="alert" className="flex flex-col items-center rounded-xl border px-6 py-16 text-center">
               <CircleAlert className="mb-4 size-7 text-destructive" aria-hidden="true" />

@@ -21,7 +21,11 @@ export function createCatalogClient(fetcher: typeof fetch = fetch) {
         if (typeof fetchedAt !== "string" || !Number.isFinite(Date.parse(fetchedAt))) {
           throw new Error("Invalid catalog update time");
         }
-        return { data, fetchedAt };
+        const excludedCount = (payload as Record<string, unknown>).excludedCount;
+        if (excludedCount !== undefined && (typeof excludedCount !== "number" || !Number.isSafeInteger(excludedCount) || excludedCount < 0)) {
+          throw new Error("Invalid catalog exclusion count");
+        }
+        return { data, fetchedAt, ...(excludedCount ? { excludedCount } : {}) };
       } catch (error) {
         if (current.signal.aborted) return null;
         throw error;

@@ -159,6 +159,101 @@ test("failed or malformed upstream responses never receive a fresh timestamp", a
   assert.equal(timestampCalls, 0);
 });
 
+test("catalog quarantines malformed siblings and duplicate entries while keeping valid models", async () => {
+  const previousWarn = console.warn;
+  const logs: unknown[][] = [];
+  const valid = { id: "test/model", name: "Test", description: "", architecture: null, pricing: null };
+  const next = { ...valid, id: "test/next" };
+  try {
+    console.warn = (...args: unknown[]) => { logs.push(args); };
+    const catalog = await fetchCatalog(async () => Response.json({ data: [
+      null, { ...valid, pricing: { prompt: { secret: "private price" } } }, valid, valid, next,
+    ] }), () => new Date("2026-10-06T06:30:00.000Z"));
+    assert.deepEqual(catalog, { data: [valid, next], fetchedAt: "2026-10-06T06:30:00.000Z", excludedCount: 3 });
+    assert.deepEqual(logs, [["Model catalog entries excluded", { excludedCount: 3, diagnostics: [
+      { kind: "validation", index: 0, modelId: null, field: "entry" },
+      { kind: "validation", index: 1, modelId: "test/model", field: "pricing.prompt" },
+      { kind: "validation", index: 3, modelId: "test/model", field: "id" },
+    ] }]]);
+    assert.ok(!JSON.stringify(logs).includes("private price"));
+  } finally {
+    console.warn = previousWarn;
+  }
+});
+
+test("catalog caps and sanitizes quarantine diagnostics without exposing malformed field values", async () => {
+  const previousWarn = console.warn;
+  const logs: unknown[][] = [];
+  const valid = { id: "test/model", name: "Test", description: "" };
+  const invalid = { ...valid, id: `bad\n${"x".repeat(200)}`, description: "private description",
+    opencode: { variants: { [`bad\n${"y".repeat(200)}`]: { reasoning: { effort: { secret: "private value" } } } } } };
+  try {
+    console.warn = (...args: unknown[]) => { logs.push(args); };
+    const catalog = await fetchCatalog(async () => Response.json({ data: [valid, ...Array.from({ length: 100 }, () => invalid)] }));
+    assert.equal(catalog.excludedCount, 100);
+    assert.deepEqual(catalog.data, [valid]);
+    assert.equal(logs.length, 1);
+    const details = logs[0][1] as { excludedCount: number; diagnostics: Array<{ modelId: string; field: string }> };
+    assert.equal(details.excludedCount, 100);
+    assert.equal(details.diagnostics.length, 10);
+    assert.ok(details.diagnostics.every((item) => item.modelId.length <= 120 && item.field.length <= 120));
+    assert.ok(!JSON.stringify(logs).includes("private"));
+    assert.ok(details.diagnostics.every((item) => !item.modelId.includes("\n") && !item.field.includes("\n")));
+  } finally {
+    console.warn = previousWarn;
+  }
+});
+
+test("a nonempty all-invalid catalog still fails and never records freshness", async () => {
+  let timestampCalls = 0;
+  await assert.rejects(fetchCatalog(async () => Response.json({ data: [null, { id: "bad" }] }), () => {
+    timestampCalls += 1;
+    return new Date();
+  }), /Invalid model catalog entry/);
+  assert.equal(timestampCalls, 0);
+});
+
+test("a classified HTTP failure survives an abort triggered while reading its status", async () => {
+  const previousSetTimeout = globalThis.setTimeout;
+  let expire: (() => void) | undefined;
+  try {
+    globalThis.setTimeout = ((callback: () => void) => {
+      expire = callback;
+      return previousSetTimeout(() => {}, 60_000);
+    }) as typeof setTimeout;
+    const response = { ok: false, get status() { expire!(); return 503; } } as Response;
+    await assert.rejects(fetchCatalog(async () => response), (error) => error instanceof CatalogFetchError && error.kind === "http" && error.status === 503);
+  } finally {
+    globalThis.setTimeout = previousSetTimeout;
+  }
+});
+
+test("a stalled body abort is classified as timeout rather than invalid JSON", async () => {
+  const previousSetTimeout = globalThis.setTimeout;
+  let expire: (() => void) | undefined;
+  let timestampCalls = 0;
+  try {
+    globalThis.setTimeout = ((callback: () => void) => {
+      expire = callback;
+      return previousSetTimeout(() => {}, 60_000);
+    }) as typeof setTimeout;
+    const stalledBody: typeof fetch = async (_url, options) => ({
+      ok: true,
+      json: () => new Promise((_resolve, reject) => {
+        options!.signal!.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+        expire!();
+      }),
+    }) as Response;
+    await assert.rejects(fetchCatalog(stalledBody, () => {
+      timestampCalls += 1;
+      return new Date();
+    }), (error) => error instanceof CatalogFetchError && error.kind === "timeout");
+    assert.equal(timestampCalls, 0);
+  } finally {
+    globalThis.setTimeout = previousSetTimeout;
+  }
+});
+
 test("catalog aborts a stalled upstream request without recording freshness", async () => {
   let timestampCalls = 0;
   let upstreamSignal: AbortSignal | null | undefined;

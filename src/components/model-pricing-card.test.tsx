@@ -32,3 +32,16 @@ test("discount disclosures say that estimates are pre-discount", () => {
   assert.match(pricingCard({ discount: 20 }), /20%/);
   assert.doesNotMatch(pricingCard({ discount: 0 }), /Estimates are pre-discount/);
 });
+
+test("discount rows preserve tiny and fractional percentages as decimals", () => {
+  for (const [discount, percentage] of [[1e-7, "0.0000001%"], [12.5, "12.5%"]] as const) {
+    const markup = pricingCard({ discount });
+    assert.ok(markup.includes(`>${percentage}</span>`));
+    assert.match(markup, /Estimates are pre-discount/);
+    assert.doesNotMatch(markup, /<details[^>]*hidden/);
+  }
+  const zero = pricingCard({ discount: 0 });
+  assert.doesNotMatch(zero, /0%/);
+  assert.doesNotMatch(zero, /Estimates are pre-discount/);
+  assert.match(zero, /<details[^>]*hidden/);
+});

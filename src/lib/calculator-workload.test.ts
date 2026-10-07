@@ -16,6 +16,14 @@ test("advertised discounts explain that estimates use pre-discount published rat
   assert.deepEqual(getBillingWarnings({ prompt: "0", completion: "0", discount: 0 }, DEFAULT_WORKLOAD), []);
 });
 
+test("discount warnings preserve tiny and fractional percentages as decimals", () => {
+  for (const [discount, percentage] of [[1e-7, "0.0000001%"], [12.5, "12.5%"]] as const) {
+    assert.deepEqual(getBillingWarnings({ prompt: "0", completion: "0", discount }, DEFAULT_WORKLOAD), [
+      `Estimates are pre-discount. The listed ${percentage} discount is not applied because its billing scope is unspecified.`,
+    ]);
+  }
+});
+
 test("missing billing rates take priority over discount notices", () => {
   assert.match(getBillingWarnings({ prompt: "-1", completion: "0", discount: 20 }, DEFAULT_WORKLOAD)[0], /No valid input token rate/);
 });

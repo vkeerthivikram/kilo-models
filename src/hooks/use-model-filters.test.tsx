@@ -32,6 +32,120 @@ function inspect(searchParams: string, favorites: string[] = [], catalog: Model[
   return result;
 }
 
+function updateQuery(searchParams: string, update: (filters: ReturnType<typeof useModelFilters>) => void) {
+  return new Promise<URLSearchParams>((resolve) => {
+    let result: ReturnType<typeof useModelFilters> | undefined;
+    function Probe() {
+      result = useModelFilters(models);
+      return null;
+    }
+    renderToStaticMarkup(<NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={({ searchParams }) => resolve(searchParams)}><Probe /></NuqsTestingAdapter>);
+    assert.ok(result);
+    update(result);
+  });
+}
+
+test("removing one boolean filter removes its query key and pagination while preserving other state", async () => {
+  const query = await updateQuery("?free=true&reasoning=true&page=2&fav=true&view=list&sort=cost-desc&requests=7&compare=test/model-01", (filters) => filters.setFree(false));
+  assert.equal(query.has("free"), false);
+  assert.equal(query.has("page"), false);
+  assert.equal(query.get("reasoning"), "true");
+  assert.equal(query.get("fav"), "true");
+  assert.equal(query.get("view"), "list");
+  assert.equal(query.get("sort"), "cost-desc");
+  assert.equal(query.get("requests"), "7");
+  assert.equal(query.get("compare"), "test/model-01");
+});
+
+test("all boolean controls remove disabled filters instead of retaining false URL values", async () => {
+  const controls = [
+    ["hideRetired", "setHideRetired"],
+    ["fitsWorkload", "setFitsWorkload"],
+    ["reasoning", "setReasoning"],
+    ["tools", "setTools"],
+    ["fav", "setFav"],
+  ] as const;
+  for (const [key, setter] of controls) {
+    const query = await updateQuery(`?${key}=true&page=2&search=Model&requests=7`, (filters) => filters[setter](false));
+    assert.equal(query.has(key), false, key);
+    assert.equal(query.has("page"), false, key);
+    assert.equal(query.get("search"), "Model");
+    assert.equal(query.get("requests"), "7");
+  }
+});
+
+test("clearing search removes its query key and leaves selected filters and browsing scope intact", async () => {
+  const query = await updateQuery("?search=Model&page=2&providers=test&fav=true&view=list&sort=cost-desc&requests=7&compare=test/model-01", (filters) => filters.setSearch(""));
+  assert.equal(query.has("search"), false);
+  assert.equal(query.has("page"), false);
+  assert.equal(query.get("providers"), "test");
+  assert.equal(query.get("fav"), "true");
+  assert.equal(query.get("view"), "list");
+  assert.equal(query.get("sort"), "cost-desc");
+  assert.equal(query.get("requests"), "7");
+  assert.equal(query.get("compare"), "test/model-01");
+});
+
+test("removing provider and modality selections keeps remaining items and deletes the final selection", async () => {
+  const controls = [
+    ["providers", "setProviders", "alpha", "beta"],
+    ["inputModalities", "setInputModalities", "image", "text"],
+    ["outputModalities", "setOutputModalities", "audio", "text"],
+  ] as const;
+  for (const [key, setter, first, remaining] of controls) {
+    const selected = await updateQuery(`?${key}=${first},${remaining}&page=2&tools=true&requests=7`, (filters) => filters[setter]([remaining]));
+    assert.equal(selected.get(key), remaining);
+    assert.equal(selected.has("page"), false);
+    assert.equal(selected.get("tools"), "true");
+    const cleared = await updateQuery(`?${key}=${remaining}&page=2&tools=true&requests=7`, (filters) => filters[setter]([]));
+    assert.equal(cleared.has(key), false, key);
+    assert.equal(cleared.has("page"), false);
+    assert.equal(cleared.get("tools"), "true");
+    assert.equal(cleared.get("requests"), "7");
+  }
+});
+
+test("numeric filter removal and page reset leave no defaults while zero limits remain active", async () => {
+  const controls = [
+    ["maxBudget", "setMaxBudget"],
+    ["minContext", "setMinContext"],
+    ["maxInputPrice", "setMaxInputPrice"],
+    ["maxOutputPrice", "setMaxOutputPrice"],
+  ] as const;
+  for (const [key, setter] of controls) {
+    const query = await updateQuery(`?${key}=5&page=2&fav=true&sort=cost-desc`, (filters) => filters[setter](null));
+    assert.equal(query.has(key), false);
+    assert.equal(query.has("page"), false);
+    assert.equal(query.get("fav"), "true");
+    assert.equal(query.get("sort"), "cost-desc");
+    const zero = await updateQuery("?page=2&fav=true", (filters) => filters[setter](0));
+    assert.equal(zero.get(key), "0");
+  }
+  const firstPage = await updateQuery("?page=2&fav=true", (filters) => filters.setPage(1));
+  assert.equal(firstPage.has("page"), false);
+  assert.equal(firstPage.get("fav"), "true");
+});
+
+test("sort changes and saved view restoration reset pagination without losing saved scope or usage", async () => {
+  const sorted = await updateQuery("?page=2&free=true&requests=7", (filters) => filters.setSort("cost-asc"));
+  assert.equal(sorted.get("sort"), "cost-asc");
+  assert.equal(sorted.get("free"), "true");
+  assert.equal(sorted.get("requests"), "7");
+  assert.equal(sorted.has("page"), false);
+  const restored = await updateQuery("?page=2&free=true&requests=7&compare=test/model-01", (filters) => filters.applyDirectoryQuery(new URLSearchParams("search=Model&providers=test&reasoning=true&fav=true&sort=cost-desc&view=list&maxInputPrice=0")));
+  assert.equal(restored.has("free"), false);
+  assert.equal(restored.has("page"), false);
+  assert.equal(restored.get("search"), "Model");
+  assert.equal(restored.get("providers"), "test");
+  assert.equal(restored.get("reasoning"), "true");
+  assert.equal(restored.get("fav"), "true");
+  assert.equal(restored.get("sort"), "cost-desc");
+  assert.equal(restored.get("view"), "list");
+  assert.equal(restored.get("maxInputPrice"), "0");
+  assert.equal(restored.get("requests"), "7");
+  assert.equal(restored.get("compare"), "test/model-01");
+});
+
 test("favorites filter runs before pagination", () => {
   const result = inspect("?fav=true&page=2", ["test/model-29"]);
   assert.equal(result.sortedModels.length, 1);

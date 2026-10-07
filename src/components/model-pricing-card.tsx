@@ -2,7 +2,7 @@
 
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
-import { formatPrice } from "@/lib/format-price";
+import { formatDiscount, formatPrice } from "@/lib/format-price";
 import { formatCost } from "@/lib/cost-calculator";
 import { parsePrice } from "@/lib/format-price";
 
@@ -64,7 +64,7 @@ export function ModelPricingCard({ model }: Props) {
         {p?.discount != null && p.discount > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Discount</span>
-            <span className="font-medium text-emerald-600">{p.discount}%</span>
+            <span className="font-medium text-emerald-600">{formatDiscount(p.discount)}</span>
           </div>
         )}
           </div>

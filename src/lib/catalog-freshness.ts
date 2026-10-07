@@ -1,4 +1,4 @@
-import { ModelCatalogValidationError, parseModelsResponse } from "./models-response";
+import { ModelCatalogValidationError, parseUpstreamModelsResponse } from "./models-response";
 import type { Model } from "./types";
 
 export const CATALOG_CACHE_SECONDS = 3600;
@@ -28,6 +28,7 @@ export function catalogErrorDiagnostic(error: unknown) {
 export interface CatalogEnvelope {
   data: Model[];
   fetchedAt: string;
+  excludedCount?: number;
 }
 
 export function resolveGatewayUrl(environment: {
@@ -55,13 +56,22 @@ export async function fetchCatalog(
     if (!response.ok) throw new CatalogFetchError("http", response.status);
     let payload: unknown;
     try { payload = await response.json(); }
-    catch { throw new CatalogFetchError("invalid-json"); }
-    const data = parseModelsResponse(payload);
+    catch {
+      if (controller.signal.aborted) throw controller.signal.reason;
+      throw new CatalogFetchError("invalid-json");
+    }
+    const { data, excludedCount, diagnostics } = parseUpstreamModelsResponse(payload);
+    if (excludedCount > 0) {
+      console.warn("Model catalog entries excluded", {
+        excludedCount,
+        diagnostics: diagnostics.map(catalogErrorDiagnostic),
+      });
+    }
     // This runs inside the cached function, only after a successful upstream fetch.
-    return { data, fetchedAt: now().toISOString() };
+    return { data, fetchedAt: now().toISOString(), ...(excludedCount > 0 ? { excludedCount } : {}) };
   } catch (error) {
-    if (controller.signal.aborted) throw controller.signal.reason;
     if (error instanceof ModelCatalogValidationError || error instanceof CatalogFetchError) throw error;
+    if (controller.signal.aborted) throw controller.signal.reason;
     throw new CatalogFetchError("network");
   } finally {
     clearTimeout(timer);

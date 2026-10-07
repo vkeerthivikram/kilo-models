@@ -10,9 +10,10 @@ interface CatalogStatusProps {
   revalidating: boolean;
   error: Error | null;
   onRefresh: () => void;
+  excludedCount?: number;
 }
 
-export function CatalogStatus({ fetchedAt, loading, revalidating, error, onRefresh }: CatalogStatusProps) {
+export function CatalogStatus({ fetchedAt, loading, revalidating, error, onRefresh, excludedCount = 0 }: CatalogStatusProps) {
   const busy = loading || revalidating;
   const updated = fetchedAt ? new Date(fetchedAt) : null;
   const status = revalidating ? "Checking Kilo for updates…" : loading ? "Loading catalog…"
@@ -26,6 +27,7 @@ export function CatalogStatus({ fetchedAt, loading, revalidating, error, onRefre
           <p>Updated <time dateTime={fetchedAt!} title={updated.toUTCString()} className="tabular-nums">{new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(updated)}</time></p>
         )}
         <p role="status" aria-live="polite" className={status ? "mt-1" : "sr-only"}>{status}</p>
+        {excludedCount > 0 && <p role="status" className="mt-1">{excludedCount.toLocaleString()} {excludedCount === 1 ? "model unavailable" : "models unavailable"} because their catalog data could not be verified.</p>}
         <InlineHelp title="About catalog updates"><p>Hourly cache; refresh checks Kilo now. Older data may appear while background updates load. If refresh fails, your last loaded models remain available.</p></InlineHelp>
       </div>
       <Button type="button" variant="outline" className="min-h-11 text-xs" disabled={busy} onClick={onRefresh}>

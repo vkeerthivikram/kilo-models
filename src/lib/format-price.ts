@@ -14,6 +14,10 @@ export function formatPrice(perToken: string | number | undefined): string {
   return `$${perMillion.toFixed(2).replace(/\.00$/, "")}/M`;
 }
 
+export function formatDiscount(percent: number): string {
+  return `${percent.toLocaleString("en-US", { useGrouping: false, maximumSignificantDigits: 21 })}%`;
+}
+
 export function formatContext(ctx: number | undefined): string {
   if (!ctx || !Number.isFinite(ctx) || ctx <= 0) return "—";
   if (ctx >= 1_000_000) return `${Math.round(ctx / 1_000_000)}M`;
