@@ -20,7 +20,7 @@ export function CatalogStatus({ fetchedAt, loading, revalidating, error, onRefre
     : error ? fetchedAt ? "Refresh failed. Showing last loaded catalog." : "Catalog could not load. Try again."
       : "";
   const exclusionStatus = excludedCount > 0
-    ? `${excludedCount.toLocaleString()} ${excludedCount === 1 ? "catalog entry could not be verified and was hidden." : "catalog entries could not be verified and were hidden."}`
+    ? `${excludedCount.toLocaleString()} ${excludedCount === 1 ? "catalog entry could not be included and was hidden." : "catalog entries could not be included and were hidden."}`
     : "";
   const status = [refreshStatus, exclusionStatus].filter(Boolean).join(" ");
 

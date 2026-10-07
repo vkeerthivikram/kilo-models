@@ -17,7 +17,7 @@ test("one persistent status announces partial catalog entries and clears after h
 
   await page.getByRole("button", { name: "Refresh catalog", exact: true }).click();
   await expect(catalogStatus).toHaveCount(1);
-  await expect(catalogStatus).toHaveText("1 catalog entry could not be verified and was hidden.");
+  await expect(catalogStatus).toHaveText("1 catalog entry could not be included and was hidden.");
   await expect(catalogStatus).toBeVisible();
   expect(await catalogStatus.evaluate((node, initialNode) => node === initialNode, initialStatus)).toBe(true);
   await expect(page.getByRole("link", { name: "Fixture Model 01", exact: true })).toBeVisible();
