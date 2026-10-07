@@ -18,5 +18,6 @@ const components: Components = {
 export function ModelDescription({ description }: { description: string }) {
   return <div className="max-w-prose space-y-3 break-words text-base text-muted-foreground [overflow-wrap:anywhere]">
     <Markdown components={components} urlTransform={defaultUrlTransform}>{description}</Markdown>
+    {/(?:\.{3}|…)\s*$/.test(description) && <p className="text-xs leading-relaxed">Description ends here in Kilo’s catalog; no further text is supplied.</p>}
   </div>;
 }

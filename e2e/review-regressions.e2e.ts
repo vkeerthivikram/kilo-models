@@ -20,7 +20,7 @@ test("charts show full names in tooltips and keyboard navigation exposes actual 
   await dialog.getByRole("tab", { name: "Charts", exact: true }).click();
   const pricing = dialog.getByRole("region", { name: "Pricing comparison", exact: true });
   const profile = dialog.getByRole("region", { name: "Specification profile", exact: true });
-  await expect(pricing.getByText("openai/computer…", { exact: true })).toBeVisible();
+  await expect(pricing.getByText(/^1\.\s*openai\/computer…$/)).toBeVisible();
   const radar = profile.getByRole("application");
   await expect(radar).toHaveAttribute("tabindex", "0");
   await radar.focus();

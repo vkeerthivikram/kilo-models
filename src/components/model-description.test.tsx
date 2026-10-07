@@ -20,3 +20,15 @@ test("upstream HTML, scripts, dangerous URLs and remote images cannot execute", 
   assert.match(html, /Bad/);
   assert.match(html, /Chart/);
 });
+
+test("shortened upstream descriptions explain the source limit without a false expansion", () => {
+  for (const ending of ["...", "…"]) {
+    const html = renderToStaticMarkup(<ModelDescription description={`Supplied summary${ending}`} />);
+    assert.match(html, /Description ends here in Kilo/);
+    assert.doesNotMatch(html, /Read more|<button/);
+  }
+  const full = "Complete description. " + "Further detail. ".repeat(100);
+  const html = renderToStaticMarkup(<ModelDescription description={full} />);
+  assert.ok(html.includes(full.trim()));
+  assert.doesNotMatch(html, /Description ends here in Kilo/);
+});

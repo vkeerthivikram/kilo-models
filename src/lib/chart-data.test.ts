@@ -8,6 +8,14 @@ test("price charts use per-million units and preserve unavailable rates", () => 
   assert.deepEqual(getPricingData(models).map((row) => row.prompt), [2, 6, null]);
 });
 
+test("chart axis labels distinguish models with the same provider and long prefix", () => {
+  const data = getPricingData(["AionLabs: Aion 3.5", "AionLabs: Aion 3.5 Mini", "An identical very long prefix Alpha", "An identical very long prefix Beta"].map((name) => ({ ...models[0], name })));
+  assert.equal(data[0].axisLabel, "1. Aion 3.5");
+  assert.equal(data[1].axisLabel, "2. Aion 3.5 Mini");
+  assert.equal(new Set(data.map((row) => row.axisLabel)).size, 4);
+  assert.equal(data[1].name, "AionLabs: Aion 3.5 Mini");
+});
+
 test("pricing ticks fit the axis while tooltip values distinguish missing from free", () => {
   assert.equal(pricingAxisLabel("openai/computer-use-preview"), "openai/computer…");
   assert.equal(pricingAxisLabel("Short name"), "Short name");

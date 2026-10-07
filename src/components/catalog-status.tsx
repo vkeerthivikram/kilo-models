@@ -2,7 +2,6 @@
 
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InlineHelp } from "./inline-help";
 
 interface CatalogStatusProps {
   fetchedAt: string | null;
@@ -25,18 +24,18 @@ export function CatalogStatus({ fetchedAt, loading, revalidating, error, onRefre
   const status = [refreshStatus, exclusionStatus].filter(Boolean).join(" ");
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2 text-xs text-muted-foreground">
-      <div className="min-w-0">
-        {updated && (
-          <p>Updated <time dateTime={fetchedAt!} title={updated.toUTCString()} className="tabular-nums">{new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(updated)}</time></p>
-        )}
-        <p role="status" aria-live="polite" className={status ? "mt-1" : "sr-only"}>{status}</p>
-        <InlineHelp title="About catalog updates"><p>Hourly cache; refresh checks Kilo now. Older data may appear while background updates load. If refresh fails, your last loaded models remain available.</p></InlineHelp>
-      </div>
+    <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 py-1 text-xs text-muted-foreground">
+      <details className="min-w-0 flex-1">
+        <summary title="About catalog updates" className="min-h-11 cursor-pointer rounded py-3 focus-visible:outline-2 focus-visible:outline-ring">
+          {updated ? <>Updated <time dateTime={fetchedAt!} title={updated.toUTCString()} className="tabular-nums">{new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(updated)}</time></> : "About catalog updates"}
+        </summary>
+        <p className="max-w-prose pb-3 leading-relaxed">Hourly cache; refresh checks Kilo now. Older data may appear while background updates load. If refresh fails, your last loaded models remain available.</p>
+      </details>
       <Button type="button" variant="outline" className="min-h-11 text-xs" disabled={busy} onClick={onRefresh}>
         <RefreshCw aria-hidden="true" className={busy ? "size-4 animate-spin motion-reduce:animate-none" : "size-4"} />
         {busy ? revalidating ? "Refreshing…" : "Loading…" : error ? "Retry refresh" : "Refresh catalog"}
       </Button>
+      <p role="status" aria-live="polite" className={status ? "w-full" : "sr-only"}>{status}</p>
     </div>
   );
 }

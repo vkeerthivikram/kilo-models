@@ -126,7 +126,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
         <span className="ml-auto hidden text-xs text-muted-foreground sm:block">Select models to compare side by side</span>
       </div>
 
-      <div className="grid items-start gap-6 pt-6 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
+      <div className="grid items-start gap-3 pt-3 sm:gap-5 sm:pt-5 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
         <div className="flex gap-3 lg:hidden">
           <Button variant="outline" className="h-11 flex-1" onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen} aria-controls="model-filters">
             <SlidersHorizontal className="size-4" /> Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
@@ -261,11 +261,11 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
           </details>
         </aside>
 
-        <section aria-label="Model results" aria-busy={loading} className="min-w-0 space-y-5">
+        <section aria-label="Model results" aria-busy={loading} className="min-w-0 space-y-3 sm:space-y-4">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input ref={searchInput} aria-label="Search models" aria-keyshortcuts="/" title="Press / to search when not editing a field" placeholder="Search models, providers, or keywords..." value={search}
-              onChange={(event) => setSearch(event.target.value)} className="h-12 rounded-lg bg-card pl-11 pr-12 text-base placeholder:text-muted-foreground md:text-sm" />
+              onChange={(event) => setSearch(event.target.value)} className="h-11 rounded-lg bg-card pl-11 pr-12 text-base placeholder:text-muted-foreground md:text-sm" />
             {search && <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></button>}
           </div>
 
@@ -295,7 +295,7 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
           </div>
 
           <details ref={workloadPanel} className="border-y py-1">
-            <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+            <summary className="min-h-11 cursor-pointer rounded py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
               Estimate workload
               <span className="mt-1 block text-xs font-normal leading-relaxed tabular-nums text-muted-foreground">{workloadSummary(workload)}</span>
             </summary>
@@ -366,7 +366,7 @@ export default function Home() {
       </header>
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-5 pb-44 sm:px-8">
-        <div className="flex flex-col justify-between gap-2 py-4 sm:py-6 lg:flex-row lg:items-end lg:gap-12">
+        <div className="flex flex-col justify-between gap-2 py-3 sm:py-4 lg:flex-row lg:items-end lg:gap-12">
           <h1 className="max-w-xl text-balance font-heading text-3xl leading-tight tracking-tight sm:text-4xl">Discover your next <span className="italic">AI model.</span></h1>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">Explore Kilo Gateway models. Compare prices, capabilities, and costs.</p>
         </div>

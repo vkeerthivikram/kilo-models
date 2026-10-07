@@ -16,7 +16,11 @@ export function getPricingData(models: Model[]) {
     const rate = parsePrice(value);
     return rate !== null && Number.isFinite(rate * 1_000_000) ? rate * 1_000_000 : null;
   };
-  return models.map((model) => ({ name: model.name, prompt: perMillion(model.pricing?.prompt), completion: perMillion(model.pricing?.completion) }));
+  return models.map((model, index) => ({
+    name: model.name,
+    axisLabel: `${index + 1}. ${pricingAxisLabel(model.name.replace(/^[^:]+:\s*/, ""))}`,
+    prompt: perMillion(model.pricing?.prompt), completion: perMillion(model.pricing?.completion),
+  }));
 }
 
 export function getCapabilityData(models: Model[]) {
