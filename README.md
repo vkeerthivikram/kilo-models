@@ -4,6 +4,12 @@ An unofficial AI model directory for browsing and comparing 300+ models from the
 
 > Not affiliated with or endorsed by Kilo AI.
 
+## Video walkthrough
+
+[![Watch the Kilo Models launch video](docs/media/kilo-models-launch.jpg)](docs/media/kilo-models-launch.mp4)
+
+[Watch the 22-second video](docs/media/kilo-models-launch.mp4) to see model discovery, side-by-side comparison, and workload cost estimates.
+
 ## Features
 
 - Browse 300+ AI models sourced from the [Kilo API](https://api.kilo.ai)
