@@ -6,9 +6,9 @@ An unofficial AI model directory for browsing and comparing 300+ models from the
 
 ## Video walkthrough
 
-[![Watch the Kilo Models launch video](docs/media/kilo-models-launch.jpg)](docs/media/kilo-models-launch.mp4)
+See model discovery, side-by-side comparison, and workload cost estimates in this 22-second video.
 
-[Watch the 22-second video](docs/media/kilo-models-launch.mp4) to see model discovery, side-by-side comparison, and workload cost estimates.
+https://github.com/user-attachments/assets/f84cb349-583f-48d0-9f1c-6a02c3e96392
 
 ## Features
 
