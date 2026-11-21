@@ -1,8 +1,10 @@
 "use client";
 
+import { Button as ActionButton } from "@ui-sdk/react/button";
 import * as React from "react";
 import type { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { CalculatorInputs } from "./calculator-inputs";
 import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
 import { ChevronDown } from "lucide-react";
@@ -11,7 +13,7 @@ import { getBillingWarnings, getWorkloadSuitability, getWorkloadWarnings } from 
 import { CostBreakdown } from "./cost-breakdown";
 import { SavedSetups } from "./saved-setups";
 import { parsePrice } from "@/lib/format-price";
-import { workloadSummary } from "@/lib/workload-summary";
+import { requestCount, workloadSummary } from "@/lib/workload-summary";
 
 export function PricingCalculator({ model, className }: { model: Model; className?: string }) {
   const { workload, setWorkload } = useCalculatorWorkload();
@@ -25,15 +27,16 @@ export function PricingCalculator({ model, className }: { model: Model; classNam
   return (
     <Card className={`p-4 sm:p-6 ${className ?? ""}`}>
       <h2>
-        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={`${id} ${id}-saved`} className="min-h-11 w-full flex items-center justify-between font-heading text-lg rounded focus-visible:outline-2 focus-visible:outline-ring">
+        <ActionButton type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={`${id} ${id}-saved`} className="min-h-11 w-full flex items-center justify-between font-heading text-lg rounded focus-visible:outline-2 focus-visible:outline-ring">
           Cost Calculator
           <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
+        </ActionButton>
       </h2>
-      <p className="text-xs leading-relaxed text-muted-foreground">Estimates in USD · {workloadSummary(workload)}</p>
+      <p data-agent-catalog="Model workload" data-model-id={model.id} className="text-xs leading-relaxed text-muted-foreground">Estimates in USD · {workloadSummary(workload)}</p>
       <div id={id} hidden={!open} className="space-y-6">
         <CalculatorInputs workload={workload} onChange={setWorkload} showCache={parsePrice(model.pricing?.input_cache_read) !== null} />
       </div>
+      <div data-agent-catalog="Model cost estimate" data-model-id={model.id} className="flex flex-col gap-4">
         {(warnings.length > 0 || billingWarnings.length > 0) && <div role="status" className="space-y-2 rounded-lg border bg-muted/40 p-4 text-sm">
           {warnings.map((warning) => <p key={warning}>{warning}</p>)}
           {warnings.length > 0 && <p className="text-muted-foreground">This is a hypothetical cost; reduce token counts to fit a single request.</p>}
@@ -43,13 +46,14 @@ export function PricingCalculator({ model, className }: { model: Model; classNam
         {costs.total === null && billingWarnings.length === 0 && <p role="status" className="text-sm text-muted-foreground">Estimate exceeds supported numeric range. Reduce usage to calculate a total.</p>}
         <dl aria-live="polite" aria-atomic="true" className="space-y-3 border-t pt-4 text-sm">
           <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Per request</dt><dd className="font-semibold tabular-nums">{formatCost(costs.perRequest)}</dd></div>
-          <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{workload.period === "month" ? "Monthly total" : "Total"} ({workload.requests.toLocaleString("en-US")} requests)</dt><dd className="font-semibold tabular-nums">{formatCost(costs.total)}</dd></div>
+          <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{workload.period === "month" ? "Monthly total" : "Total"} ({requestCount(workload.requests)})</dt><dd className="font-semibold tabular-nums [overflow-wrap:anywhere]">{formatCost(costs.total)}</dd></div>
         </dl>
+      </div>
       <div id={`${id}-saved`} hidden={!open} className="space-y-6">
         <SavedSetups workload={workload} onWorkloadChange={setWorkload} />
         <details className="border-t pt-2">
-          <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Full cost breakdown</summary>
-          <div className="space-y-3 pt-2">
+          <DisclosureSummary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">Full cost breakdown</DisclosureSummary>
+          <div data-agent-catalog="Model cost breakdown" data-model-id={model.id} className="space-y-3 pt-2">
             <CostBreakdown costs={costs} workload={workload} />
             <p className="text-xs text-muted-foreground">Uses published rates. Reasoning, routing, and tiered pricing may change actual charges.</p>
           </div>

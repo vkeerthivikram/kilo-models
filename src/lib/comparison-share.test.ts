@@ -89,11 +89,23 @@ test("cached workload exports its actual estimate and marks hypothetical request
   assert.equal(csv.includes("context limit"), true);
 });
 
-test("CSV and shared links include extra units and the complete billing estimate", () => {
+test("CSV distinguishes missing limits from models that fit", () => {
+  const unknown = { ...model, top_provider: { ...model.top_provider, max_completion_tokens: 0 } };
+  const fits = { ...DEFAULT_WORKLOAD, inputTokens: 20, outputTokens: 10 };
+  assert.match(comparisonCsv([unknown], fits), /"Limits unknown","Context or output cap is not published\."/);
+  assert.match(comparisonCsv([model], fits), /"No reported limit exceeded",""/);
+});
+
+test("CSV and shared links retain image usage without guessing the rate's unit", () => {
   const extraWorkload = { ...DEFAULT_WORKLOAD, inputTokens: 100, outputTokens: 10, requests: 2, cachePercent: 50, cacheWriteTokens: 20, images: 2, searches: 3 };
   const priced = { ...model, pricing: { prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" } };
   const csv = comparisonCsv([priced], extraWorkload);
-  assert.match(csv, /"0\.96"/);
+  assert.match(csv, /Reported image rate \(USD, unit unverified\)/);
+  const [header, row] = csv.split("\r\n").map((line): string[] => line.match(/"(?:[^"]|"")*"/g) ?? []);
+  for (const field of ["Image cost/request (USD)", "Workload cost (USD)"]) {
+    assert.equal(row[header.indexOf(`"${field}"`)], '"Unavailable"');
+  }
+  assert.match(csv, /image rate has an unverified billing unit/);
   assert.match(csv, /"Images\/request"/);
   const url = new URL(buildComparisonUrl("https://example.test/", [model.id], extraWorkload));
   assert.equal(url.searchParams.get("cacheWriteTokens"), "20");

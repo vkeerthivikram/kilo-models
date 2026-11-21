@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/f84cb349-583f-48d0-9f1c-6a02c3e96392
 - [Next.js 16](https://nextjs.org) (App Router)
 - [React 19](https://react.dev)
 - [Tailwind CSS v4](https://tailwindcss.com)
-- [shadcn/ui](https://ui.shadcn.com) + [Recharts](https://recharts.org)
+- [UI SDK](https://ui-sdk.dev) + [Recharts](https://recharts.org)
 - [nuqs](https://nuqs.47ng.com) for URL state
 
 ## Getting Started
@@ -45,6 +45,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Model data is fetched server-side from `https://api.kilo.ai/api/gateway/models` and cached for 1 hour.
 
+The calculator cannot estimate totals for workloads with images until the image rate's billing unit is verified. Saved workloads and shared links still retain image usage.
+
 ## Testing
 
 ```bash
@@ -53,13 +55,18 @@ bun test
 bun run build
 bun run test:e2e:install
 bun run test:e2e
+bun run test:e2e:detail-errors
 # Run only automated accessibility checks
 bun run test:e2e:a11y
 ```
 
+`bun run test:e2e:native` checks native WebMCP on a production build. It requires Playwright Chromium, a free port 3220, and access to the live Kilo gateway. The native checks are not part of the default CI browser matrix.
+
 The Playwright suite runs desktop Chromium, Firefox, and WebKit, plus mobile Chromium, in isolated browser contexts. It starts its own app on port 3210 with a separate `.next-e2e` output folder and synthetic catalog server on port 3211; both ports must be free. It never reuses a running app or personal browser profile. Directory reloads, filters, pagination, detail return navigation, comparison and favorite persistence, clipboard copying, refresh failure recovery, keyboard interaction, and mobile overflow are covered. Workload tests verify complete billing totals, workload-fit and budget filters, numeric draft editing, and saved setup management and backups across reloads.
 
 Axe scans cover the directory, model detail, comparison overview, and expanded comparison costs. Every supported light/dark theme combination is checked in desktop Chromium, and default light/dark modes are checked in every browser project. Results are attached as JSON to the HTML report. Automated checks complement manual keyboard and visual review; they cannot prove complete accessibility.
+
+In browsers with WebMCP, Kilo Models offers tools for search and filtering, model details and comparison, favorites, saved setups, and exports. The browser shows tool availability through its own agent interface.
 
 Browser fixtures use `KILO_MODELS_GATEWAY_URL` for the server-side gateway request in development. Production builds ignore that override and use Kilo. The browser suite intentionally uses a separate development server; CI also checks a normal production build. No live Kilo connection is required by browser tests.
 

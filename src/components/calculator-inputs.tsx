@@ -1,5 +1,8 @@
 "use client";
 
+import { parseNumericFilter } from "@/lib/model-filtering";
+import { NativeSelect } from "@/components/ui/native-select";
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,11 +27,15 @@ function WorkloadNumberInput({ id, label, value, onChange, min = 0, max = Number
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [badInput, setBadInput] = useState(false);
-  const number = draft === null || draft.trim() === "" ? NaN : Number(draft);
-  const valid = Number.isFinite(number) && (!integer || Number.isSafeInteger(number)) && number >= min && number <= max;
-  const invalid = badInput || (draft !== null && draft !== "" && !valid);
+  const parse = (text: string | null) => {
+    const number = parseNumericFilter(text, integer);
+    return number !== null && number >= min && number <= max ? number : null;
+  };
+  const number = parse(draft);
+  const invalid = badInput || (draft !== null && draft !== "" && number === null);
+  const validationMessage = integer ? `Enter a whole number from ${min} to ${max}.` : "Enter a percentage from 0 to 100.";
   const finishEdit = () => {
-    if (draft !== null && valid && !badInput && number !== value) onChange(number);
+    if (number !== null && !badInput && number !== value) onChange(number);
     setDraft(null);
     setBadInput(false);
   };
@@ -39,12 +46,20 @@ function WorkloadNumberInput({ id, label, value, onChange, min = 0, max = Number
       <Input id={id} type="number" min={min} max={max} step={integer ? 1 : "any"} inputMode={integer ? "numeric" : "decimal"}
         value={draft ?? value} className="h-11" aria-invalid={invalid} aria-describedby={invalid ? `${id}-error` : undefined}
         onChange={(event) => { setDraft(event.target.value); setBadInput(event.target.validity.badInput); }}
+        onValueChange={(value, details) => {
+          if (details.source !== "agent") return;
+          const parsed = parse(value);
+          if (parsed === null) throw new Error(`${label}: ${validationMessage}`);
+          setDraft(null);
+          setBadInput(false);
+          onChange(parsed);
+        }}
         onBlur={finishEdit}
         onKeyDown={(event) => {
           if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
         }} />
       {invalid && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
-        {integer ? `Enter a whole number from ${min} to ${max}.` : "Enter a percentage from 0 to 100."}
+        {validationMessage}
       </p>}
     </div>
   );
@@ -92,17 +107,17 @@ export function CalculatorInputs(props: Props) {
         ))}
       </div>
       <details ref={advancedPanel} open={initiallyAdvanced || undefined} className="border-t pt-2">
-        <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
-          Advanced usage{advancedUsage && <span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">{advancedUsageSummary(workload)}</span>}
-        </summary>
+        <DisclosureSummary aria-label="Advanced usage" aria-describedby={advancedUsage ? `${id}-advanced-usage` : undefined} className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+          Advanced usage{advancedUsage && <span id={`${id}-advanced-usage`} className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">{advancedUsageSummary(workload)}</span>}
+        </DisclosureSummary>
         <div className="space-y-4 pt-3">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor={`${id}-period`} className="text-sm text-muted-foreground">Estimate period</label>
-              <select id={`${id}-period`} value={workload.period} onChange={(event) => onChange({ ...workload, period: event.target.value === "month" ? "month" : "batch" })}
-                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring">
-                <option value="batch">Batch total</option><option value="month">Monthly total</option>
-              </select>
+              <NativeSelect id={`${id}-period`} value={workload.period}
+                items={[{ value: "batch", label: "Batch total" }, { value: "month", label: "Monthly total" }]}
+                onValueChange={(value) => onChange({ ...workload, period: value === "month" ? "month" : "batch" })}
+                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
             </div>
             {(props.showCache || workload.cachePercent > 0) && <div className="space-y-2">
               <WorkloadNumberInput key={`cache-${resetVersion}`} id={`${id}-cache`} label="Cached input (%)" value={workload.cachePercent} integer={false} max={100}
@@ -118,7 +133,7 @@ export function CalculatorInputs(props: Props) {
             ] as const).map((field) => <WorkloadNumberInput key={`${field.key}-${resetVersion}`} id={`${id}-${field.key}`} label={field.label} value={workload[field.key]}
               onChange={(value) => onChange({ ...workload, [field.key]: value })} />)}
           </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">Images and searches add unit charges. Cache reads and writes replace regular input billing and must not overlap. Missing rates make the estimate unavailable.</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">Searches add unit charges. Image usage is saved, but totals are unavailable until its billing unit is verified. Cache reads and writes replace regular input billing and must not overlap.</p>
           <InlineHelp title="About caching"><p>Cache reads reuse previously stored input at the published read rate. Cache writes store new input at the write rate. These counts are part of total input, so read and write tokens must not overlap or exceed it.</p></InlineHelp>
           <Button type="button" variant="ghost" className="min-h-11 text-xs" onClick={() => reset(resetAdvancedUsage(workload))}>Clear advanced usage</Button>
         </div>

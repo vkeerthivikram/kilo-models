@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { addSavedSetup, applySavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, parseSavedSetups, readSavedSetups, renameSavedSetup, restoreDeletedSetup, sanitizeSavedSetupQuery, savedViewSummary, serializeSavedSetups, updateSavedSetup, writeSavedSetups } from "./saved-setups";
+import { addSavedSetup, applySavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, inspectSavedSetups, MAX_SETUP_BACKUP_SIZE, parseSavedSetups, readSavedSetups, renameSavedSetup, restoreDeletedSetup, sanitizeSavedSetupQuery, savedViewSummary, serializeSavedSetups, SETUP_BACKUP_TOO_LARGE, updateSavedSetup, writeSavedSetups } from "./saved-setups";
 import { DEFAULT_WORKLOAD } from "./calculator-workload";
 
 test("a named workload and directory view survive storage without comparison or page state", () => {
@@ -30,8 +30,11 @@ test("older workloads restore optional costs as zero while malformed entries are
   assert.equal(restored[0].workload.cacheWriteTokens, 0);
 });
 
-test("corrupt, oversized, and unknown-version storage safely starts empty", () => {
-  for (const stored of [null, "{broken", "null", "42", "{}", '{"version":2,"setups":[]}', " ".repeat(200_001)]) assert.deepEqual(parseSavedSetups(stored), []);
+test("corrupt, oversized, and unknown-version data is flagged for recovery", () => {
+  assert.deepEqual(inspectSavedSetups(null), { setups: [], hasUnreadableStorage: false });
+  for (const stored of ["{broken", "null", "42", "{}", '{"version":2,"setups":[]}', "[]".padEnd(MAX_SETUP_BACKUP_SIZE + 1)]) {
+    assert.deepEqual(inspectSavedSetups(stored), { setups: [], hasUnreadableStorage: true });
+  }
 });
 
 test("setup limits reject empty names, duplicates, long names, and a twenty-first setup", () => {
@@ -238,18 +241,20 @@ test("invalid, oversized, or unsupported backup data is rejected as a whole", ()
   assert.equal(created.ok, true);
   if (!created.ok) return;
   const payload = { format: "kilo-models-saved-setups", version: 1, setups: created.setups };
-  for (const text of ["broken", "null", "[]", JSON.stringify({ ...payload, format: "other" }), JSON.stringify({ ...payload, version: 99 }), " ".repeat(200_001), JSON.stringify({ ...payload, setups: Array(21).fill(created.setup) }), JSON.stringify({ ...payload, setups: [created.setup, { ...created.setup, id: "bad", workload: { ...DEFAULT_WORKLOAD, requests: -1 } }] })]) {
+  for (const text of ["broken", "null", "[]", JSON.stringify({ ...payload, format: "other" }), JSON.stringify({ ...payload, version: 99 }), JSON.stringify({ ...payload, setups: Array(21).fill(created.setup) }), JSON.stringify({ ...payload, setups: [created.setup, { ...created.setup, id: "bad", workload: { ...DEFAULT_WORKLOAD, requests: -1 } }] })]) {
     const result = importSavedSetupsBackup(created.setups, text);
     assert.equal(result.ok, false);
   }
   assert.equal(created.setups.length, 1);
   assert.throws(() => exportSavedSetupsBackup(Array(21).fill(created.setup)));
   const unicodeOversized = JSON.stringify({ ...payload, extra: "漢".repeat(80_000) });
-  assert.equal(importSavedSetupsBackup(created.setups, unicodeOversized).ok, false);
+  for (const oversized of [JSON.stringify(payload).padEnd(MAX_SETUP_BACKUP_SIZE + 1), unicodeOversized]) {
+    assert.deepEqual(importSavedSetupsBackup(created.setups, oversized), { ok: false, error: SETUP_BACKUP_TOO_LARGE });
+  }
 });
 
 test("saved directory queries stay readable after Unicode values are URL encoded", () => {
-  const created = addSavedSetup([], "Encoded", DEFAULT_WORKLOAD, new URLSearchParams({ providers: "漢".repeat(2000), search: "coding" }), "encoded");
+  const created = addSavedSetup([], "Encoded", DEFAULT_WORKLOAD, new URLSearchParams({ providers: "漢".repeat(1700), search: "coding" }), "encoded");
   assert.equal(created.ok, true);
   if (!created.ok) return;
   assert.ok(created.setup.directoryQuery.length <= 16_000);
@@ -289,10 +294,45 @@ test("saved view summaries show decimal money without losing tiny caps", () => {
 test("storage never writes an oversized payload which would be unreadable on the next visit", () => {
   let stored = "untouched";
   const storage = { getItem: () => stored, setItem: (_key: string, value: string) => { stored = value; } };
-  const created = addSavedSetup([], "Large", DEFAULT_WORKLOAD, "", "large");
-  assert.equal(created.ok, true);
-  if (!created.ok) return;
-  const result = writeSavedSetups(storage, [{ ...created.setup, directoryQuery: "x".repeat(200_001) }]);
+  const entries = Array.from({ length: 20 }, (_, index) => {
+    const query = new URLSearchParams({ providers: "a".repeat(2000), inputModalities: "b".repeat(2000), outputModalities: "c".repeat(2000), minContext: "0".repeat(1999) + "1", maxInputPrice: "0".repeat(1999) + "1", maxOutputPrice: "0".repeat(1999) + "1" });
+    const result = addSavedSetup([], "Large " + index, DEFAULT_WORKLOAD, query, String(index));
+    assert.ok(result.ok);
+    return result.setup;
+  });
+  assert.equal(inspectSavedSetups(serializeSavedSetups(entries.slice(0, 10))).hasUnreadableStorage, false);
+  assert.ok(serializeSavedSetups(entries).length > MAX_SETUP_BACKUP_SIZE);
+  const result = writeSavedSetups(storage, entries);
   assert.equal(result.ok, false);
   assert.equal(stored, "untouched");
 });
+
+for (const unicode of [false, true]) {
+  test("previous storage-limit setups export and import losslessly with " + (unicode ? "Unicode" : "ASCII") + " names", () => {
+    function create(padding: number, remainder: number) {
+      let setups: ReturnType<typeof parseSavedSetups> = [];
+      for (let index = 0; index < 20; index++) {
+        const query = new URLSearchParams({
+          providers: "a".repeat(2000), inputModalities: "a".repeat(2000), outputModalities: "a".repeat(2000),
+          minContext: "0".repeat(1999) + "1",
+          maxInputPrice: "0".repeat(padding + Number(index < remainder)) + "1",
+        });
+        const result = addSavedSetup(setups, (unicode ? "薔".repeat(50) : "Setup ") + index, DEFAULT_WORKLOAD, query, String(index));
+        assert.ok(result.ok);
+        setups = result.setups;
+      }
+      return setups;
+    }
+    const target = unicode ? 198_500 : 199_990;
+    const padding = target - serializeSavedSetups(create(0, 0)).length;
+    const previous = serializeSavedSetups(create(Math.floor(padding / 20), padding % 20));
+    assert.equal(previous.length, target);
+    const setups = parseSavedSetups(previous);
+    const backup = exportSavedSetupsBackup(setups);
+    assert.ok(new TextEncoder().encode(backup).length > 200_000);
+    const result = importSavedSetupsBackup([], backup);
+    assert.ok(result.ok);
+    assert.deepEqual(result.setups, setups);
+    assert.equal(writeSavedSetups({ getItem: () => previous, setItem: () => {} }, result.setups).ok, true);
+  });
+}

@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { Model } from "@/lib/types";
-import { createCatalogClient } from "@/lib/catalog-client";
+import { createCatalogClient, isFreshCatalog } from "@/lib/catalog-client";
+import type { CatalogEnvelope } from "@/lib/catalog-freshness";
+
+// In-memory only: shared across route remounts in this tab, not across reloads or users.
+let lastCatalog: CatalogEnvelope | null = null;
 
 interface UseModelsResult {
   models: Model[];
@@ -22,28 +26,39 @@ export function useModels(): UseModelsResult {
   const [excludedCount, setExcludedCount] = React.useState(0);
   const [revalidating, setRevalidating] = React.useState(false);
   const client = React.useRef<ReturnType<typeof createCatalogClient> | null>(null);
+  const pendingRefresh = React.useRef<Promise<void> | null>(null);
 
-  const load = React.useCallback(async (refresh = false) => {
-    if (!client.current) client.current = createCatalogClient();
-    try {
-      const catalog = await client.current.load(refresh);
-      if (!catalog) return;
-      setModels(catalog.data);
-      setFetchedAt(catalog.fetchedAt);
-      setExcludedCount(catalog.excludedCount ?? 0);
-      setLoading(false);
-      setRevalidating(false);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Unable to load model catalog"));
-      setLoading(false);
-      setRevalidating(false);
-    }
+  const showCatalog = React.useCallback((catalog: CatalogEnvelope) => {
+    setModels(catalog.data);
+    setFetchedAt(catalog.fetchedAt);
+    setExcludedCount(catalog.excludedCount ?? 0);
+    setLoading(false);
   }, []);
 
+  const load = React.useCallback((refresh = false) => {
+    if (!client.current) client.current = createCatalogClient();
+    const request = !refresh && lastCatalog && isFreshCatalog(lastCatalog)
+      ? Promise.resolve(lastCatalog) : client.current.load(refresh);
+    return request.then((catalog) => {
+      if (!catalog) return;
+      lastCatalog = catalog;
+      setError(null);
+      showCatalog(catalog);
+      setRevalidating(false);
+    }, (err: unknown) => {
+      const failure = err instanceof Error ? err : new Error("Unable to load model catalog");
+      setError(failure);
+      setLoading(false);
+      setRevalidating(false);
+      if (refresh) throw failure;
+    });
+  }, [showCatalog]);
+
   const refresh = React.useCallback(() => {
+    if (pendingRefresh.current) return pendingRefresh.current;
     setRevalidating(true);
-    setError(null);
-    return load(true);
+    pendingRefresh.current = load(true).finally(() => { pendingRefresh.current = null; });
+    return pendingRefresh.current;
   }, [load]);
 
   React.useEffect(() => {

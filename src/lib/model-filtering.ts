@@ -1,7 +1,8 @@
 import type { Model } from "./types";
 import { parsePrice } from "./format-price";
+import { getModelProvider, normalizeProvider } from "./model-provider";
 import { getRetirementStatus } from "./model-retirement";
-import { DEFAULT_WORKLOAD, getWorkloadSuitability, type CalculatorWorkload } from "./calculator-workload";
+import { DEFAULT_WORKLOAD, getUsableContext, getWorkloadSuitability, type CalculatorWorkload } from "./calculator-workload";
 import { calculateWorkloadCost } from "./cost-calculator";
 
 export interface ModelFilterCriteria {
@@ -45,7 +46,10 @@ export function matchesModelFilters(model: Model, filters: ModelFilterCriteria, 
   const search = filters.search.trim().toLowerCase();
   if (search && ![model.name, model.id, model.description].some((value) => value.toLowerCase().includes(search))) return false;
   if (ignored !== "free" && filters.free && !model.isFree) return false;
-  if (filters.minContext !== null && (!Number.isFinite(model.context_length) || model.context_length < filters.minContext)) return false;
+  if (filters.minContext !== null) {
+    const context = getUsableContext(model);
+    if (context === undefined || context < filters.minContext) return false;
+  }
   for (const [max, price] of [[filters.maxInputPrice, model.pricing?.prompt], [filters.maxOutputPrice, model.pricing?.completion]] as const) {
     if (max !== null) {
       const parsed = parsePrice(price);
@@ -58,7 +62,7 @@ export function matchesModelFilters(model: Model, filters: ModelFilterCriteria, 
   }
   if (ignored !== "inputModalities" && filters.inputModalities.length && !filters.inputModalities.some((value) => model.architecture?.input_modalities?.includes(value))) return false;
   if (ignored !== "outputModalities" && filters.outputModalities.length && !filters.outputModalities.some((value) => model.architecture?.output_modalities?.includes(value))) return false;
-  if (ignored !== "providers" && filters.providers.length && !filters.providers.includes(model.id.split("/")[0])) return false;
+  if (ignored !== "providers" && filters.providers.length && !filters.providers.some((provider) => normalizeProvider(provider) === getModelProvider(model.id))) return false;
   const parameters = model.supported_parameters ?? [];
   if (ignored !== "capabilities") {
     if (filters.reasoning && !parameters.includes("reasoning") && !parameters.includes("include_reasoning")) return false;
@@ -69,16 +73,16 @@ export function matchesModelFilters(model: Model, filters: ModelFilterCriteria, 
 
 export function getFilterCounts(models: Model[], filters: ModelFilterCriteria, favoriteIds: string[]) {
   const counts = {
-    providers: {} as Record<string, number>,
-    inputModalities: {} as Record<string, number>,
-    outputModalities: {} as Record<string, number>,
+    providers: Object.create(null) as Record<string, number>,
+    inputModalities: Object.create(null) as Record<string, number>,
+    outputModalities: Object.create(null) as Record<string, number>,
     reasoning: 0,
     tools: 0,
     free: 0,
   };
   for (const model of models) {
     if (matchesModelFilters(model, filters, favoriteIds, "providers")) {
-      const provider = model.id.split("/")[0];
+      const provider = getModelProvider(model.id);
       counts.providers[provider] = (counts.providers[provider] ?? 0) + 1;
     }
     for (const group of ["inputModalities", "outputModalities"] as const) {
@@ -89,8 +93,10 @@ export function getFilterCounts(models: Model[], filters: ModelFilterCriteria, f
     }
     if (matchesModelFilters(model, filters, favoriteIds, "capabilities")) {
       const parameters = model.supported_parameters ?? [];
-      if (parameters.includes("reasoning") || parameters.includes("include_reasoning")) counts.reasoning++;
-      if (parameters.includes("tools")) counts.tools++;
+      const supportsReasoning = parameters.includes("reasoning") || parameters.includes("include_reasoning");
+      const supportsTools = parameters.includes("tools");
+      if (supportsReasoning && (!filters.tools || supportsTools)) counts.reasoning++;
+      if (supportsTools && (!filters.reasoning || supportsReasoning)) counts.tools++;
     }
     if (model.isFree && matchesModelFilters(model, filters, favoriteIds, "free")) counts.free++;
   }

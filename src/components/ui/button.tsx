@@ -1,4 +1,5 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import type { ComponentProps } from "react"
+import { Button as ButtonPrimitive } from "@ui-sdk/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -45,7 +46,7 @@ function Button({
   variant = "default",
   size = "default",
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ComponentProps<typeof ButtonPrimitive> & VariantProps<typeof buttonVariants>) {
   // Firefox otherwise restores dynamic disabled state before React hydrates.
   // Opt out with the native autoComplete attribute.
   const browserStateAttributes = { autoComplete: "off" }

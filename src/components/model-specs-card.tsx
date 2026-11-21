@@ -4,7 +4,8 @@ import * as React from "react";
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatContext } from "@/lib/format-price";
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import { getUsableContext } from "@/lib/calculator-workload";
 import { defaultParameterLabels } from "@/lib/default-parameters";
 import { InlineHelp } from "./inline-help";
 
@@ -12,30 +13,52 @@ interface Props {
   model: Model;
 }
 
+function listSummary(values: string[] | undefined) {
+  return values?.length ? values.join(", ") : values ? "None" : "Unknown";
+}
+
+function SpecificationList({ label, values, parameters = false }: { label: string; values?: string[]; parameters?: boolean }) {
+  return <div>
+    <span className="text-muted-foreground text-sm">{label}</span>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {values?.length ? values.map((value) => (
+        <Badge key={value} variant={parameters ? "secondary" : "outline"} className={parameters ? "text-xs font-mono" : "text-xs capitalize"}>
+          {value}
+        </Badge>
+      )) : <span>{listSummary(values)}</span>}
+    </div>
+  </div>;
+}
+
 export function ModelSpecsCard({ model }: Props) {
   const defaults = defaultParameterLabels(model.default_parameters);
+  const context = getUsableContext(model);
   return (
     <Card className="p-6 space-y-4">
       <h2 className="font-heading text-lg">Key capabilities</h2>
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Context · tokens</span>
-          <span className="font-medium">{formatContext(model.context_length)}</span>
+          <span className="text-muted-foreground">Usable context · tokens</span>
+          <span className="font-medium">{context?.toLocaleString("en-US") ?? "—"}</span>
         </div>
+        {model.context_length > 0 && context !== model.context_length && <div className="flex justify-between">
+          <span className="text-muted-foreground">Advertised model context · tokens</span>
+          <span className="font-medium">{model.context_length.toLocaleString("en-US")}</span>
+        </div>}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Max output · tokens</span>
           <span className="font-medium">
             {model.top_provider?.max_completion_tokens
-              ? formatContext(model.top_provider.max_completion_tokens)
+              ? model.top_provider.max_completion_tokens.toLocaleString("en-US")
               : "—"}
           </span>
         </div>
-        <p className="text-muted-foreground">Input: {(model.architecture?.input_modalities ?? []).join(", ") || "Unknown"} · Output: {(model.architecture?.output_modalities ?? []).join(", ") || "Unknown"}</p>
+        <p className="text-muted-foreground">Input: {listSummary(model.architecture?.input_modalities)} · Output: {listSummary(model.architecture?.output_modalities)}</p>
         <p className="text-muted-foreground">Reasoning: {model.supported_parameters ? model.supported_parameters.some((parameter) => ["reasoning", "include_reasoning"].includes(parameter)) ? "Yes" : "No" : "Unknown"} · Tool calling: {model.supported_parameters ? model.supported_parameters.includes("tools") ? "Yes" : "No" : "Unknown"}</p>
         <InlineHelp title="About capabilities"><p>Context holds input and output together in one request. Reasoning indicates reasoning controls; tool calling lets your application execute actions requested by the model. Neither capability is an answer-quality score.</p></InlineHelp>
         <details className="border-t pt-2">
-          <summary className="min-h-11 cursor-pointer rounded py-3 font-medium focus-visible:outline-2 focus-visible:outline-ring">Full specifications</summary>
-          <div className="space-y-3 pt-3">
+          <DisclosureSummary className="min-h-11 cursor-pointer rounded py-3 font-medium focus-visible:outline-2 focus-visible:outline-ring">Full specifications</DisclosureSummary>
+          <div data-agent-catalog="Full specifications" data-model-id={model.id} className="space-y-3 pt-3">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tokenizer</span>
           <span className="font-medium font-mono text-xs">
@@ -62,40 +85,13 @@ export function ModelSpecsCard({ model }: Props) {
         )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">May Train on Prompts</span>
-          <span className={`font-medium ${model.mayTrainOnYourPrompts === false ? "text-emerald-600" : model.mayTrainOnYourPrompts ? "text-amber-600" : "text-muted-foreground"}`}>
+          <span className={model.mayTrainOnYourPrompts == null ? "font-medium text-muted-foreground" : "font-medium text-foreground"}>
             {model.mayTrainOnYourPrompts == null ? "Unknown" : model.mayTrainOnYourPrompts ? "Yes" : "No"}
           </span>
         </div>
-        <div>
-          <span className="text-muted-foreground text-sm">Input types</span>
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {(model.architecture?.input_modalities ?? []).map((m) => (
-              <Badge key={m} variant="outline" className="text-xs capitalize">
-                {m}
-              </Badge>
-            ))}
-          </div>
-        </div>
-        <div>
-          <span className="text-muted-foreground text-sm">Output types</span>
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {(model.architecture?.output_modalities ?? []).map((m) => (
-              <Badge key={m} variant="outline" className="text-xs capitalize">
-                {m}
-              </Badge>
-            ))}
-          </div>
-        </div>
-        <div>
-          <span className="text-muted-foreground text-sm">Supported Parameters</span>
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {(model.supported_parameters ?? []).map((p) => (
-              <Badge key={p} variant="secondary" className="text-xs font-mono">
-                {p}
-              </Badge>
-            ))}
-          </div>
-        </div>
+        <SpecificationList label="Input types" values={model.architecture?.input_modalities} />
+        <SpecificationList label="Output types" values={model.architecture?.output_modalities} />
+        <SpecificationList label="Supported Parameters" values={model.supported_parameters} parameters />
         {defaults.length > 0 && (
           <div>
             <span className="text-muted-foreground text-sm">Default Parameters</span>
@@ -123,7 +119,7 @@ export function ModelSpecsCard({ model }: Props) {
         {model.terminalBench?.overallScore != null && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Terminal Bench Score</span>
-            <span className="font-medium font-mono text-xs text-emerald-600">
+            <span className="font-medium font-mono text-xs">
               {(model.terminalBench.overallScore * 100).toFixed(1)}%
             </span>
           </div>

@@ -49,7 +49,7 @@ for (const viewMode of ["grid", "list"] as const) {
     const html = renderToStaticMarkup(<ModelGrid models={[models[0], models[COMPARE_LIMIT]]}
       viewMode={viewMode} isComparedModels={models.slice(0, COMPARE_LIMIT)}
       onToggleCompare={() => {}} onToggleFavorite={() => {}} />);
-    assert.equal((html.match(/disabled=""/g) ?? []).length, 1);
+    assert.equal((html.match(/ disabled=""/g) ?? []).length, 1);
     assert.match(html, /Remove Model 0 from comparison/);
     assert.match(html, /Compare up to 10 models/);
   });

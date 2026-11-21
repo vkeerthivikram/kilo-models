@@ -6,6 +6,6 @@
 
 - **Use shared components for repeated model metadata UI.** Score rows, score bars, price rows, and safety metric lists should be implemented once and reused across `model-detail-sheet`, `model-specs-card`, and `model-safety-card` to avoid duplicated thresholds, labels, and styling bugs.
 
-- **Apply polarity-aware color thresholds for safety metrics.** Metrics where higher is better, such as overall safety, robustness, NIST, and OWASP, should show positive colors at high values. Metrics where higher is worse, such as risk, bias, toxicity, jailbreak, evasion, CBRN, harmful content, and insecure code, should show warning colors at high values.
+- **Use color only when the score direction is known.** Robustness uses higher-is-better colors; risk, bias, toxicity, jailbreak, evasion, CBRN, harmful content, and insecure code use lower-is-better colors. Keep the reported Safety Score, NIST, and OWASP bars neutral until the publisher confirms how to interpret them.
 
 - **Keep row alignment and padding consistent within cards.** New rows should match the padding, spacing, and layout used by sibling rows rather than introducing one-off insets.

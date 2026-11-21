@@ -108,11 +108,13 @@ test("cold and overlapping refreshes share one fetch, and failed refreshes can r
     fail = true;
     assert.equal((await cache.request(POST)).status, 502);
     assert.equal(upstreamReads, 2);
+    const duringOutage = await cache.request(GET);
+    assert.equal(duringOutage.status, 200);
+    assert.deepEqual(await duringOutage.json(), first);
+    assert.equal(upstreamReads, 2);
     fail = false;
-    // Date.now's age simulation does not advance new Date() in fetchCatalog.
-    // Restore the real clock before retry so its new snapshot is actually fresh.
-    Date.now = previousNow;
     const retryResponse = await cache.request(POST);
+    Date.now = previousNow;
     assert.equal(retryResponse.status, 200);
     const retried = await retryResponse.json();
     assert.equal(upstreamReads, 3);

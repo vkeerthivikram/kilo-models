@@ -1,7 +1,7 @@
 import type { Model } from "@/lib/types";
 import type { CalculatorWorkload } from "@/lib/calculator-workload";
 import { getBillingWarnings, getWorkloadSuitability } from "@/lib/calculator-workload";
-import { workloadSummary } from "@/lib/workload-summary";
+import { requestCount, workloadSummary } from "@/lib/workload-summary";
 import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
 
 export function ModelCostEstimate({ model, workload }: { model: Model; workload: CalculatorWorkload }) {
@@ -12,7 +12,7 @@ export function ModelCostEstimate({ model, workload }: { model: Model; workload:
       <span className="text-muted-foreground" title={workloadSummary(workload)}>Estimated {workload.period === "month" ? "monthly" : "batch"} cost · USD{(model.pricing?.discount ?? 0) > 0 ? " · pre-discount" : ""}</span>
       <strong className="font-semibold tabular-nums">{formatCost(total)}</strong>
     </p>
-    <p className="text-muted-foreground">{workload.requests.toLocaleString("en-US")} requests · {suitability === "exceeds" ? "Hypothetical: workload exceeds limits" : suitability === "unknown" ? "Limits unknown" : "Fits published token limits"}</p>
+    <p className="text-muted-foreground">{requestCount(workload.requests)} · {suitability === "exceeds" ? "Hypothetical: workload exceeds limits" : suitability === "unknown" ? "Limits unknown" : "Fits published token limits"}</p>
     {total === null && <p className="text-muted-foreground">{getBillingWarnings(model.pricing, workload)[0] ?? "Estimate exceeds supported numeric range. Reduce usage in the calculator."}</p>}
   </div>;
 }

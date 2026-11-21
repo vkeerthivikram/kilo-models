@@ -1,10 +1,19 @@
 import { WORKLOAD_QUERY_KEYS, type CalculatorWorkload } from "./calculator-workload";
+import { decodeFilterValues, decodeProviderFilters, encodeFilterValues } from "./filter-values";
 import { parseNumericFilter } from "./model-filtering";
 
 export const SAVED_SETUPS_STORAGE_KEY = "kilo-models-saved-setups";
 export const MAX_SAVED_SETUPS = 20;
 export const MAX_SETUP_NAME_LENGTH = 60;
-export const MAX_SETUP_BACKUP_SIZE = 200_000;
+// Allow the backup envelope, UTF-8 names/IDs, and normalized legacy fields
+// for collections written under the old 200,000 UTF-16 code unit limit.
+export const MAX_SETUP_BACKUP_SIZE = 210_000;
+export const SETUP_BACKUP_TOO_LARGE = `Backup is too large. Choose a JSON backup up to ${MAX_SETUP_BACKUP_SIZE / 1000} KB.`;
+export const UNREADABLE_SETUP_STORAGE = "Saved setup data is unreadable or uses an unsupported format. Download the original data from Manage setups.";
+const PRETTY_BACKUP_LIMIT = 200_000;
+const MAX_DIRECTORY_QUERY_LENGTH = 16_000;
+const MAX_SEARCH_LENGTH = 512;
+const MAX_FILTER_LENGTH = 2000;
 const BACKUP_FORMAT = "kilo-models-saved-setups";
 
 export type SavedSetupWorkload = CalculatorWorkload & {
@@ -25,17 +34,18 @@ export interface SavedSetup {
 export function savedSetupMatches(setup: SavedSetup, workload: CalculatorWorkload, query?: string | URLSearchParams): boolean {
   if (WORKLOAD_QUERY_KEYS.some((key) => workload[key] !== setup.workload[key])) return false;
   if (!setup.includesDirectoryView || query === undefined) return true;
-  const canonical = (source: string | URLSearchParams) => {
-    const params = sanitizeSavedSetupQuery(source);
+  const currentView = readSavedSetupView(query);
+  if (currentView.error) return false;
+  const canonical = (params: URLSearchParams) => {
     for (const [key, value] of [...params.entries()]) {
       if (!value || (booleans.includes(key) && value === "false") || (key === "view" && value === "grid") || (key === "sort" && value === "name-asc")) params.delete(key);
-      else if (["providers", "inputModalities", "outputModalities"].includes(key)) params.set(key, [...new Set(value.split(","))].sort().join(","));
+      else if (["providers", "inputModalities", "outputModalities"].includes(key)) params.set(key, encodeFilterValues([...new Set(key === "providers" ? decodeProviderFilters(value) : decodeFilterValues(value))].sort()));
       else if (["minContext", "maxInputPrice", "maxOutputPrice", "maxBudget"].includes(key)) params.set(key, String(Number(value)));
     }
     params.sort();
     return params.toString();
   };
-  return canonical(setup.directoryQuery) === canonical(query);
+  return canonical(sanitizeSavedSetupQuery(setup.directoryQuery)) === canonical(currentView.params);
 }
 
 export function savedViewSummary(query: string): string {
@@ -47,8 +57,8 @@ export function savedViewSummary(query: string): string {
     if (key === "search") return value ? `Search: ${value}` : "";
     if (key === "sort") return `Sort: ${sorts[value]}`;
     if (key === "view") return value === "list" ? "List view" : "";
-    if (key === "providers") return value ? `Providers: ${value.split(",").join(", ")}` : "";
-    if (key === "inputModalities" || key === "outputModalities") return value ? `${key === "inputModalities" ? "Input" : "Output"} types: ${value.split(",").join(", ")}` : "";
+    if (key === "providers") return value ? `Providers: ${decodeProviderFilters(value).join(", ")}` : "";
+    if (key === "inputModalities" || key === "outputModalities") return value ? `${key === "inputModalities" ? "Input" : "Output"} types: ${decodeFilterValues(value).join(", ")}` : "";
     if (key === "minContext") return `Context ≥ ${Number(value).toLocaleString("en-US")} tokens`;
     if (key === "maxBudget") return `Total budget ≤ $${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 21 })}`;
     if (key === "maxInputPrice" || key === "maxOutputPrice") return `${key === "maxInputPrice" ? "Input" : "Output"} ≤ $${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 21 })}/1M tokens`;
@@ -67,22 +77,36 @@ const sorts = ["name-asc", "name-desc", "price-asc", "price-desc", "cost-asc", "
 
 /** Capture directory state only. Comparison selections and pagination belong to the current session. */
 export function sanitizeSavedSetupQuery(query: string | URLSearchParams): URLSearchParams {
+  return readSavedSetupView(query).params;
+}
+
+function readSavedSetupView(query: string | URLSearchParams) {
   const source = new URLSearchParams(query);
-  const result = new URLSearchParams();
+  const params = new URLSearchParams();
+  let error: string | undefined;
   for (const key of SAVED_SETUP_QUERY_KEYS) {
     const value = source.get(key);
-    if (value === null || value.length > 2000) continue;
+    if (value === null) continue;
+    if (key === "search" && !value.trim()) continue;
+    if (value.length > (key === "search" ? MAX_SEARCH_LENGTH : MAX_FILTER_LENGTH)) {
+      error ??= key === "search" ? `Use ${MAX_SEARCH_LENGTH} characters or fewer for the saved search.`
+        : key === "providers" ? "The provider filters are too long to save. Choose fewer providers."
+        : "A directory filter is too long to save. Shorten the current filters.";
+      continue;
+    }
     if (booleans.includes(key) && value !== "true" && value !== "false") continue;
     if (key === "sort" && !sorts.includes(value)) continue;
     if (key === "view" && value !== "grid" && value !== "list") continue;
     if (["minContext", "maxInputPrice", "maxOutputPrice", "maxBudget"].includes(key)) {
       if (parseNumericFilter(value, key === "minContext") === null) continue;
     }
-    if (key === "search" && value.length > 512) continue;
-    result.set(key, value);
-    if (result.toString().length > 16_000) result.delete(key);
+    params.set(key, value);
+    if (params.toString().length > MAX_DIRECTORY_QUERY_LENGTH) {
+      params.delete(key);
+      error ??= "The directory view is too long to save. Shorten the search or filters.";
+    }
   }
-  return result;
+  return { params, error };
 }
 
 function parseWorkload(value: unknown): SavedSetupWorkload | null {
@@ -99,37 +123,53 @@ function parseWorkload(value: unknown): SavedSetupWorkload | null {
   return { ...result, period: data.period, cachePercent: data.cachePercent } as SavedSetupWorkload;
 }
 
-export function parseSavedSetups(stored: string | null): SavedSetup[] {
-  if (!stored || stored.length > MAX_SETUP_BACKUP_SIZE) return [];
+export function inspectSavedSetups(stored: string | null): { setups: SavedSetup[]; hasUnreadableStorage: boolean } {
+  if (stored === null) return { setups: [], hasUnreadableStorage: false };
+  const unreadable = { setups: [], hasUnreadableStorage: true };
+  if (stored.length > MAX_SETUP_BACKUP_SIZE) return unreadable;
   try {
     const payload: unknown = JSON.parse(stored);
     const entries = Array.isArray(payload) ? payload :
       typeof payload === "object" && payload !== null && "version" in payload && payload.version === 1 && "setups" in payload ? payload.setups : null;
-    if (!Array.isArray(entries)) return [];
+    if (!Array.isArray(entries)) return unreadable;
     const setups: SavedSetup[] = [];
+    let hasUnreadableStorage = entries.length > MAX_SAVED_SETUPS;
     for (const entry of entries) {
       if (setups.length >= MAX_SAVED_SETUPS) break;
-      const setup = parseSetupRecord(entry);
-      if (!setup || setups.some((current) => current.id === setup.id || current.name.toLowerCase() === setup.name.toLowerCase())) continue;
+      const parsed = parseSetupRecord(entry);
+      if (!parsed || setups.some((current) => current.id === parsed.setup.id || current.name.toLowerCase() === parsed.setup.name.toLowerCase())) {
+        hasUnreadableStorage = true;
+        continue;
+      }
+      const { setup, viewError } = parsed;
+      if (viewError) hasUnreadableStorage = true;
       setups.push(setup);
     }
-    return setups;
+    return { setups, hasUnreadableStorage };
   } catch {
-    return [];
+    return unreadable;
   }
 }
 
-function parseSetupRecord(value: unknown): SavedSetup | null {
+export function parseSavedSetups(stored: string | null): SavedSetup[] {
+  return inspectSavedSetups(stored).setups;
+}
+
+function parseSetupRecord(value: unknown): { setup: SavedSetup; viewError?: string } | null {
   if (typeof value !== "object" || value === null) return null;
   const entry = value as Record<string, unknown>;
   if (typeof entry.id !== "string" || !entry.id.trim() || entry.id.length > 128) return null;
   if (typeof entry.name !== "string" || !entry.name.trim() || entry.name.trim().length > MAX_SETUP_NAME_LENGTH) return null;
-  if (typeof entry.directoryQuery !== "string" || entry.directoryQuery.length > 16_000) return null;
+  if (typeof entry.directoryQuery !== "string" || entry.directoryQuery.length > MAX_DIRECTORY_QUERY_LENGTH) return null;
   if (entry.includesDirectoryView !== undefined && typeof entry.includesDirectoryView !== "boolean") return null;
   const workload = parseWorkload(entry.workload);
   if (!workload) return null;
   const includesDirectoryView = entry.includesDirectoryView ?? true;
-  return { id: entry.id, name: entry.name.trim(), workload, includesDirectoryView, directoryQuery: includesDirectoryView ? sanitizeSavedSetupQuery(entry.directoryQuery).toString() : "" };
+  const view = includesDirectoryView ? readSavedSetupView(entry.directoryQuery) : undefined;
+  return {
+    setup: { id: entry.id, name: entry.name.trim(), workload, includesDirectoryView, directoryQuery: view?.params.toString() ?? "" },
+    viewError: view?.error,
+  };
 }
 
 export function serializeSavedSetups(setups: SavedSetup[]): string {
@@ -153,8 +193,9 @@ export function addSavedSetup(setups: SavedSetup[], name: string, workload: Calc
   const normalizedWorkload = parseWorkload(workload);
   if (!normalizedWorkload) return { ok: false, error: "This workload contains an invalid value. Check the calculator inputs." };
   if (!id.trim() || id.length > 128 || setups.some((setup) => setup.id === id)) return { ok: false, error: "Could not create a setup. Try saving again." };
-  const includesDirectoryView = directoryQuery !== undefined;
-  const setup = { id, name: trimmedName, workload: normalizedWorkload, includesDirectoryView, directoryQuery: includesDirectoryView ? sanitizeSavedSetupQuery(directoryQuery).toString() : "" };
+  const view = directoryQuery === undefined ? undefined : readSavedSetupView(directoryQuery);
+  if (view?.error) return { ok: false, error: view.error };
+  const setup = { id, name: trimmedName, workload: normalizedWorkload, includesDirectoryView: view !== undefined, directoryQuery: view?.params.toString() ?? "" };
   return { ok: true, setups: [...setups, setup], setup };
 }
 
@@ -173,14 +214,16 @@ export function updateSavedSetup(setups: SavedSetup[], id: string, workload: Cal
   if (!current) return { ok: false, error: "This setup is no longer saved. Choose another setup." };
   const normalizedWorkload = parseWorkload(workload);
   if (!normalizedWorkload) return { ok: false, error: "This workload contains an invalid value. Check the calculator inputs." };
-  const setup = { ...current, workload: normalizedWorkload,
-    directoryQuery: current.includesDirectoryView && directoryQuery !== undefined ? sanitizeSavedSetupQuery(directoryQuery).toString() : current.directoryQuery };
+  const view = current.includesDirectoryView && directoryQuery !== undefined ? readSavedSetupView(directoryQuery) : undefined;
+  if (view?.error) return { ok: false, error: view.error };
+  const setup = { ...current, workload: normalizedWorkload, directoryQuery: view?.params.toString() ?? current.directoryQuery };
   return { ok: true, setups: setups.map((entry) => entry.id === id ? setup : entry), setup };
 }
 
-export async function applySavedSetup(setup: SavedSetup, onWorkloadChange: (workload: CalculatorWorkload) => void, onApplyDirectoryQuery?: (query: URLSearchParams) => void | Promise<unknown>): Promise<void> {
-  onWorkloadChange({ ...setup.workload });
-  if (setup.includesDirectoryView) await onApplyDirectoryQuery?.(sanitizeSavedSetupQuery(setup.directoryQuery));
+export async function applySavedSetup(setup: SavedSetup, onWorkloadChange: (workload: CalculatorWorkload) => void | Promise<unknown>, onApplyDirectoryQuery?: (query: URLSearchParams) => void | Promise<unknown>): Promise<void> {
+  const workloadUpdate = onWorkloadChange({ ...setup.workload });
+  const viewUpdate = setup.includesDirectoryView ? onApplyDirectoryQuery?.(sanitizeSavedSetupQuery(setup.directoryQuery)) : undefined;
+  await Promise.all([workloadUpdate, viewUpdate]);
 }
 
 type SetupStorage = Pick<Storage, "getItem" | "setItem">;
@@ -195,9 +238,11 @@ export function readSavedSetups(storage: SetupStorage): SavedSetup[] {
 
 export function writeSavedSetups(storage: SetupStorage, setups: SavedSetup[]): { ok: true } | { ok: false; error: string } {
   try {
-    const serialized = serializeSavedSetups(setups);
-    if (serialized.length > MAX_SETUP_BACKUP_SIZE) return { ok: false, error: "These setups contain too much data. Shorten saved filters or delete a setup, then try again." };
-    storage.setItem(SAVED_SETUPS_STORAGE_KEY, serialized);
+    if (setups.length > MAX_SAVED_SETUPS || setups.some((setup) => !parseSetupRecord(setup)) ||
+      backupSize(serializeBackup(setups)) > MAX_SETUP_BACKUP_SIZE) {
+      return { ok: false, error: "These setups contain too much or invalid data. Shorten saved filters or delete a setup, then try again." };
+    }
+    storage.setItem(SAVED_SETUPS_STORAGE_KEY, serializeSavedSetups(setups));
     return { ok: true };
   } catch {
     return { ok: false, error: "Browser storage is unavailable or full. Allow storage or free space, then try again." };
@@ -223,18 +268,28 @@ export function restoreDeletedSetup(setups: SavedSetup[], deleted: DeletedSavedS
   return { ok: true, setups: next, setup: deleted.setup };
 }
 
+function serializeBackup(setups: SavedSetup[], indent?: number): string {
+  return JSON.stringify({ format: BACKUP_FORMAT, version: 1, setups }, null, indent);
+}
+
+function backupSize(backup: string): number {
+  return new TextEncoder().encode(backup).length;
+}
+
 export function exportSavedSetupsBackup(setups: SavedSetup[]): string {
   if (setups.length > MAX_SAVED_SETUPS || setups.some((setup) => !parseSetupRecord(setup))) throw new Error("Saved setups contain invalid data. Reload before exporting.");
-  const backup = JSON.stringify({ format: BACKUP_FORMAT, version: 1, setups }, null, 2);
-  if (new TextEncoder().encode(backup).length > MAX_SETUP_BACKUP_SIZE) throw new Error("This backup is too large. Shorten saved filters before exporting.");
-  return backup;
+  const formatted = serializeBackup(setups, 2);
+  if (backupSize(formatted) <= PRETTY_BACKUP_LIMIT) return formatted;
+  const compact = serializeBackup(setups);
+  if (backupSize(compact) <= MAX_SETUP_BACKUP_SIZE) return compact;
+  throw new Error("This backup is too large. Shorten saved filters before exporting.");
 }
 
 export type ImportSetupResult = { ok: true; setups: SavedSetup[]; imported: number; duplicates: number; overCapacity: number } | { ok: false; error: string };
 
 /** Merge only; existing setup IDs and names always win. Invalid backups never produce a partial write. */
 export function importSavedSetupsBackup(setups: SavedSetup[], backup: string): ImportSetupResult {
-  if (backup.length > MAX_SETUP_BACKUP_SIZE || new TextEncoder().encode(backup).length > MAX_SETUP_BACKUP_SIZE) return { ok: false, error: "Backup is too large. Choose a JSON backup under 200 KB." };
+  if (backup.length > MAX_SETUP_BACKUP_SIZE || backupSize(backup) > MAX_SETUP_BACKUP_SIZE) return { ok: false, error: SETUP_BACKUP_TOO_LARGE };
   let payload: unknown;
   try { payload = JSON.parse(backup.trim()); } catch { return { ok: false, error: "This file is not valid JSON. Choose a saved-setups backup." }; }
   if (typeof payload !== "object" || payload === null || !("format" in payload) || payload.format !== BACKUP_FORMAT || !("version" in payload) || payload.version !== 1 || !("setups" in payload) || !Array.isArray(payload.setups)) {
@@ -243,9 +298,9 @@ export function importSavedSetupsBackup(setups: SavedSetup[], backup: string): I
   if (payload.setups.length > MAX_SAVED_SETUPS) return { ok: false, error: `A backup can contain at most ${MAX_SAVED_SETUPS} setups.` };
   const incoming: SavedSetup[] = [];
   for (const [index, entry] of payload.setups.entries()) {
-    const setup = parseSetupRecord(entry);
-    if (!setup) return { ok: false, error: `Setup ${index + 1} in this backup has invalid data. Nothing was imported.` };
-    incoming.push(setup);
+    const parsed = parseSetupRecord(entry);
+    if (!parsed) return { ok: false, error: `Setup ${index + 1} in this backup has invalid data. Nothing was imported.` };
+    incoming.push(parsed.setup);
   }
   const next = [...setups];
   let imported = 0, duplicates = 0, overCapacity = 0;

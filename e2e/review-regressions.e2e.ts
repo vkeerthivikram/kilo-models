@@ -30,6 +30,31 @@ test("charts show full names in tooltips and keyboard navigation exposes actual 
   await expect(profile.locator(".recharts-tooltip-wrapper").getByText("openai/computer-use-preview", { exact: true })).toBeVisible();
 });
 
+test("comparison rows remain readable in a short landscape viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.goto("/?compare=fixture%2Fmodel-01,fixture%2Fmodel-02");
+  const dialog = page.getByRole("dialog", { name: "Compare Models" });
+  const spec = dialog.getByRole("rowheader", { name: "Context window (tokens)", exact: true });
+  await spec.scrollIntoViewIfNeeded();
+  const exposed = await spec.evaluate((cell) => {
+    const bounds = cell.getBoundingClientRect();
+    return cell.contains(document.elementFromPoint(bounds.left + 12, bounds.top + bounds.height / 2));
+  });
+  expect(exposed).toBe(true);
+});
+
+test("cost rows identify models that share a display name", async ({ page }) => {
+  await page.route(/\/api\/models(?:\?|$)/, (route) => route.fulfill({ json: {
+    data: catalog.slice(0, 2).map((model) => ({ ...model, name: "Shared name" })), fetchedAt: new Date().toISOString(),
+  } }));
+  await page.goto("/?compare=fixture%2Fmodel-01,fixture%2Fmodel-02");
+  const dialog = page.getByRole("dialog", { name: "Compare Models" });
+  await dialog.getByRole("tab", { name: /^(Costs|Cost Calculator)$/ }).click();
+  const costs = dialog.getByRole("region", { name: "Cost estimates" });
+  await expect(costs.getByRole("rowheader", { name: /Shared name \(fixture\/model-01\)/ })).toBeVisible();
+  await expect(costs.getByRole("rowheader", { name: /Shared name \(fixture\/model-02\)/ })).toBeVisible();
+});
+
 test("null request fees and duplicate capabilities remain usable without secure UUID generation", async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(crypto, "randomUUID", { configurable: true, value: undefined }));
   await page.route(/\/api\/models(?:\?|$)/, (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({

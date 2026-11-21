@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpDown, Check, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import type { SortOption } from "@/hooks/use-model-filters";
 
 const SORT_LABELS: Record<SortOption, string> = {
@@ -32,9 +33,8 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button variant="outline" aria-label={`Sort models: ${SORT_LABELS[value]}`} className="h-11 justify-between gap-2 text-xs font-medium" />
-        }
+        aria-label={`Sort models: ${SORT_LABELS[value]}`}
+        className={cn(buttonVariants({ variant: "outline" }), "h-11 justify-between gap-2 text-xs font-medium")}
       >
         <span className="flex items-center gap-1.5">
           <ArrowUpDown className="size-3.5" aria-hidden="true" />
@@ -43,11 +43,12 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
         <ChevronDown className="size-3.5 opacity-60" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuRadioGroup value={value} onValueChange={(nextValue) => onChange(nextValue as SortOption)}>
+        <DropdownMenuRadioGroup value={value} onValueChange={(nextValue) => { if (nextValue) onChange(nextValue); }}>
           {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
             <DropdownMenuRadioItem
               key={option}
               value={option}
+              closeOnSelect
               className="min-h-9 pr-8 text-xs capitalize"
             >
               {SORT_LABELS[option]}

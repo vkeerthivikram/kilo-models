@@ -1,5 +1,6 @@
 import type { Model } from "./types";
 import { parsePrice } from "./format-price";
+import { getModelProvider } from "./model-provider";
 
 const overlap = (first: string[], second: string[]) => {
   if (!first.length || !second.length) return 0;
@@ -36,7 +37,7 @@ export function getSimilarModels(models: Model[], source: Model, limit = 6): Mod
       + 20 * overlap(capabilities(source), capabilities(candidate))
       + 20 * proximity(context(source), context(candidate))
       + 20 * proximity(price(source), price(candidate))
-      + (source.id.split("/")[0] === candidate.id.split("/")[0] ? 5 : 0),
+      + (getModelProvider(source.id) === getModelProvider(candidate.id) ? 5 : 0),
   })).sort((a, b) => b.score - a.score || a.model.name.localeCompare(b.model.name) || a.model.id.localeCompare(b.model.id))
     .slice(0, Math.max(0, Math.floor(limit))).map(({ model }) => model);
 }

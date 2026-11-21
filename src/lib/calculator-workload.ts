@@ -34,13 +34,19 @@ export const WORKLOAD_PRESETS = [
   { label: "Long document", inputTokens: 50000, outputTokens: 2000 },
 ] as const;
 
+function parseUsageNumber(value: string | null) {
+  const text = value?.trim() ?? "";
+  if (/^-(?:0+(?:\.0*)?|\.0+)(?:e[+-]?\d+)?$/i.test(text)) return 0;
+  return parsePrice(text) ?? NaN;
+}
+
 export function parseCount(value: string | null, minimum = 0): number | null {
-  const count = value === null || value.trim() === "" ? NaN : Number(value);
+  const count = parseUsageNumber(value);
   return Number.isSafeInteger(count) && count >= minimum ? count : null;
 }
 
 export function parsePercent(value: string | null): number | null {
-  const percent = value === null || value.trim() === "" ? NaN : Number(value);
+  const percent = parseUsageNumber(value);
   return Number.isFinite(percent) && percent >= 0 && percent <= 100 ? percent : null;
 }
 
@@ -61,11 +67,18 @@ export function parseCalculatorWorkload(search: string): CalculatorWorkload {
   };
 }
 
+const validLimit = (limit: unknown): limit is number => typeof limit === "number" && Number.isFinite(limit) && limit > 0;
+
+export function getUsableContext(model: Pick<Model, "context_length" | "top_provider">): number | undefined {
+  const advertised = model.context_length;
+  const provider = model.top_provider?.context_length;
+  if (validLimit(provider)) return validLimit(advertised) ? Math.min(advertised, provider) : provider;
+  return validLimit(advertised) ? advertised : undefined;
+}
+
 function getWorkloadLimits(model: Model) {
-  const validLimit = (limit: unknown): limit is number => typeof limit === "number" && Number.isFinite(limit) && limit > 0;
   const completion = model.top_provider?.max_completion_tokens;
-  const contexts = [model.context_length, model.top_provider?.context_length].filter(validLimit);
-  return { outputLimit: validLimit(completion) ? completion : null, contextLimit: contexts.length ? Math.min(...contexts) : null };
+  return { outputLimit: validLimit(completion) ? completion : null, contextLimit: getUsableContext(model) ?? null };
 }
 
 export function getWorkloadSuitability(model: Model, workload: CalculatorWorkload): "fits" | "exceeds" | "unknown" {
@@ -87,18 +100,24 @@ export function getWorkloadWarnings(model: Model, workload: CalculatorWorkload):
   return warnings;
 }
 
+export function countCachedInputTokens(inputTokens: number, cachePercent: number): number {
+  return cachePercent === 100 ? inputTokens : Math.min(inputTokens, Math.round(inputTokens * cachePercent / 100));
+}
+
 export function getBillingWarnings(pricing: ModelPricing | undefined, workload: CalculatorWorkload): string[] {
   const warnings: string[] = [];
   const discount = pricing?.discount;
-  const reads = Math.round(workload.inputTokens * workload.cachePercent / 100);
+  const reads = countCachedInputTokens(workload.inputTokens, workload.cachePercent);
   if (workload.inputTokens - reads - workload.cacheWriteTokens > 0 && parsePrice(pricing?.prompt) === null) warnings.push("No valid input token rate is listed. Choose a model with a published input price or set input usage to zero.");
   if (workload.outputTokens > 0 && parsePrice(pricing?.completion) === null) warnings.push("No valid output token rate is listed. Choose a model with a published output price or set output usage to zero.");
   if (pricing?.request != null && parsePrice(pricing.request) === null) warnings.push("The listed request fee is invalid. Choose a model with a valid request fee to estimate the total.");
-  if (reads + workload.cacheWriteTokens > workload.inputTokens) warnings.push("Cache reads and writes exceed total input. Reduce cached input or cache-write tokens.");
+  if (workload.cacheWriteTokens > workload.inputTokens - reads) warnings.push("Cache reads and writes exceed total input. Reduce cached input or cache-write tokens.");
+  if (workload.images > 0) warnings.push(parsePrice(pricing?.image) === null
+    ? "No valid image rate is listed. Set image usage to zero to estimate the remaining charges."
+    : "The reported image rate has an unverified billing unit. Set image usage to zero to estimate the remaining charges.");
   for (const [units, rate, label] of [
     [reads, pricing?.input_cache_read, "cache read"],
     [workload.cacheWriteTokens, pricing?.input_cache_write, "cache write"],
-    [workload.images, pricing?.image, "image"],
     [workload.searches, pricing?.web_search, "search"],
   ] as const) {
     if (units > 0 && parsePrice(rate) === null) warnings.push(`No ${label} rate is listed. Set this usage to zero to estimate the remaining charges.`);

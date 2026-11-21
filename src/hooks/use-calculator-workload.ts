@@ -21,6 +21,6 @@ const parsers = {
 export function useCalculatorWorkload() {
   // Shared URL state keeps directory, comparison, reloads and Back in agreement.
   const [workload, setParams] = useQueryStates(parsers, { shallow: true });
-  const setWorkload = (value: CalculatorWorkload) => { void setParams(value); };
+  const setWorkload = (value: CalculatorWorkload) => setParams(value);
   return { workload, setWorkload };
 }

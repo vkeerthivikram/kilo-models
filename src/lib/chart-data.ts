@@ -1,4 +1,5 @@
 import type { Model } from "./types";
+import { getUsableContext } from "./calculator-workload";
 import { parsePrice } from "./format-price";
 
 export function pricingAxisLabel(name: string): string {
@@ -23,9 +24,13 @@ export function getPricingData(models: Model[]) {
   }));
 }
 
+function chartContext(model: Model) {
+  return getUsableContext(model) ?? (model.context_length === 0 ? 0 : undefined);
+}
+
 export function getCapabilityData(models: Model[]) {
   const positive = (value: number | undefined) => value != null && Number.isFinite(value) && value >= 0 ? value : null;
-  const contexts = models.map((model) => positive(model.context_length));
+  const contexts = models.map((model) => positive(chartContext(model)));
   const outputs = models.map((model) => positive(model.top_provider?.max_completion_tokens));
   const params = models.map((model) => Array.isArray(model.supported_parameters) ? model.supported_parameters.length : null);
   const prices = models.map((model) => parsePrice(model.pricing?.prompt));
@@ -53,6 +58,6 @@ export function getSpecificationValue(model: Model, axis: string): string {
   if (axis === "Supported parameters") {
     return Array.isArray(model.supported_parameters) ? `${model.supported_parameters.length} parameters` : "Unknown";
   }
-  const tokens = axis === "Context" ? model.context_length : axis === "Max output" ? model.top_provider?.max_completion_tokens : null;
+  const tokens = axis === "Context" ? chartContext(model) : axis === "Max output" ? model.top_provider?.max_completion_tokens : null;
   return tokens == null || !Number.isFinite(tokens) || tokens < 0 ? "Unknown" : `${tokens.toLocaleString("en-US")} tokens`;
 }

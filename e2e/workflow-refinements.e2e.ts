@@ -42,7 +42,7 @@ test("usage resets preserve filters and comparison while summaries expose restor
 });
 
 test("empty results offer a targeted recovery and budget links directly to usage", async ({ page }) => {
-  await page.goto("/?maxBudget=0.000001");
+  await page.goto("/?maxBudget=0.000001&search=Fixture+Model+0");
   await expect(page.getByRole("heading", { name: "No models found", exact: true })).toBeVisible();
   const filters = page.getByRole("button", { name: /^Filters/ });
   if (await filters.isVisible()) await filters.click();
@@ -106,9 +106,12 @@ test("comparison opens with essentials and keeps detailed tools discoverable", a
 
 test("list preference survives a new visit but explicit shared view wins", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "List view", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Fixture Model 01", exact: true })).toBeVisible();
+  const listView = page.getByRole("button", { name: "List view", exact: true });
+  await listView.click();
+  await expect(listView).toHaveAttribute("aria-pressed", "true");
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "List view", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(listView).toHaveAttribute("aria-pressed", "true");
   await page.goto("/?view=grid");
   await expect(page.getByRole("button", { name: "Grid view", exact: true })).toHaveAttribute("aria-pressed", "true");
 });

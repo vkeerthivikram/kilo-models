@@ -1,5 +1,6 @@
 import type { CalculatorWorkload } from "@/lib/calculator-workload";
 import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
+import { requestCount } from "@/lib/workload-summary";
 
 export function CostBreakdown({ costs, workload }: {
   costs: ReturnType<typeof calculateWorkloadCost>;
@@ -14,7 +15,7 @@ export function CostBreakdown({ costs, workload }: {
     ["Searches", costs.searchCost],
     ["Request fee", costs.requestCost],
     ["Per request", costs.perRequest],
-    [`${workload.period === "month" ? "Monthly total" : "Total"} (${workload.requests.toLocaleString("en-US")} requests)`, costs.total],
+    [`${workload.period === "month" ? "Monthly total" : "Total"} (${requestCount(workload.requests)})`, costs.total],
   ] as const;
   return <div className="space-y-3 text-sm">
     <p className="text-xs text-muted-foreground">Charges in USD per request. Cache reads and writes replace those input tokens; zero usage has no charge.</p>

@@ -2,6 +2,7 @@
 
 import { Model } from "@/lib/types";
 import { Card } from "@/components/ui/card";
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { formatDiscount, formatPrice } from "@/lib/format-price";
 import { formatCost } from "@/lib/cost-calculator";
 import { parsePrice } from "@/lib/format-price";
@@ -12,6 +13,7 @@ interface Props {
 
 export function ModelPricingCard({ model }: Props) {
   const p = model.pricing;
+  const imageRate = parsePrice(p?.image);
   const hasOtherRates = [p?.input_cache_read, p?.input_cache_write, p?.image, p?.web_search, p?.internal_reasoning].some((rate) => rate !== undefined && rate !== null) || (p?.discount ?? 0) > 0;
   return (
     <Card className="p-6 space-y-4">
@@ -29,7 +31,7 @@ export function ModelPricingCard({ model }: Props) {
         </div>
         {p?.request != null && <p className="text-xs text-muted-foreground">Request fee: {formatCost(parsePrice(p.request))}/request, {parsePrice(p.request) === null ? "total estimate unavailable" : "included in estimates"}.</p>}
         <details hidden={!hasOtherRates} className="border-t pt-2">
-          <summary className="min-h-11 cursor-pointer rounded py-3 font-medium focus-visible:outline-2 focus-visible:outline-ring">Other published rates</summary>
+          <DisclosureSummary className="min-h-11 cursor-pointer rounded py-3 font-medium focus-visible:outline-2 focus-visible:outline-ring">Other published rates</DisclosureSummary>
           <div className="space-y-3 pt-2">
         {p?.input_cache_read != null && (
           <div className="flex justify-between">
@@ -45,8 +47,8 @@ export function ModelPricingCard({ model }: Props) {
         )}
         {p?.image != null && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Image</span>
-            <span className="font-medium">{formatCost(parsePrice(p.image))}/image</span>
+            <span className="text-muted-foreground">Image rate (unit unverified)</span>
+            <span className="font-medium tabular-nums">{imageRate === null ? "Unavailable" : `$${imageRate}`}</span>
           </div>
         )}
         {p?.web_search != null && (
@@ -64,7 +66,7 @@ export function ModelPricingCard({ model }: Props) {
         {p?.discount != null && p.discount > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Discount</span>
-            <span className="font-medium text-emerald-600">{formatDiscount(p.discount)}</span>
+            <span className="font-medium">{formatDiscount(p.discount)}</span>
           </div>
         )}
           </div>

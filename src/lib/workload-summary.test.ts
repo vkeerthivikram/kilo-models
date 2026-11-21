@@ -5,6 +5,7 @@ import { advancedUsageSummary, workloadSummary, resetAdvancedUsage } from "./wor
 
 test("batch summaries describe request count as a batch total", () => {
   assert.equal(workloadSummary(DEFAULT_WORKLOAD), "2,000 input · 500 output tokens/request · 1,000 requests (batch total)");
+  assert.equal(workloadSummary({ ...DEFAULT_WORKLOAD, requests: 1 }), "2,000 input · 500 output tokens/request · 1 request (batch total)");
 });
 
 test("summaries describe exact advanced assumptions, omitting unused charges", () => {

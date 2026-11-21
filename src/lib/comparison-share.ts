@@ -1,28 +1,43 @@
 import type { Model } from "./types";
-import { getWorkloadWarnings, type CalculatorWorkload } from "./calculator-workload";
+import { getBillingWarnings, getUsableContext, getWorkloadSuitability, getWorkloadWarnings, type CalculatorWorkload } from "./calculator-workload";
 import { COMPARE_LIMIT, parsePrice } from "./format-price";
 import { calculateWorkloadCost } from "./cost-calculator";
+import { normalizeComparisonIds, parseComparisonIds } from "./comparison-storage";
+import { getModelProvider } from "./model-provider";
 
-function validIds(ids: string[]): string[] {
-  return [...new Set(ids.filter((id) => /^[^\s,\u0000-\u001f\u007f\ufffd]{1,512}$/.test(id)))].slice(0, COMPARE_LIMIT);
+const LEGACY_ID = /^[^\s,\u0000-\u001f\u007f\ufffd]{1,512}$/;
+// Whitespace could never occur in a legacy ID. Keep ordinary links readable.
+const EXACT_IDS_PREFIX = "ids ";
+
+export function encodeComparisonIds(ids: string[]): string {
+  const selection = normalizeComparisonIds(ids);
+  return selection.every((id) => LEGACY_ID.test(id) && !/[\uD800-\uDFFF]/u.test(id))
+    ? selection.join(",") : EXACT_IDS_PREFIX + JSON.stringify(selection);
+}
+
+export function decodeComparisonIds(value: string): string[] {
+  if (value.startsWith(EXACT_IDS_PREFIX + "[")) {
+    return parseComparisonIds(value.slice(EXACT_IDS_PREFIX.length));
+  }
+  return [...new Set(value.split(",").filter((id) => LEGACY_ID.test(id)))].slice(0, COMPARE_LIMIT);
 }
 
 /** null means no shared selection; an empty array deliberately overrides storage. */
 export function parseSharedComparison(search: string): string[] | null {
   const params = new URLSearchParams(search);
   if (!params.has("compare")) return null;
-  return validIds((params.get("compare") ?? "").split(","));
+  return decodeComparisonIds(params.get("compare") ?? "");
 }
 
 export function resolveComparisonSelection(search: string, savedIds: string[], models: Model[]): string[] {
   const catalogIds = new Set(models.map((model) => model.id));
-  return (parseSharedComparison(search) ?? validIds(savedIds)).filter((id) => catalogIds.has(id));
+  return (parseSharedComparison(search) ?? normalizeComparisonIds(savedIds)).filter((id) => catalogIds.has(id));
 }
 
 export function buildComparisonUrl(baseUrl: string, ids: string[], workload: CalculatorWorkload): string {
   const url = new URL(baseUrl);
   // Keep an explicit empty value so clearing a shared comparison cannot restore storage.
-  url.searchParams.set("compare", validIds(ids).join(","));
+  url.searchParams.set("compare", encodeComparisonIds(ids));
   for (const [key, value] of Object.entries(workload)) url.searchParams.set(key, String(value));
   return url.href;
 }
@@ -40,16 +55,17 @@ export function comparisonCsv(models: Model[], workload: CalculatorWorkload): st
     "Input modalities", "Output modalities", "Tokenizer", "Supported parameters", "Provider moderated", "May train on prompts",
     "Input price (USD/token)", "Output price (USD/token)", "Cache read price (USD/token)", "Cache write price (USD/token)", "Request fee (USD)",
     "Input tokens/request", "Output tokens/request", "Requests", "Period", "Cached input (%)",
-    "Images/request", "Searches/request", "Cache-write tokens/request", "Image price (USD/image)", "Search price (USD/search)",
+    "Images/request", "Searches/request", "Cache-write tokens/request", "Reported image rate (USD, unit unverified)", "Search price (USD/search)",
     "Cache-write cost/request (USD)", "Image cost/request (USD)", "Search cost/request (USD)",
-    "Input cost/request (USD)", "Output cost/request (USD)", "Request cost (USD)", "Total cost/request (USD)", "Workload cost (USD)", "Feasibility", "Limit warnings", "Discount treatment",
+    "Input cost/request (USD)", "Output cost/request (USD)", "Request cost (USD)", "Total cost/request (USD)", "Workload cost (USD)", "Feasibility", "Limit warnings", "Discount treatment", "Billing warnings",
   ];
   const rows = models.map((model) => {
     const costs = calculateWorkloadCost(model.pricing, workload);
     const warnings = getWorkloadWarnings(model, workload);
+    const suitability = getWorkloadSuitability(model, workload);
     const cost = (value: number | null) => value === null ? null : Number(value.toPrecision(15));
     return [
-      model.id, model.name, model.description, model.id.split("/")[0], model.context_length, model.top_provider?.max_completion_tokens,
+      model.id, model.name, model.description, getModelProvider(model.id), getUsableContext(model), model.top_provider?.max_completion_tokens,
       model.architecture?.input_modalities?.join(", "), model.architecture?.output_modalities?.join(", "), model.architecture?.tokenizer,
       model.supported_parameters?.join(", "), model.top_provider?.is_moderated, model.mayTrainOnYourPrompts,
       parsePrice(model.pricing?.prompt), parsePrice(model.pricing?.completion), parsePrice(model.pricing?.input_cache_read),
@@ -58,8 +74,10 @@ export function comparisonCsv(models: Model[], workload: CalculatorWorkload): st
       workload.images, workload.searches, workload.cacheWriteTokens, parsePrice(model.pricing?.image), parsePrice(model.pricing?.web_search),
       cost(costs.cacheWriteCost), cost(costs.imageCost), cost(costs.searchCost),
       cost(costs.inputCost), cost(costs.outputCost), cost(costs.requestCost), cost(costs.perRequest), cost(costs.total),
-      warnings.length ? "Hypothetical estimate" : "No reported limit exceeded", warnings.join(" "),
+      suitability === "exceeds" ? "Hypothetical estimate" : suitability === "unknown" ? "Limits unknown" : "No reported limit exceeded",
+      suitability === "unknown" ? "Context or output cap is not published." : warnings.join(" "),
       (model.pricing?.discount ?? 0) > 0 ? "Pre-discount estimate; listed discount not applied" : "No listed discount",
+      getBillingWarnings(model.pricing, workload).join(" "),
     ];
   });
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";

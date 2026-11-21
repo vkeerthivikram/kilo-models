@@ -23,29 +23,35 @@ test("saved setups expose named saving and a clear empty state with accessible f
   assert.match(html, /keeps existing setups/);
 });
 
-test("saved setup actions persist create and delete and report blocked storage", () => {
+test("saved setup actions persist create and delete and report blocked storage", async () => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const locksDescriptor = Object.getOwnPropertyDescriptor(navigator, "locks");
   const values = new Map<string, string>();
   let actions: ReturnType<typeof useSavedSetups> | undefined;
   function Probe() { actions = useSavedSetups(); return null; }
   try {
+    Object.defineProperty(navigator, "locks", { configurable: true, value: {
+      request: (_key: string, _options: unknown, update: () => unknown) => Promise.resolve().then(update),
+    } });
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
     Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage, dispatchEvent: () => true } });
     renderToStaticMarkup(<Probe />);
     assert.ok(actions);
-    const created = actions.saveSetup("Cheap coding models", DEFAULT_WORKLOAD, "tools=true&compare=one,two");
+    const created = await actions.saveSetup("Cheap coding models", DEFAULT_WORKLOAD, "tools=true&compare=one,two");
     assert.equal(created.ok, true);
     if (!created.ok) return;
     const stored = parseSavedSetups(values.get(SAVED_SETUPS_STORAGE_KEY) ?? null);
     assert.equal(stored[0].name, "Cheap coding models");
     assert.equal(stored[0].directoryQuery, "tools=true");
-    assert.equal(actions.saveSetup("cheap coding models", DEFAULT_WORKLOAD, "").ok, false);
-    assert.equal(actions.deleteSetup(created.setup.id).ok, true);
+    assert.equal((await actions.saveSetup("cheap coding models", DEFAULT_WORKLOAD, "")).ok, false);
+    assert.equal((await actions.deleteSetup(created.setup.id)).ok, true);
     assert.deepEqual(parseSavedSetups(values.get(SAVED_SETUPS_STORAGE_KEY) ?? null), []);
     Object.defineProperty(globalThis, "window", { configurable: true, value: { get localStorage() { throw new Error("denied"); } } });
-    assert.equal(actions.saveSetup("Blocked", DEFAULT_WORKLOAD, "").ok, false);
-    assert.equal(actions.deleteSetup("missing").ok, false);
+    assert.equal((await actions.saveSetup("Blocked", DEFAULT_WORKLOAD, "")).ok, false);
+    assert.equal((await actions.deleteSetup("missing")).ok, false);
   } finally {
+    if (locksDescriptor) Object.defineProperty(navigator, "locks", locksDescriptor);
+    else Reflect.deleteProperty(navigator, "locks");
     if (descriptor) Object.defineProperty(globalThis, "window", descriptor);
     else Reflect.deleteProperty(globalThis, "window");
   }

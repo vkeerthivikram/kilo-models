@@ -20,7 +20,7 @@ export function ModelActions({ model, isCompared, compareDisabled, onToggleCompa
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      {onToggleCompare && <button type="button" onClick={() => onToggleCompare(model)} disabled={compareDisabled}
+      {onToggleCompare && <button data-model-compare="" type="button" onClick={() => onToggleCompare(model)} disabled={compareDisabled}
         aria-label={compareLabel} aria-pressed={!!isCompared}
         title={compareDisabled ? `Compare up to ${COMPARE_LIMIT} models` : compareLabel}
         className={cn("inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
@@ -28,7 +28,7 @@ export function ModelActions({ model, isCompared, compareDisabled, onToggleCompa
         {isCompared ? <Check className="size-4" aria-hidden="true" /> : <Scale className="size-4" aria-hidden="true" />}
         {isCompared ? "Selected" : "Compare"}
       </button>}
-      {onToggleFavorite && <button type="button" onClick={onToggleFavorite} aria-label={favoriteLabel} aria-pressed={!!isFavorite} title={favoriteLabel}
+      {onToggleFavorite && <button data-model-favorite="" type="button" onClick={onToggleFavorite} aria-label={favoriteLabel} aria-pressed={!!isFavorite} title={favoriteLabel}
         className={cn("inline-flex size-11 items-center justify-center rounded-lg transition-colors",
           isFavorite ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
         <Heart className={cn("size-4", isFavorite && "fill-current")} aria-hidden="true" />

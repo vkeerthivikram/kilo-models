@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
+import { renderApp } from "../test/render-app";
 import { ComparisonTable } from "./comparison-table";
 import type { Model } from "../lib/types";
 import { DEFAULT_WORKLOAD } from "../lib/calculator-workload";
@@ -15,7 +15,7 @@ const model: Model = {
 
 test("differences-only table removes shared specs while retaining model headers and differing prices", () => {
   const second = { ...model, id: "test/second", name: "Second model", pricing: { prompt: "0.000003", completion: "0" } };
-  const html = renderToStaticMarkup(<ComparisonTable models={[model, second]} differencesOnly onRemove={() => {}} />);
+  const html = renderApp(<ComparisonTable models={[model, second]} differencesOnly onRemove={() => {}} />);
   assert.match(html, /First model/);
   assert.match(html, /Second model/);
   assert.match(html, /Input price/);
@@ -28,21 +28,21 @@ test("differences-only table removes shared specs while retaining model headers 
 });
 
 test("matching models explain the empty differences view and keep removal available", () => {
-  const second = { ...model, id: "test/second", name: "Second model" };
-  const html = renderToStaticMarkup(<ComparisonTable models={[model, second]} differencesOnly onRemove={() => {}} />);
+  const second = { ...model, id: "test/second" };
+  const html = renderApp(<ComparisonTable models={[model, second]} differencesOnly onRemove={() => {}} />);
   assert.match(html, /No differences in these specifications/);
-  assert.match(html, /Remove First model from comparison/);
-  assert.match(html, /Remove Second model from comparison/);
+  assert.match(html, /Remove First model \(test\/first\) from comparison table/);
+  assert.match(html, /Remove First model \(test\/second\) from comparison table/);
 });
 
 test("single selection retains specs even if differences were enabled for a previous comparison", () => {
-  const html = renderToStaticMarkup(<ComparisonTable models={[model]} differencesOnly onRemove={() => {}} />);
+  const html = renderApp(<ComparisonTable models={[model]} differencesOnly onRemove={() => {}} />);
   assert.match(html, /Context window/);
   assert.doesNotMatch(html, /No differences/);
 });
 
 test("essential comparison includes workload cost and omits technical rows", () => {
-  const html = renderToStaticMarkup(<ComparisonTable models={[model]} differencesOnly={false} fullSpecifications={false} workload={DEFAULT_WORKLOAD} onRemove={() => {}} />);
+  const html = renderApp(<ComparisonTable models={[model]} differencesOnly={false} fullSpecifications={false} workload={DEFAULT_WORKLOAD} onRemove={() => {}} />);
   assert.match(html, /Estimated batch cost/);
   assert.match(html, /\$0\.00/);
   assert.doesNotMatch(html, />Tokenizer</);

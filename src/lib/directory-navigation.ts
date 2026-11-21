@@ -14,7 +14,7 @@ interface DirectoryReturn {
 }
 
 let memoryReturn: DirectoryReturn | null = null;
-let memoryRestore = false;
+let memoryRestore: boolean | undefined;
 
 export function safeDirectoryHref(value: unknown): string {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/";
@@ -40,10 +40,11 @@ export function parseDirectoryReturn(stored: string | null): DirectoryReturn | n
 
 function readDirectoryReturn(): DirectoryReturn | null {
   if (typeof window === "undefined") return null;
+  if (memoryReturn) return memoryReturn;
   try {
-    return parseDirectoryReturn(window.sessionStorage.getItem(RETURN_KEY)) ?? memoryReturn;
+    return parseDirectoryReturn(window.sessionStorage.getItem(RETURN_KEY));
   } catch {
-    return memoryReturn;
+    return null;
   }
 }
 
@@ -54,9 +55,24 @@ export function getDirectoryReturnHref(): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-export function rememberDirectoryPosition(): void {
+export function rememberDirectoryPosition(state?: { search: string; page: number }): void {
   if (typeof window === "undefined" || window.location.pathname !== "/") return;
-  memoryReturn = { href: safeDirectoryHref(`${window.location.pathname}${window.location.search}${window.location.hash}`), scrollY: Math.max(0, window.scrollY) };
+  const { pathname, search, hash } = window.location;
+  const currentHref = `${pathname}${search}${hash}`;
+  const url = new URL(currentHref, DIRECTORY_ORIGIN);
+  // The result list can update before the debounced URL write.
+  if (state && (url.searchParams.get("search") ?? "") !== state.search) {
+    if (state.search) url.searchParams.set("search", state.search);
+    else url.searchParams.delete("search");
+  }
+  if (state && Number(url.searchParams.get("page") ?? "1") !== state.page) {
+    if (state.page > 1) url.searchParams.set("page", String(state.page));
+    else url.searchParams.delete("page");
+  }
+  const href = safeDirectoryHref(`${url.pathname}${url.search}${url.hash}`);
+  // Save the visible search in the browser's Back entry before the route changes.
+  if (href !== currentHref) window.history.replaceState(window.history.state, "", href);
+  memoryReturn = { href, scrollY: Math.max(0, window.scrollY) };
   memoryRestore = false;
   try {
     window.sessionStorage.setItem(RETURN_KEY, JSON.stringify(memoryReturn));
@@ -81,7 +97,7 @@ export function restoreDirectoryPosition(): () => void {
   const saved = readDirectoryReturn();
   let requested = memoryRestore;
   try {
-    requested ||= window.sessionStorage.getItem(RESTORE_KEY) === "true";
+    requested ??= window.sessionStorage.getItem(RESTORE_KEY) === "true";
   } catch {}
   if (!saved || !requested || window.location.pathname !== "/") return () => {};
 

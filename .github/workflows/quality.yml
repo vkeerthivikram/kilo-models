@@ -18,9 +18,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.12
+          bun-version: 1.4.5
       - run: bun install --frozen-lockfile
         timeout-minutes: 5
       - name: Lint without warnings
@@ -38,6 +41,10 @@ jobs:
       - name: Browser behavior and accessibility tests
         run: bun run test:e2e
         timeout-minutes: 30
+      - name: Model detail errors and retry
+        if: ${{ !cancelled() }}
+        run: bun run test:e2e:detail-errors
+        timeout-minutes: 5
       - name: Upload browser diagnostics
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -46,4 +53,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            .tmp/detail-error-results/
+          include-hidden-files: true
           retention-days: 14

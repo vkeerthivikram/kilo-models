@@ -14,7 +14,7 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
     await expect(page.locator("html")).toHaveClass(new RegExp(`\\b${mode}\\b`));
     await expect(page).toHaveTitle(/\S/);
     await page.evaluate(() => document.fonts.ready);
-    // Base UI can expose its starting style before the transition is registered.
+    // The dialog can expose its starting style before the transition is registered.
     // Wait for the actual surface opacity as well as its animation bookkeeping.
     for (const dialog of await page.getByRole("dialog").all()) {
       await expect(dialog).not.toHaveAttribute("data-starting-style", "");
@@ -91,6 +91,16 @@ export async function scanThemeSurfaces(page: Page, testInfo: TestInfo, theme: s
   }
   await expect(page.getByRole("spinbutton", { name: "Images per request", exact: true })).toBeVisible();
   await scan("detail");
+
+  if (scanGrid) {
+    await page.goto("/?search=Fixture+Model+60");
+    await expect(page.getByText("FREE", { exact: true })).toBeVisible();
+    await scan("directory-free");
+    await page.getByRole("link", { name: "Fixture Model 60", exact: true }).click();
+    await page.locator("summary").filter({ hasText: "Full specifications" }).click();
+    await expect(page.getByText("May Train on Prompts", { exact: true })).toBeVisible();
+    await scan("detail-free");
+  }
 
   await page.goto(`/?compare=fixture%2Fmodel-01%2Cfixture%2Fmodel-02${directorySearch}`);
   const dialog = page.getByRole("dialog");

@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import { Instrument_Serif, DM_Sans } from "next/font/google";
 import "./globals.css";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { AgentTools } from "@/components/agent-tools";
+import { QueryAdapter } from "@/components/query-adapter";
 import { ThemeProvider } from "@/components/theme-provider";
-import { TooltipProvider } from "@/components/ui/tooltip";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { defaultThemeCss, firstPaintThemeScript } from "@/lib/theme-first-paint";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -42,16 +38,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <head />
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: defaultThemeCss }} />
+        {/* Execute before body paint, rather than with the hydrated bundle. */}
+        <script dangerouslySetInnerHTML={{ __html: firstPaintThemeScript }} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${dmSans.variable} font-sans antialiased min-h-screen flex flex-col`}
+        className={`${geistMono.variable} ${instrumentSerif.variable} ${dmSans.variable} font-sans antialiased min-h-screen flex flex-col`}
       >
         <ThemeProvider>
-          <NuqsAdapter>
-            <TooltipProvider delay={300}>
-              {children}
-            </TooltipProvider>
-          </NuqsAdapter>
+          <QueryAdapter>
+            {children}
+            <AgentTools />
+          </QueryAdapter>
         </ThemeProvider>
       </body>
     </html>

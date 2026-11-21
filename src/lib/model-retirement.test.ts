@@ -37,6 +37,6 @@ test("hide retired filters results and facets while keeping unknown and upcoming
     reasoning: false, tools: false, fav: false, minContext: null, maxInputPrice: null, maxOutputPrice: null,
     hideRetired: true, now: Date.parse("2026-10-06T00:00:00Z") };
   assert.deepEqual(models.filter((model) => matchesModelFilters(model, filters, [])).map((model) => model.id), ["new/model", "unknown/model"]);
-  assert.deepEqual(getFilterCounts(models, filters, []).providers, { new: 1, unknown: 1 });
+  assert.deepEqual({ ...getFilterCounts(models, filters, []).providers }, { new: 1, unknown: 1 });
   assert.equal(models.filter((model) => matchesModelFilters(model, { ...filters, hideRetired: false }, [])).length, 3);
 });

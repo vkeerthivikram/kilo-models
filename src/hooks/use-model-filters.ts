@@ -3,12 +3,12 @@
 import * as React from "react";
 import { Model } from "@/lib/types";
 import { parsePrice } from "@/lib/format-price";
-import { DEFAULT_WORKLOAD, type CalculatorWorkload } from "@/lib/calculator-workload";
+import { DEFAULT_WORKLOAD, getUsableContext, type CalculatorWorkload } from "@/lib/calculator-workload";
 import { calculateWorkloadCost } from "@/lib/cost-calculator";
 import { getFilterCounts, matchesModelFilters, parseNumericFilter } from "@/lib/model-filtering";
+import { decodeFilterValues, decodeProviderFilters, encodeFilterValues } from "@/lib/filter-values";
 import { useRetirementClock } from "./use-retirement-clock";
 import {
-  parseAsArrayOf,
   parseAsString,
   parseAsBoolean,
   parseAsStringLiteral,
@@ -33,8 +33,6 @@ type SortOption = (typeof SORT_OPTIONS)[number];
 const VIEW_OPTIONS = ["grid", "list"] as const;
 type ViewOption = (typeof VIEW_OPTIONS)[number];
 
-const INPUT_MODALITIES = ["text", "image", "video", "audio", "file"];
-const OUTPUT_MODALITIES = ["text", "image", "audio"];
 const EMPTY_FILTERS: string[] = [];
 const VIEW_STORAGE_KEY = "kilo-models-result-view";
 const VIEW_EVENT = "kilo-models-view-change";
@@ -70,7 +68,9 @@ interface FilterState {
 }
 
 interface UseModelFiltersResult extends FilterState {
+  searchDraft: string;
   setSearch: (v: string) => void;
+  cancelSearchWrite: () => void;
   setSort: (v: SortOption) => void;
   setFree: (v: boolean) => void;
   setHideRetired: (v: boolean) => void;
@@ -81,6 +81,7 @@ interface UseModelFiltersResult extends FilterState {
   setProviders: (v: string[]) => void;
   setReasoning: (v: boolean) => void;
   setTools: (v: boolean) => void;
+  toggleCapability: (key: "reasoning" | "tools") => Promise<unknown>;
   setView: (v: ViewOption) => void;
   setPage: (v: number) => void;
   setFav: (v: boolean) => void;
@@ -90,7 +91,7 @@ interface UseModelFiltersResult extends FilterState {
   filterCounts: ReturnType<typeof getFilterCounts>;
   clearFilters: () => void;
   directoryQuery: URLSearchParams;
-  applyDirectoryQuery: (query: URLSearchParams) => void;
+  applyDirectoryQuery: (query: URLSearchParams) => Promise<unknown>;
   activeFilterCount: number;
   filteredModels: Model[];
   sortedModels: Model[];
@@ -104,6 +105,13 @@ const numericParser = (integer = false) => createParser({
   serialize: String,
 });
 
+const buildFilterValuesParser = (parse = decodeFilterValues) => createParser({
+  parse,
+  serialize: encodeFilterValues,
+  eq: (a, b) => a.length === b.length && a.every((value, index) => value === b[index]),
+});
+const filterValuesParser = buildFilterValuesParser();
+
 const parsers = {
   search: parseAsString,
   sort: parseAsStringLiteral(SORT_OPTIONS),
@@ -111,9 +119,9 @@ const parsers = {
   hideRetired: parseAsBoolean,
   fitsWorkload: parseAsBoolean,
   maxBudget: numericParser(),
-  inputModalities: parseAsArrayOf(parseAsString),
-  outputModalities: parseAsArrayOf(parseAsString),
-  providers: parseAsArrayOf(parseAsString),
+  inputModalities: filterValuesParser,
+  outputModalities: filterValuesParser,
+  providers: buildFilterValuesParser(decodeProviderFilters),
   reasoning: parseAsBoolean,
   tools: parseAsBoolean,
   view: parseAsStringLiteral(VIEW_OPTIONS),
@@ -132,7 +140,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     shallow: true,
   });
 
-  const urlSearch = params.search ?? "";
+  const urlSearch = params.search?.trim() ? params.search : "";
   const sort = params.sort ?? "name-asc";
   const free = params.free ?? false;
   const hideRetired = params.hideRetired ?? false;
@@ -153,20 +161,33 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const [pendingSearch, setPendingSearch] = React.useState<string | null>(null);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  React.useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
+  const cancelSearchWrite = React.useCallback(() => {
+    if (debounceRef.current !== null) clearTimeout(debounceRef.current);
+    debounceRef.current = null;
   }, []);
+  React.useEffect(() => {
+    const cancelOnHistory = () => {
+      cancelSearchWrite();
+      setPendingSearch(null);
+    };
+    window.addEventListener("popstate", cancelOnHistory);
+    return () => {
+      window.removeEventListener("popstate", cancelOnHistory);
+      cancelSearchWrite();
+    };
+  }, [cancelSearchWrite]);
 
-  const search = pendingSearch !== null ? pendingSearch : urlSearch;
+  const searchDraft = pendingSearch ?? urlSearch;
+  const search = searchDraft.trim() ? searchDraft : "";
 
   const setSearch = (v: string) => {
     setPendingSearch(v);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    cancelSearchWrite();
     debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
       setPendingSearch(null);
-      setParams({ search: v || null, page: null });
+      const next = v.trim() ? v : null;
+      setParams((current) => ({ search: next, ...(next !== (current.search?.trim() ? current.search : null) && { page: null }) }));
     }, 400);
   };
   const setSort = (v: SortOption) => setParams({ sort: v, page: null });
@@ -179,11 +200,19 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const setProviders = (v: string[]) => setParams({ providers: v.length ? v : null, page: null });
   const setReasoning = (v: boolean) => setParams({ reasoning: v || null, page: null });
   const setTools = (v: boolean) => setParams({ tools: v || null, page: null });
+  const toggleCapability = (key: "reasoning" | "tools") =>
+    setParams((current) => ({ [key]: !current[key] || null, page: null }));
   const setView = (v: ViewOption) => {
     try { window.sessionStorage.setItem(VIEW_STORAGE_KEY, v); window.dispatchEvent(new Event(VIEW_EVENT)); } catch { /* URL state still works when storage is blocked. */ }
     void setParams({ view: v });
   };
-  const setPage = (v: number) => setParams({ page: v === 1 ? null : v });
+  const setPage = (v: number) => {
+    const page = v === 1 ? null : v;
+    if (pendingSearch === null) return setParams({ page });
+    cancelSearchWrite();
+    setPendingSearch(null);
+    return setParams({ search: search || null, page });
+  };
   const setFav = (v: boolean) => setParams({ fav: v || null, page: null });
 
   const setMinContext = (v: number | null) => setParams({ minContext: parseNumericFilter(v, true), page: null });
@@ -192,7 +221,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
 
   const clearFilters = () => {
     setPendingSearch(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    cancelSearchWrite();
     setParams({
       search: null,
       free: null,
@@ -213,7 +242,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
 
   const directoryQuery = React.useMemo(() => {
     const query = new URLSearchParams();
-    for (const [key, value] of Object.entries({ ...params, search })) {
+    for (const [key, value] of Object.entries({ ...params, search: search || null })) {
       if (key !== "page" && value !== null) query.set(key, parsers[key as keyof typeof parsers].serialize(value as never));
     }
     query.set("view", view);
@@ -221,9 +250,10 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   }, [params, search, view]);
   const applyDirectoryQuery = (query: URLSearchParams) => {
     setPendingSearch(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    cancelSearchWrite();
     const values = Object.fromEntries(Object.entries(parsers).map(([key, parser]) => [key, query.has(key) ? parser.parse(query.get(key)!) : null]));
-    void setParams({ ...values, view: parsers.view.parse(query.get("view") ?? "") ?? "grid", page: null });
+    const search = query.get("search");
+    return setParams({ ...values, search: search?.trim() ? search : null, view: parsers.view.parse(query.get("view") ?? "") ?? "grid", page: null });
   };
 
   const activeFilterCount =
@@ -269,11 +299,14 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
           return (sort === "cost-asc" ? first - second : second - first) || a.name.localeCompare(b.name);
         }
         case "context-desc":
-          return (b.context_length ?? 0) - (a.context_length ?? 0);
+          return (getUsableContext(b) ?? 0) - (getUsableContext(a) ?? 0);
         case "created-desc":
-          return (b.created ?? 0) - (a.created ?? 0);
-        case "created-asc":
-          return (a.created ?? 0) - (b.created ?? 0);
+        case "created-asc": {
+          const first = a.created > 0 && Number.isFinite(a.created) ? a.created : 0;
+          const second = b.created > 0 && Number.isFinite(b.created) ? b.created : 0;
+          return Number(second > 0) - Number(first > 0) ||
+            (sort === "created-asc" ? first - second : second - first) || a.name.localeCompare(b.name);
+        }
         default:
           return 0;
       }
@@ -281,7 +314,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   }, [filteredModels, sort, workload]);
 
   const totalPages = Math.ceil(sortedModels.length / PAGE_SIZE);
-  const page = pendingSearch !== null ? 1 : Math.max(1, Math.min(params.page ?? 1, totalPages || 1));
+  const page = pendingSearch !== null && search !== urlSearch ? 1 : Math.max(1, Math.min(params.page ?? 1, totalPages || 1));
   const paginatedModels = React.useMemo(() => {
     return sortedModels.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   }, [sortedModels, page]);
@@ -290,6 +323,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
 
   return {
     search,
+    searchDraft,
     sort,
     free,
     hideRetired,
@@ -304,6 +338,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     page,
     fav,
     setSearch,
+    cancelSearchWrite,
     setSort,
     setFree,
     setHideRetired,
@@ -314,6 +349,7 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     setProviders,
     setReasoning,
     setTools,
+    toggleCapability,
     setView,
     setPage,
     setFav,
@@ -336,5 +372,5 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   };
 }
 
-export { INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE };
+export { PAGE_SIZE };
 export type { SortOption, ViewOption };

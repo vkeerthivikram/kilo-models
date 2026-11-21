@@ -2,6 +2,7 @@
   "name": "kilo-models",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.4.5",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,12 +10,15 @@
     "lint": "eslint --max-warnings=0",
     "test": "bun test",
     "test:e2e": "playwright test",
+    "test:e2e:detail-errors": "playwright test -c playwright.detail-errors.config.ts",
+    "test:e2e:native": "bun run build && node scripts/test-native.mjs",
     "test:e2e:install": "playwright install chromium firefox webkit",
     "test:e2e:a11y": "playwright test --grep=accessibility",
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
-    "@base-ui/react": "^1.4.1",
+    "@ui-sdk/core": "0.1.0-beta.13",
+    "@ui-sdk/react": "0.1.0-beta.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.11.0",
@@ -25,7 +29,6 @@
     "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
-    "shadcn": "^4.4.0",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.4.0"
   },

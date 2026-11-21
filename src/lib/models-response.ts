@@ -53,7 +53,7 @@ function parseCatalog(value: unknown, quarantine: boolean): ParsedUpstreamCatalo
       const fail: (field: string) => never = (field) => { throw new ModelCatalogValidationError(index, object(model) ? model.id : null, field); };
       if (!object(model)) fail("entry");
       fields(model, {
-        id: (v) => typeof v === "string" && !!v.trim() && !ids.has(v),
+        id: (v) => typeof v === "string" && !!v.trim() && v.isWellFormed() && !ids.has(v),
         name: (v) => typeof v === "string", description: (v) => typeof v === "string",
         supported_parameters: optionalStrings, default_parameters: (v) => optionalStrings(v) || object(v),
         context_length: tokens, created: (v) => optionalNumber(v, 8_640_000_000_000, true),
@@ -75,7 +75,8 @@ function parseCatalog(value: unknown, quarantine: boolean): ParsedUpstreamCatalo
         }
       }
       ids.add(model.id as string);
-      data.push(model as unknown as Model);
+      const record = model as unknown as Model;
+      data.push(record.name.trim() ? record : { ...record, name: record.id });
     } catch (error) {
       if (!quarantine || !(error instanceof ModelCatalogValidationError)) throw error;
       excludedCount += 1;

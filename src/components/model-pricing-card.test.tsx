@@ -20,10 +20,12 @@ test("other rates keep invalid listed values visible and preserve free prices", 
   assert.match(invalid, /Cache Read/);
   assert.match(invalid, /Cache Write/);
   assert.match(invalid, /Internal Reasoning/);
-  assert.match(invalid, /Unavailable\/image/);
+  assert.match(invalid, /Image rate \(unit unverified\)<\/span><span[^>]*>Unavailable/);
   assert.match(invalid, /Unavailable\/search/);
   assert.doesNotMatch(invalid, /<details[^>]*hidden/);
-  assert.match(pricingCard({ image: "0" }), /\$0\.00\/image/);
+  const imageRate = pricingCard({ image: "0.0000015" });
+  assert.match(imageRate, /Image rate \(unit unverified\)[\s\S]*\$0\.0000015/);
+  assert.doesNotMatch(imageRate, /\/image/);
   assert.match(pricingCard({ image: null, web_search: null }), /<details[^>]*hidden/);
 });
 

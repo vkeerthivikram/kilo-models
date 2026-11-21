@@ -3,7 +3,9 @@
 import { cn } from "@/lib/utils";
 import type { EnkryptSafety } from "@/lib/types";
 
-export type SafetyDirection = "higherIsBetter" | "lowerIsBetter";
+export type SafetyDirection = "higherIsBetter" | "lowerIsBetter" | "unverified";
+
+const UNVERIFIED_DIRECTION = new Set(["Reported Safety Score", "NIST", "OWASP"]);
 
 const LOWER_IS_BETTER = new Set([
   "Risk",
@@ -17,6 +19,7 @@ const LOWER_IS_BETTER = new Set([
 ]);
 
 export function getScoreColor(score: number, direction: SafetyDirection): string {
+  if (direction === "unverified") return "bg-foreground/50";
   if (direction === "lowerIsBetter") {
     return score >= 50 ? "bg-red-500/70" : score >= 25 ? "bg-amber-500/70" : "bg-emerald-500/70";
   }
@@ -24,6 +27,7 @@ export function getScoreColor(score: number, direction: SafetyDirection): string
 }
 
 export function getDirectionForLabel(label: string): SafetyDirection {
+  if (UNVERIFIED_DIRECTION.has(label)) return "unverified";
   return LOWER_IS_BETTER.has(label) ? "lowerIsBetter" : "higherIsBetter";
 }
 
@@ -42,7 +46,7 @@ export function SafetyScoreBar({
   return (
     <div className={cn("space-y-1", className)}>
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
+        <span className="text-muted-foreground">{label}{dir === "unverified" && <span className="sr-only"> (score direction is unverified)</span>}</span>
         <span className="font-mono font-medium">{score.toFixed(1)}</span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -57,7 +61,7 @@ export function SafetyScoreBar({
 
 export function getSafetyRows(e: EnkryptSafety): Array<[string, number | null | undefined]> {
   return [
-    ["Overall Safety", e.safety_score],
+    ["Reported Safety Score", e.safety_score],
     ["Risk", e.risk_score],
     ["Bias", e.bias_score],
     ["CBRN", e.cbrn_score],

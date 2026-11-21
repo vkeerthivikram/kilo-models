@@ -18,6 +18,35 @@ test("directory filters and page survive reload", async ({ page }) => {
   await expect(page.getByRole("button", { name: "List view", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("choosing a sort closes the menu and the first comparison click works", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Fixture Model 01", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Sort models:/ }).click();
+  await page.getByRole("menuitemradio", { name: "Newest", exact: true }).click();
+  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(page).toHaveURL((url) => url.searchParams.get("sort") === "created-desc");
+
+  await page.getByRole("button", { name: "Add Fixture Model 60 to comparison", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("Fixture Model 60");
+});
+
+test("keyboard selection applies a color theme and persists it", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("theme", "light"));
+  await page.goto("/");
+  const theme = page.getByRole("button", { name: "Toggle theme" });
+  await theme.press("Enter");
+  await expect(page.getByRole("menu")).toBeVisible();
+  await page.keyboard.press("a");
+  await page.keyboard.press("u");
+  await expect(page.getByRole("menuitemradio", { name: "Aura", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(page.locator("html")).toHaveAttribute("data-kilo-theme", "aura");
+  await expect(theme).toBeFocused();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-kilo-theme", "aura");
+});
+
 test("comparison and favorites survive directory to detail, reload and Back", async ({ page }) => {
   await page.goto("/?search=Fixture&minContext=1000&page=2");
   await page.getByRole("button", { name: "Add Fixture Model 25 to comparison", exact: true }).click();
@@ -84,7 +113,7 @@ test("keyboard opens and closes comparison; mobile keeps controls reachable", as
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Compare Models" })).toBeVisible();
   const firstControl = dialog.getByRole("button", { name: "Add models", exact: true });
-  const lastControl = dialog.getByRole("button", { name: "Remove Fixture Model 01 from comparison", exact: true });
+  const lastControl = dialog.getByRole("button", { name: "Remove Fixture Model 01 from comparison table", exact: true });
   await lastControl.focus();
   await page.keyboard.press("Tab");
   await expect(firstControl).toBeFocused();
@@ -104,8 +133,8 @@ test("a shared comparison reloads with only the linked models", async ({ page })
   await expect(dialog.getByText("2 models selected", { exact: true })).toBeVisible();
   await page.reload();
   await expect(dialog.getByText("2 models selected", { exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Remove Fixture Model 01 from comparison", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Remove Fixture Model 02 from comparison", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Remove Fixture Model 01 from comparison table", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Remove Fixture Model 02 from comparison table", exact: true })).toBeVisible();
 });
 
 test("direct model links copy the model ID and return safely to the directory", async ({ page, context, browserName }) => {
@@ -148,14 +177,14 @@ test("direct model links copy the model ID and return safely to the directory", 
 });
 
 test("workload ranking accounts for per-request billing and survives reload", async ({ page }) => {
-  await page.goto("/?sort=cost-asc&requests=100&inputTokens=2000&outputTokens=500&images=2");
+  await page.goto("/?sort=cost-asc&search=Fixture+Model+0&requests=100&inputTokens=2000&outputTokens=500&searches=2");
   // Model 01 has the lowest input price but a 2-cent per-request charge.
   // Model 02 therefore wins the actual workload ranking.
   const modelLinks = page.getByRole("link", { name: /^Fixture Model \d+$/ });
   await expect(modelLinks.first()).toHaveText("Fixture Model 02");
   await page.reload();
   await expect(modelLinks.first()).toHaveText("Fixture Model 02");
-  await expect(page).toHaveURL(/images=2/);
+  await expect(page).toHaveURL(/searches=2/);
   await expect(page.getByRole("button", { name: "Sort models: Estimated cost (low → high)", exact: true })).toBeVisible();
 });
 
@@ -171,26 +200,29 @@ test("saved setups restore workload and filters after reload while preserving co
   await expect(page).toHaveURL((url) => url.searchParams.get("search") === "Fixture Model 0");
   await expect(page.getByRole("link", { name: /^Fixture Model \d+$/ })).toHaveCount(9);
   await page.reload();
-  // Query-driven comparisons open on a fresh load; close it to edit the directory.
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("button", { name: "Close comparison", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("Fixture Model 02");
+  await expect(page.getByRole("dialog")).toBeHidden();
   await openDirectoryWorkload(page);
   await page.getByRole("textbox", { name: "Search models", exact: true }).fill("Fixture Model 60");
   await page.getByRole("spinbutton", { name: "Requests", exact: true }).fill("99");
+  await page.getByRole("spinbutton", { name: "Requests", exact: true }).press("Enter");
+  await expect(page).toHaveURL((url) => url.searchParams.get("requests") === "99");
   await page.getByRole("combobox", { name: "Saved setup", exact: true }).selectOption({ label: "Fixture workload · Workload + view" });
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("textbox", { name: "Search models", exact: true })).toHaveValue("Fixture Model 0");
   await expect(page.getByRole("spinbutton", { name: "Requests", exact: true })).toHaveValue("42");
   await expect(page).toHaveURL((url) => url.searchParams.get("images") === "3" && url.searchParams.get("compare") === "fixture/model-02"
     && url.searchParams.get("requests") === "42" && url.searchParams.get("search") === "Fixture Model 0");
+  // Reapplying the same URL must not erase the local comparison history marker.
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(page.getByText("Applied “Fixture workload”.", { exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("1 / 10");
   await page.getByRole("region", { name: "Saved setups", exact: true }).locator("summary").filter({ hasText: "Manage setups" }).click();
   await page.getByRole("button", { name: "Delete Fixture workload", exact: true }).click();
   await expect(page.getByText("No saved setups yet. Name this workload and filter view to reuse it later.", { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "Close comparison", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Model comparison", exact: true })).toContainText("Fixture Model 02");
+  await expect(page.getByRole("dialog")).toBeHidden();
   await openDirectoryWorkload(page);
   await expect(page.getByRole("combobox", { name: "Saved setup", exact: true })).toHaveCount(0);
 });

@@ -8,7 +8,7 @@ interface CatalogStatusProps {
   loading: boolean;
   revalidating: boolean;
   error: Error | null;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   excludedCount?: number;
 }
 
@@ -35,7 +35,7 @@ export function CatalogStatus({ fetchedAt, loading, revalidating, error, onRefre
         <RefreshCw aria-hidden="true" className={busy ? "size-4 animate-spin motion-reduce:animate-none" : "size-4"} />
         {busy ? revalidating ? "Refreshing…" : "Loading…" : error ? "Retry refresh" : "Refresh catalog"}
       </Button>
-      <p role="status" aria-live="polite" className={status ? "w-full" : "sr-only"}>{status}</p>
+      <p role="status" aria-live="polite" data-agent-catalog={status ? "Catalog status" : undefined} className={status ? "w-full" : "sr-only"}>{status}</p>
     </div>
   );
 }

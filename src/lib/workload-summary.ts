@@ -1,6 +1,7 @@
 import { DEFAULT_WORKLOAD, type CalculatorWorkload } from "./calculator-workload";
 
 const count = (value: number) => value.toLocaleString("en-US");
+export const requestCount = (value: number) => `${count(value)} ${value === 1 ? "request" : "requests"}`;
 
 export function advancedUsageSummary(workload: CalculatorWorkload): string {
   return [
@@ -13,7 +14,7 @@ export function advancedUsageSummary(workload: CalculatorWorkload): string {
 }
 
 export function workloadSummary(workload: CalculatorWorkload): string {
-  const basic = `${count(workload.inputTokens)} input · ${count(workload.outputTokens)} output tokens/request · ${count(workload.requests)} requests${workload.period === "month" ? "/month" : " (batch total)"}`;
+  const basic = `${count(workload.inputTokens)} input · ${count(workload.outputTokens)} output tokens/request · ${requestCount(workload.requests)}${workload.period === "month" ? "/month" : " (batch total)"}`;
   const advanced = advancedUsageSummary(workload).replace(/^Monthly(?: · )?/, "");
   return advanced ? `${basic} · ${advanced}` : basic;
 }

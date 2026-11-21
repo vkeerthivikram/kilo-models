@@ -234,30 +234,31 @@ test("fits workload requires known context and completion limits, including prov
 });
 
 test("total budget includes every selected charge, is inclusive and excludes unavailable estimates", () => {
-  const workload = { ...DEFAULT_WORKLOAD, inputTokens: 100, outputTokens: 10, requests: 2, cachePercent: 50, cacheWriteTokens: 20, images: 2, searches: 3 };
+  const workload = { ...DEFAULT_WORKLOAD, inputTokens: 100, outputTokens: 10, requests: 2, cachePercent: 50, cacheWriteTokens: 20, searches: 3 };
   const pricing = { prompt: "0.004", completion: "0.008", input_cache_read: "0.001", input_cache_write: "0.005", image: "0.03", web_search: "0.02", request: "0.01" };
   const catalog = [
     { ...models[0], pricing },
     { ...models[1], pricing: { ...pricing, request: "0.02" } },
     { ...models[2], pricing: { prompt: "0", completion: "0" } },
   ];
-  const result = inspect("?maxBudget=0.96", [], catalog, workload);
+  const result = inspect("?maxBudget=0.84", [], catalog, workload);
   assert.deepEqual(result.sortedModels.map((model) => model.id), [models[0].id]);
   assert.equal(result.activeFilterCount, 1);
+  assert.equal(inspect("?maxBudget=1000", [], catalog, { ...workload, images: 2 }).sortedModels.length, 0);
   assert.equal(inspect("?maxBudget=0", [], models, { ...DEFAULT_WORKLOAD, inputTokens: 0, outputTokens: 0 }).sortedModels.length, models.length);
   for (const value of ["-1", "Infinity", "garbage", "1e999"]) assert.equal(inspect(`?maxBudget=${value}`).activeFilterCount, 0);
 });
 
 test("workload ranking includes output, cache and extra charges, with unknown estimates last", () => {
   const catalog = [
-    { ...models[0], pricing: { prompt: "0.000001", completion: "0.000010", image: "0.02", web_search: "0.03", request: "0.01" } },
-    { ...models[1], pricing: { prompt: "0.000002", completion: "0.000001", input_cache_read: "0", image: "0.01", web_search: "0.01" } },
+    { ...models[0], pricing: { prompt: "0.000012", completion: "0.000002", input_cache_read: "0", web_search: "0.001", request: "0.001" } },
+    { ...models[1], pricing: { prompt: "0.000011", completion: "0.000001", input_cache_read: "0.000010", web_search: "0.001" } },
     { ...models[2], pricing: { prompt: "0", completion: "0" } },
   ];
-  const workload = { ...DEFAULT_WORKLOAD, images: 1, searches: 1 };
+  const workload = { ...DEFAULT_WORKLOAD, searches: 1 };
   assert.deepEqual(inspect("?sort=cost-asc", [], catalog, workload).sortedModels.map((m) => m.id), [models[1].id, models[0].id, models[2].id]);
   assert.deepEqual(inspect("?sort=cost-desc", [], catalog, workload).sortedModels.map((m) => m.id), [models[0].id, models[1].id, models[2].id]);
-  assert.deepEqual(inspect("?sort=cost-asc", [], catalog, { ...workload, cachePercent: 50 }).sortedModels.map((m) => m.id), [models[1].id, models[0].id, models[2].id]);
+  assert.deepEqual(inspect("?sort=cost-asc", [], catalog, { ...workload, cachePercent: 50 }).sortedModels.map((m) => m.id), [models[0].id, models[1].id, models[2].id]);
 });
 
 test("unknown prices sort after known prices in either direction", () => {
@@ -296,9 +297,9 @@ test("retirement visibility is URL state and counts as a removable filter", () =
 
 test("numeric filters use tokens and USD per million tokens with inclusive limits", () => {
   const catalog = [
-    { ...models[0], context_length: 128000, pricing: { prompt: "0.000002", completion: "0.000008" } },
-    { ...models[1], context_length: 64000, pricing: { prompt: "0", completion: "0" } },
-    { ...models[2], context_length: 256000, pricing: { prompt: "0.000003", completion: "0.000010" } },
+    { ...models[0], context_length: 128000, top_provider: { ...models[0].top_provider, context_length: 128000 }, pricing: { prompt: "0.000002", completion: "0.000008" } },
+    { ...models[1], context_length: 64000, top_provider: { ...models[1].top_provider, context_length: 64000 }, pricing: { prompt: "0", completion: "0" } },
+    { ...models[2], context_length: 256000, top_provider: { ...models[2].top_provider, context_length: 256000 }, pricing: { prompt: "0.000003", completion: "0.000010" } },
   ];
   assert.deepEqual(inspect("?minContext=128000&maxInputPrice=2&maxOutputPrice=8", [], catalog).sortedModels.map((model) => model.id), [models[0].id]);
 });
@@ -331,10 +332,12 @@ test("facet counts respect other groups while retaining alternatives in the curr
   ];
   const result = inspect("?providers=alpha&inputModalities=image&tools=true", [], catalog);
   assert.equal(result.sortedModels.length, 1);
-  assert.deepEqual(result.filterCounts.providers, { alpha: 1, beta: 1 });
-  assert.deepEqual(result.filterCounts.inputModalities, { image: 1 });
+  assert.deepEqual({ ...result.filterCounts.providers }, { alpha: 1, beta: 1 });
+  assert.deepEqual({ ...result.filterCounts.inputModalities }, { image: 1 });
   assert.equal(result.filterCounts.reasoning, 0);
   assert.equal(result.filterCounts.tools, 1);
-  assert.deepEqual(inspect("?providers=alpha&inputModalities=image", [], catalog).filterCounts.inputModalities, { text: 1, image: 1 });
+  assert.deepEqual({ ...inspect("?providers=alpha&inputModalities=image", [], catalog).filterCounts.inputModalities }, { text: 1, image: 1 });
   assert.equal(inspect("?inputModalities=image,text", [], catalog).sortedModels.length, 3);
+  assert.equal(inspect("?reasoning=true", [], catalog).filterCounts.tools, 1);
+  assert.equal(inspect("?tools=true", [], catalog).filterCounts.reasoning, 1);
 });

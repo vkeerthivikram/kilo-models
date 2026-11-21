@@ -1,8 +1,15 @@
 "use client";
 
+import { createDialogController } from "@ui-sdk/react/dialog";
+import { Button as ActionButton } from "@ui-sdk/react/button";
+import { CheckboxGroup } from "@ui-sdk/react/checkbox";
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import { SearchFilterChip } from "@/components/ui/search-filter-chip";
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import type { Model } from "@/lib/types";
+import { getModelProvider } from "@/lib/model-provider";
 import { cn } from "@/lib/utils";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Button } from "@/components/ui/button";
@@ -13,10 +20,11 @@ import { CompareTray } from "@/components/compare-tray";
 import { CompareModal } from "@/components/compare-modal";
 import { SortDropdown } from "@/components/sort-dropdown";
 import { NumericFilterInput } from "@/components/numeric-filter-input";
-import { useDirectoryScrollRestoration } from "@/lib/directory-navigation";
+import { rememberDirectoryPosition, useDirectoryScrollRestoration } from "@/lib/directory-navigation";
 import { Search, LayoutGrid, List, ChevronDown, X, Heart, SlidersHorizontal, Check, ArrowUpRight, CircleAlert } from "lucide-react";
-import { useModelFilters, INPUT_MODALITIES, OUTPUT_MODALITIES, PAGE_SIZE } from "@/hooks/use-model-filters";
+import { useModelFilters, PAGE_SIZE } from "@/hooks/use-model-filters";
 import { useComparison } from "@/hooks/use-comparison";
+import { isLocalComparisonEntry } from "@/lib/comparison-history";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useModels } from "@/hooks/use-models";
 import { CatalogStatus } from "@/components/catalog-status";
@@ -26,7 +34,7 @@ import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
 import { workloadSummary } from "@/lib/workload-summary";
 import { InlineHelp } from "@/components/inline-help";
 
-function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean }) {
+function ModelExplorer({ models, loading, excludedCount }: { models: Model[]; loading: boolean; excludedCount: number }) {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [providerSearch, setProviderSearch] = React.useState("");
   const [providersOpen, setProvidersOpen] = React.useState(false);
@@ -34,43 +42,55 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   const searchInput = React.useRef<HTMLInputElement>(null);
   const providerInput = React.useRef<HTMLInputElement>(null);
   const workloadPanel = React.useRef<HTMLDetailsElement>(null);
-  const { comparedModels, toggleCompare, clearComparison, hasSharedComparison } = useComparison(models);
-  const [compareModalOpen, setCompareModalOpen] = React.useState(false);
+  const [workloadVisited, setWorkloadVisited] = React.useState(false);
+  const { comparedModels, selectedIds, toggleCompare, rememberLocalComparison, clearComparison, hasSharedComparison } = useComparison(models, loading ? "loading" : excludedCount > 0 ? "partial" : "complete");
+  const [comparisonDialog] = React.useState(() => createDialogController());
+  const [comparisonOpen, setComparisonOpen] = React.useState(false);
+  const hideBackgroundFromAgent = comparisonOpen && comparedModels.length > 0 ? "" : undefined;
+  React.useEffect(() => {
+    if (comparedModels.length === 0 && comparisonOpen) comparisonDialog.close();
+  }, [comparedModels.length, comparisonOpen, comparisonDialog]);
   React.useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
-      if (event.key !== "/" || event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || compareModalOpen) return;
+      if (event.key !== "/" || event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || comparisonDialog.isOpen()) return;
       const target = event.target;
-      if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="dialog"]')) return;
+      if (target instanceof Element && target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="dialog"], [role="menu"]')) return;
+      if (document.querySelector('[aria-haspopup="menu"][aria-expanded="true"]')) return;
       event.preventDefault();
       searchInput.current?.focus();
     };
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
-  }, [compareModalOpen]);
+  }, [comparisonDialog]);
   const openedSharedComparison = React.useRef(false);
   useDirectoryScrollRestoration(!loading);
   React.useEffect(() => {
     if (!hasSharedComparison) openedSharedComparison.current = false;
-    if (!loading && hasSharedComparison && comparedModels.length > 0 && !openedSharedComparison.current) {
+    if (!loading && hasSharedComparison && comparedModels.length > 0 && !openedSharedComparison.current && !isLocalComparisonEntry()) {
       const frame = window.requestAnimationFrame(() => {
         openedSharedComparison.current = true;
-        setCompareModalOpen(true);
+        comparisonDialog.setOpen(true);
       });
       return () => window.cancelAnimationFrame(frame);
     }
-  }, [loading, hasSharedComparison, comparedModels.length]);
-  const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  }, [loading, hasSharedComparison, comparedModels.length, comparisonDialog]);
+  const { favorites, isFavorite, toggleFavorite, setFavorite, storageWarning } = useFavorites();
+  const favoriteCount = React.useMemo(() => models.filter((model) => favorites.includes(model.id)).length, [models, favorites]);
   const { workload, setWorkload } = useCalculatorWorkload();
   const {
-    search, setSearch, sort, setSort, free, setFree, hideRetired, setHideRetired,
+    search, searchDraft, setSearch, cancelSearchWrite, sort, setSort, free, setFree, hideRetired, setHideRetired,
     fitsWorkload, setFitsWorkload, maxBudget, setMaxBudget,
     inputModalities, setInputModalities, outputModalities, setOutputModalities,
-    providers, setProviders, reasoning, setReasoning, tools, setTools,
+    providers, setProviders, reasoning, setReasoning, tools, setTools, toggleCapability,
     minContext, setMinContext, maxInputPrice, setMaxInputPrice, maxOutputPrice, setMaxOutputPrice, filterCounts,
     page, setPage, fav, setFav, view, setView, clearFilters,
     activeFilterCount, sortedModels, paginatedModels, totalPages, directoryQuery, applyDirectoryQuery,
   } = useModelFilters(models, favorites, workload);
-  const availableProviders = React.useMemo(() => [...new Set(models.map((model) => model.id.split("/")[0]))].sort(), [models]);
+  const modalities = React.useMemo(() => ({
+    input: [...new Set(models.flatMap((model) => model.architecture?.input_modalities ?? []))].sort(),
+    output: [...new Set(models.flatMap((model) => model.architecture?.output_modalities ?? []))].sort(),
+  }), [models]);
+  const availableProviders = React.useMemo(() => [...new Set(models.map((model) => getModelProvider(model.id)))].sort(), [models]);
   const matchingProviders = React.useMemo(() => {
     const needle = providerSearch.trim().toLowerCase();
     return availableProviders.filter((provider) => provider.toLowerCase().includes(needle))
@@ -79,12 +99,14 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   const editBudgetWorkload = () => {
     if (!workloadPanel.current) return;
     workloadPanel.current.open = true;
-    workloadPanel.current.querySelector<HTMLInputElement>('input[type="number"]')?.focus();
+    setWorkloadVisited(true);
+    requestAnimationFrame(() => workloadPanel.current?.querySelector<HTMLInputElement>('input[type="number"]')?.focus());
   };
   const hasFilters = activeFilterCount > 0 || search.length > 0;
   const advancedFilterCount = [hideRetired, fitsWorkload, maxBudget !== null, minContext !== null, maxInputPrice !== null, maxOutputPrice !== null].filter(Boolean).length + inputModalities.length + outputModalities.length;
   const [initiallyAdvanced] = React.useState(advancedFilterCount > 0);
   const advancedPanel = React.useRef<HTMLDetailsElement>(null);
+  const [advancedVisited, setAdvancedVisited] = React.useState(initiallyAdvanced);
   const hasAdvancedFilters = advancedFilterCount > 0;
   React.useEffect(() => {
     // Saved views reveal active filters; clearing them must not close an editing panel.
@@ -107,29 +129,34 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
   ];
 
   const handleToggleCompare = (model: Model) => {
-    if (comparedModels.length === 1 && comparedModels[0].id === model.id) setCompareModalOpen(false);
+    if (comparedModels.length === 1 && comparedModels[0].id === model.id) comparisonDialog.close();
     toggleCompare(model);
+  };
+  const handleModelNavigate = () => {
+    cancelSearchWrite();
+    rememberDirectoryPosition({ search, page });
+    rememberLocalComparison();
   };
 
   return (
     <>
-      <div className="flex items-center gap-6 border-b">
-        <button type="button" onClick={() => setFav(false)} aria-pressed={!fav}
+      <div data-agent-hidden={hideBackgroundFromAgent} className="flex items-center gap-6 border-b">
+        <ActionButton type="button" onClick={() => setFav(false)} aria-pressed={!fav}
           className={cn("min-h-12 border-b-2 px-1 text-sm font-medium transition-colors", !fav ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-          All models <span className="ml-2 text-xs tabular-nums text-muted-foreground">{loading ? "..." : models.length}</span>
-        </button>
-        <button type="button" onClick={() => setFav(true)} aria-pressed={fav}
+          All models <span aria-hidden="true" className="ml-2 text-xs tabular-nums text-muted-foreground">{loading ? "..." : models.length}</span>
+        </ActionButton>
+        <ActionButton type="button" onClick={() => setFav(true)} aria-pressed={fav}
           className={cn("flex min-h-12 items-center gap-2 border-b-2 px-1 text-sm font-medium transition-colors", fav ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
           <Heart className="size-4" aria-hidden="true" /> Favorites
-          <span className="text-xs tabular-nums text-muted-foreground">{loading ? "..." : favorites.length}</span>
-        </button>
+          <span aria-hidden="true" className="text-xs tabular-nums text-muted-foreground">{loading ? "..." : favoriteCount}</span>
+        </ActionButton>
         <span className="ml-auto hidden text-xs text-muted-foreground sm:block">Select models to compare side by side</span>
       </div>
 
-      <div className="grid items-start gap-3 pt-3 sm:gap-5 sm:pt-5 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
+      <div data-agent-hidden={hideBackgroundFromAgent} className="grid items-start gap-3 pt-3 sm:gap-5 sm:pt-5 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
         <div className="flex gap-3 lg:hidden">
-          <Button variant="outline" className="h-11 flex-1" onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen} aria-controls="model-filters">
-            <SlidersHorizontal className="size-4" /> Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
+          <Button variant="outline" className="h-11 flex-1" onClick={() => setFiltersOpen(!filtersOpen)} aria-label="Filters" aria-expanded={filtersOpen} aria-controls="model-filters">
+            <SlidersHorizontal className="size-4" /> Filters{activeFilterCount > 0 && <span aria-hidden="true">({activeFilterCount})</span>}
             <ChevronDown className={cn("ml-auto size-4 transition-transform", filtersOpen && "rotate-180")} />
           </Button>
           {hasFilters && <Button variant="ghost" className="h-11" onClick={clearFilters}>Reset</Button>}
@@ -138,27 +165,28 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
         <aside id="model-filters" aria-label="Filter models" className={cn("space-y-7 rounded-xl border p-4 lg:rounded-none lg:border-0 lg:p-0", !filtersOpen && "hidden lg:block")}>
           <div className="flex h-11 items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold"><SlidersHorizontal className="size-4" aria-hidden="true" /> Filters</h2>
-            {hasFilters && <button type="button" onClick={clearFilters} className="min-h-9 px-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Reset all</button>}
+            {hasFilters && <ActionButton type="button" onClick={clearFilters} className="min-h-9 px-2 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Reset all</ActionButton>}
           </div>
 
           <fieldset>
             <legend className="mb-3 text-sm font-medium">Pricing</legend>
-            <button type="button" onClick={() => setFree(!free)} aria-pressed={free}
+            <ActionButton type="button" onClick={() => setFree(!free)} aria-pressed={free} aria-describedby="free-model-count"
               className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
               <span className={cn("flex size-4 items-center justify-center rounded border", free ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{free && <Check className="size-3" aria-hidden="true" />}</span>
               Free models only
-              <span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.free}</span>
-            </button>
+              <span id="free-model-count" aria-hidden="true" className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.free}<span className="sr-only"> matching models</span></span>
+            </ActionButton>
           </fieldset>
 
           <fieldset>
             <legend className="mb-3 text-sm font-medium">Capabilities</legend>
-            {[{ label: "Reasoning", checked: reasoning, set: setReasoning, count: filterCounts.reasoning }, { label: "Tool calling", checked: tools, set: setTools, count: filterCounts.tools }].map(({ label, checked, set, count }) => (
-              <button key={label} type="button" onClick={() => set(!checked)} aria-pressed={checked} className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
+            {([{ key: "reasoning", label: "Reasoning", checked: reasoning, count: filterCounts.reasoning }, { key: "tools", label: "Tool calling", checked: tools, count: filterCounts.tools }] as const).map(({ key, label, checked, count }, index) => (
+              <ActionButton key={key} type="button" onClick={(_event, details) =>
+                details.source === "agent" ? flushSync(() => toggleCapability(key)) : toggleCapability(key)} aria-label={label + " filter"} aria-pressed={checked} aria-describedby={`capability-count-${index}`} className="flex min-h-10 w-full items-center gap-3 text-left text-sm">
                 <span className={cn("flex size-4 items-center justify-center rounded border", checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{checked && <Check className="size-3" aria-hidden="true" />}</span>
                 {label}
-                <span className="ml-auto text-xs tabular-nums text-muted-foreground">{count}</span>
-              </button>
+                <span id={`capability-count-${index}`} aria-hidden="true" className="ml-auto text-xs tabular-nums text-muted-foreground">{count}<span className="sr-only"> matching models</span></span>
+              </ActionButton>
             ))}
             <InlineHelp title="About capabilities"><p>Reasoning indicates support for reasoning controls. Tool calling lets a model request a tool action; your application must execute it. These features do not measure answer quality.</p></InlineHelp>
           </fieldset>
@@ -176,52 +204,63 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
                 {providers.length ? `${providers.length} selected` : "All providers"}<ChevronDown className="size-4" />
             </Button>
             <div id="provider-options" hidden={!providersOpen} className="space-y-2">
-              <div className="relative">
-                <Input ref={providerInput} aria-label="Search providers" placeholder="Find provider..." value={providerSearch}
-                  onChange={(event) => setProviderSearch(event.target.value)} className="h-11 pr-11 text-base md:text-sm" />
-                {providerSearch && <button type="button" aria-label="Clear provider search" className="absolute right-0 top-0 flex size-11 items-center justify-center rounded text-muted-foreground hover:text-foreground" onClick={() => { setProviderSearch(""); providerInput.current?.focus(); }}><X className="size-4" aria-hidden="true" /></button>}
-              </div>
-              <div role="group" aria-label="Choose providers" className="max-h-64 overflow-y-auto">
-                {matchingProviders.map((provider) => (
-                  <label key={provider} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm capitalize">
-                    <input type="checkbox" checked={providers.includes(provider)}
-                      onChange={(event) => setProviders(event.target.checked ? [...providers, provider] : providers.filter((item) => item !== provider))}
-                      className="size-4 shrink-0 accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
-                    <span className="min-w-0 truncate">{provider}</span><span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.providers[provider] ?? 0}</span>
-                  </label>
-                ))}
-                {matchingProviders.length === 0 && <p className="px-3 py-4 text-xs text-muted-foreground">No providers match this search.</p>}
-              </div>
+              {providersOpen && <>
+                <div className="relative">
+                  <Input ref={providerInput} aria-label="Search providers" placeholder="Find provider..." value={providerSearch}
+                    onValueChange={setProviderSearch} className="h-11 pr-11 text-base md:text-sm" />
+                  {providerSearch && <ActionButton type="button" aria-label="Clear provider search" className="absolute right-0 top-0 flex size-11 items-center justify-center rounded text-muted-foreground hover:text-foreground" onClick={() => { setProviderSearch(""); providerInput.current?.focus(); }}><X className="size-4" aria-hidden="true" /></ActionButton>}
+                </div>
+                <CheckboxGroup aria-label="Choose providers" data-agent-catalog="Provider choices" value={providers} allValues={availableProviders}
+                  onValueChange={(values, details) => {
+                    if (values.some((provider) => !availableProviders.includes(provider))) {
+                      details.cancel();
+                      if (details.source === "agent") throw new Error("Choose providers listed in Provider choices.");
+                      return;
+                    }
+                    setProviders([...new Set(values)]);
+                  }} className="max-h-64 overflow-y-auto">
+                  {matchingProviders.map((provider) => (
+                    <label key={provider} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm capitalize">
+                      <input type="checkbox" checked={providers.includes(provider)}
+                        onChange={(event) => setProviders(event.target.checked ? [...providers, provider] : providers.filter((item) => item !== provider))}
+                        className="size-4 shrink-0 accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
+                      <span className="min-w-0 truncate">{provider}</span><span className="ml-auto text-xs tabular-nums text-muted-foreground">{filterCounts.providers[provider] ?? 0}</span>
+                    </label>
+                  ))}
+                  {matchingProviders.length === 0 && <p className="px-3 py-4 text-xs text-muted-foreground">No providers match this search.</p>}
+                </CheckboxGroup>
+              </>}
             </div>
-            {providers.length > 0 && <button type="button" onClick={() => setProviders([])} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Clear providers</button>}
+            {providers.length > 0 && <ActionButton type="button" onClick={() => setProviders([])} className="min-h-9 text-xs text-muted-foreground underline underline-offset-4">Clear providers</ActionButton>}
           </div>
-          <details ref={advancedPanel} open={initiallyAdvanced || undefined} className="border-t pt-2">
-            <summary className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
-              Advanced filters{advancedFilterCount > 0 && <span className="ml-2 text-xs font-normal text-muted-foreground">{advancedFilterCount} active</span>}
-            </summary>
-            <div className="space-y-6 pt-3">
+          <details ref={advancedPanel} open={initiallyAdvanced || undefined}
+            onToggle={(event) => { if (event.currentTarget.open) setAdvancedVisited(true); }} className="border-t pt-2">
+            <DisclosureSummary aria-label="Advanced filters" aria-describedby={advancedFilterCount > 0 ? "advanced-filter-count" : undefined} className="min-h-11 cursor-pointer rounded py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+              Advanced filters{advancedFilterCount > 0 && <span id="advanced-filter-count" className="ml-2 text-xs font-normal text-muted-foreground">{advancedFilterCount} active</span>}
+            </DisclosureSummary>
+            {(advancedVisited || hasAdvancedFilters) && <div className="space-y-6 pt-3">
               <fieldset>
                 <legend className="mb-3 text-sm font-medium">Availability</legend>
-                <button type="button" onClick={() => setHideRetired(!hideRetired)} aria-pressed={hideRetired}
+                <ActionButton type="button" onClick={() => setHideRetired(!hideRetired)} aria-pressed={hideRetired}
                   className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
                   <span className={cn("flex size-4 items-center justify-center rounded border", hideRetired ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{hideRetired && <Check className="size-3" aria-hidden="true" />}</span>
                   Hide retired models
-                </button>
+                </ActionButton>
                 <p className="text-xs leading-relaxed text-muted-foreground">Models without a retirement date stay visible.</p>
               </fieldset>
 
               <fieldset className="space-y-3">
                 <legend className="mb-3 text-sm font-medium">Workload shortlist</legend>
-                <button type="button" onClick={() => setFitsWorkload(!fitsWorkload)} aria-pressed={fitsWorkload}
+                <ActionButton type="button" onClick={() => setFitsWorkload(!fitsWorkload)} aria-pressed={fitsWorkload}
                   className="flex min-h-11 w-full items-center gap-3 text-left text-sm">
                   <span className={cn("flex size-4 items-center justify-center rounded border", fitsWorkload ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground")}>{fitsWorkload && <Check className="size-3" aria-hidden="true" />}</span>
                   Fits workload
-                </button>
+                </ActionButton>
                 <p className="text-xs leading-relaxed text-muted-foreground">Uses your estimate and published token limits. Unknown limits are excluded.</p>
                 <NumericFilterInput id="max-budget" label={`Total budget · USD / ${workload.period === "month" ? "month" : "batch"}`} value={maxBudget} onChange={setMaxBudget} />
                 <p className="text-xs leading-relaxed text-muted-foreground">Total for all requests and selected charges. Unavailable estimates are excluded.</p>
                 <p className="text-xs leading-relaxed text-muted-foreground">Budget uses: {workloadSummary(workload)}</p>
-                <button type="button" aria-label="Edit budget workload" onClick={editBudgetWorkload} className="min-h-11 rounded text-xs underline underline-offset-4">Edit workload</button>
+                <ActionButton type="button" aria-label="Edit budget workload" onClick={editBudgetWorkload} className="min-h-11 rounded text-xs underline underline-offset-4">Edit workload</ActionButton>
               </fieldset>
 
               <fieldset className="space-y-3">
@@ -233,57 +272,65 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
               <fieldset>
                 <legend className="mb-3 text-sm font-medium">Context</legend>
                 <NumericFilterInput id="min-context" label="Minimum context · tokens" value={minContext} onChange={setMinContext} integer />
-                <InlineHelp title="About context"><p>Context is the token space available for input and output together in one request. Published provider limits may be smaller than the model’s advertised context.</p></InlineHelp>
+                <InlineHelp title="About context"><p>Context is the token space available for input and output together in one request. The context filter uses the lower of the published provider limit and the model’s advertised context when both are available.</p></InlineHelp>
               </fieldset>
 
               {[
-                { label: "Input types", options: INPUT_MODALITIES, selected: inputModalities, set: setInputModalities, counts: filterCounts.inputModalities },
-                { label: "Output types", options: OUTPUT_MODALITIES, selected: outputModalities, set: setOutputModalities, counts: filterCounts.outputModalities },
-              ].map(({ label, options, selected, set, counts }) => (
+                { label: "Input types", direction: "input", options: modalities.input, selected: inputModalities, set: setInputModalities, counts: filterCounts.inputModalities },
+                { label: "Output types", direction: "output", options: modalities.output, selected: outputModalities, set: setOutputModalities, counts: filterCounts.outputModalities },
+              ].map(({ label, direction, options, selected, set, counts }) => (
                 <fieldset key={label}>
                   <legend className="mb-3 text-sm font-medium">{label}</legend>
                   <div className="flex flex-wrap gap-2">
-                    {options.map((modality) => (
-                      <button key={modality} type="button" aria-pressed={selected.includes(modality)}
+                    {[...new Set([...options, ...selected])].map((modality, index) => (
+                      <ActionButton key={modality} type="button" aria-label={`${modality} ${direction}`} aria-describedby={`${direction}-count-${index}`} aria-pressed={selected.includes(modality)}
                         onClick={() => set(selected.includes(modality) ? selected.filter((item) => item !== modality) : [...selected, modality])}
                         className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-xs capitalize transition-colors", selected.includes(modality) ? "border-foreground bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground")}>
                         {selected.includes(modality) && <Check className="size-3" aria-hidden="true" />}
-                        {modality}
-                        <span className="tabular-nums text-muted-foreground">{counts[modality] ?? 0}</span>
-                      </button>
+                        <span aria-hidden="true">{modality}</span>
+                        <span id={`${direction}-count-${index}`} aria-hidden="true" className="tabular-nums text-muted-foreground">{counts[modality] ?? 0}<span className="sr-only"> matching models</span></span>
+                      </ActionButton>
                     ))}
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Matches any selected type.</p>
                 </fieldset>
               ))}
 
-            </div>
+            </div>}
           </details>
         </aside>
 
-        <section aria-label="Model results" aria-busy={loading} className="min-w-0 space-y-3 sm:space-y-4">
+        <section aria-label="Model results" data-directory-state={loading ? undefined : "ready"} aria-busy={loading} className="min-w-0 space-y-3 sm:space-y-4">
+          <h2 className="sr-only">Model results</h2>
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input ref={searchInput} aria-label="Search models" aria-keyshortcuts="/" title="Press / to search when not editing a field" placeholder="Search models, providers, or keywords..." value={search}
-              onChange={(event) => setSearch(event.target.value)} className="h-11 rounded-lg bg-card pl-11 pr-12 text-base placeholder:text-muted-foreground md:text-sm" />
-            {search && <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></button>}
+            <Input ref={searchInput} aria-label="Search models" aria-keyshortcuts="/" title="Press / to search when not editing a field" placeholder="Search models, providers, or keywords..." value={searchDraft}
+              onValueChange={setSearch} className="h-11 rounded-lg bg-card pl-11 pr-12 text-base placeholder:text-muted-foreground md:text-sm" />
+            {search && <ActionButton type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></ActionButton>}
           </div>
 
           {activeFilters.length > 0 && (
             <div role="group" aria-label="Active filters" className="flex flex-wrap items-center gap-2">
-              {activeFilters.map((filter) => (
-                <button key={filter.key} type="button" onClick={filter.remove} aria-label={`Remove filter: ${filter.label}`}
-                  className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border bg-muted/40 px-3 text-xs transition-colors hover:bg-muted">
-                  <span className="truncate">{filter.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" />
-                </button>
-              ))}
-              <button type="button" onClick={clearFilters} className="min-h-11 px-2 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">Clear all</button>
+              {activeFilters.map((filter) => {
+                const content = <><span className="truncate">{filter.label}</span><X className="size-3.5 shrink-0" aria-hidden="true" /></>;
+                const className = "inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border bg-muted/40 px-3 text-xs transition-colors hover:bg-muted";
+                return filter.key === "search"
+                  ? <SearchFilterChip key={filter.key} label={filter.label} onRemove={filter.remove} className={className}>{content}</SearchFilterChip>
+                  : <ActionButton key={filter.key} type="button" onClick={filter.remove} aria-label={`Remove filter: ${filter.label}`} className={className}>{content}</ActionButton>;
+              })}
+              <ActionButton type="button" onClick={clearFilters} className="min-h-11 px-2 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">Clear all</ActionButton>
             </div>
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p role="status" className="text-sm text-muted-foreground">
-              {loading ? "Loading models..." : <><span className="font-semibold tabular-nums text-foreground">{sortedModels.length}</span> {fav ? "favorite" : "available"} {sortedModels.length === 1 ? "model" : "models"}<span className="mt-1 block text-xs">Prices in USD per million tokens · Context in tokens</span></>}
+            <p role="status" data-agent-catalog={loading ? undefined : "Directory results"} className="text-sm text-muted-foreground">
+              {loading ? "Loading models..." : <>
+                <span className="font-semibold tabular-nums text-foreground">{sortedModels.length}</span> {fav ? "favorite" : "available"} {sortedModels.length === 1 ? "model" : "models"}
+                <span className="mt-1 block text-xs">Prices in USD per million tokens · Context in tokens</span>
+                <span className="sr-only">{view === "grid" ? "Grid" : "List"} view. {sortedModels.length > 0
+                  ? `Page ${page} of ${totalPages}. Showing ${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + paginatedModels.length} of ${sortedModels.length} matches.`
+                  : "No matches."}</span>
+              </>}
             </p>
             <div className="flex items-center gap-2">
               <SortDropdown value={sort} onChange={setSort} />
@@ -294,18 +341,19 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
             </div>
           </div>
 
-          <details ref={workloadPanel} className="border-y py-1">
-            <summary className="min-h-11 cursor-pointer rounded py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
+          <details ref={workloadPanel} onToggle={(event) => { if (event.currentTarget.open) setWorkloadVisited(true); }} className="border-y py-1">
+            <DisclosureSummary aria-label="Estimate workload" aria-describedby="directory-workload-summary" className="min-h-11 cursor-pointer rounded py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">
               Estimate workload
-              <span className="mt-1 block text-xs font-normal leading-relaxed tabular-nums text-muted-foreground">{workloadSummary(workload)}</span>
-            </summary>
-            <div className="space-y-6 py-4">
+              <span id="directory-workload-summary" className="mt-1 block text-xs font-normal leading-relaxed tabular-nums text-muted-foreground">{workloadSummary(workload)}</span>
+            </DisclosureSummary>
+            {workloadVisited && <div className="space-y-6 py-4">
               <p className="max-w-prose text-xs leading-relaxed text-muted-foreground">Set usage to compare estimated costs across models.</p>
               <CalculatorInputs workload={workload} onChange={setWorkload} showCache />
               <SavedSetups workload={workload} onWorkloadChange={setWorkload} directoryQuery={directoryQuery} onApplyDirectoryQuery={applyDirectoryQuery} />
-            </div>
+            </div>}
           </details>
 
+          {storageWarning && <p role="status" data-agent-catalog="Favorites status" className="text-sm text-muted-foreground">{storageWarning}</p>}
           {loading ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading model cards">
               {Array.from({ length: 6 }, (_, index) => (
@@ -316,22 +364,36 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
                 </div>
               ))}
             </div>
+          ) : models.length === 0 ? (
+            <div data-agent-catalog="Catalog results status" className="rounded-xl border border-dashed px-6 py-20 text-center">
+              <h2 className="font-heading text-3xl">No models available</h2>
+              <p className="mt-3 text-sm text-muted-foreground">The catalog returned no models. Refresh catalog to check again.</p>
+            </div>
+          ) : fav && favoriteCount === 0 ? (
+            <div data-agent-catalog="Catalog results status" className="rounded-xl border border-dashed px-6 py-20 text-center">
+              <h2 className="font-heading text-3xl">Your shortlist starts here</h2>
+              <p className="mt-3 text-sm text-muted-foreground">{favorites.length ? "None of your saved favorites are in the current catalog." : "Save a model with the heart button to find it here later."}</p>
+              <Button variant="outline" onClick={() => { clearFilters(); setFav(false); }} className="mt-6 h-11">Browse all models</Button>
+            </div>
           ) : sortedModels.length === 0 ? (
-            <div className="flex flex-col items-center rounded-xl border border-dashed px-6 py-20 text-center">
+            <div data-agent-catalog="Catalog results status" className="flex flex-col items-center rounded-xl border border-dashed px-6 py-20 text-center">
               <Search className="mb-5 size-7 text-muted-foreground" aria-hidden="true" />
-              <h2 className="font-heading text-3xl">{fav && favorites.length === 0 ? "Your shortlist starts here" : "No models found"}</h2>
-              <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">{fav && favorites.length === 0 ? "Save a model with the heart button to find it here later." : "Try a different search or remove a filter to see more models."}</p>
-              {activeFilters.length > 0 && <p className="mt-3 max-w-prose text-xs leading-relaxed text-muted-foreground">Current conditions: {activeFilters.map((filter) => filter.label).join(" · ")}</p>}
+              <h2 className="font-heading text-3xl">No models found</h2>
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">Try a different search or remove a filter to see more models.</p>
+              {maxBudget !== null && workload.images > 0 && <p className="mt-3 max-w-sm text-sm text-muted-foreground">The budget filter excludes workloads with images because the image billing unit is unverified. Edit the workload or remove the budget limit.</p>}
+              {activeFilters.length > 0 && <p className="mt-3 w-full max-w-prose text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Current conditions: {activeFilters.map((filter) => filter.label).join(" · ")}</p>}
               {maxBudget !== null && <Button variant="outline" onClick={() => setMaxBudget(null)} className="mt-4 h-11">Remove budget limit</Button>}
               {fitsWorkload && <Button variant="outline" onClick={() => setFitsWorkload(false)} className="mt-2 h-11">Include models with unknown or exceeded limits</Button>}
               {search && <Button variant="outline" onClick={() => setSearch("")} className="mt-2 h-11">Remove search condition</Button>}
-              <Button variant="outline" onClick={() => { clearFilters(); if (fav && favorites.length === 0) setFav(false); }} className="mt-6 h-11">{fav && favorites.length === 0 ? "Browse all models" : "Clear search and filters"}</Button>
-              {fav && favorites.length > 0 && <Button variant="ghost" onClick={() => { clearFilters(); setFav(false); }} className="mt-2 h-11">Browse all models</Button>}
+              <Button variant="outline" onClick={clearFilters} className="mt-6 h-11">Clear search and filters</Button>
+              {fav && <Button variant="ghost" onClick={() => { clearFilters(); setFav(false); }} className="mt-2 h-11">Browse all models</Button>}
             </div>
           ) : (
             <>
               <ModelGrid models={paginatedModels} viewMode={view} workload={workload}
-                isComparedModels={comparedModels} onToggleCompare={handleToggleCompare} isFavoriteModel={isFavorite} onToggleFavorite={toggleFavorite} />
+                isComparedModels={comparedModels} comparisonCount={selectedIds.length} onToggleCompare={handleToggleCompare}
+                isFavoriteModel={isFavorite} onToggleFavorite={(id) => { void toggleFavorite(id).catch(() => {}); }}
+                onSetFavorite={setFavorite} onModelNavigate={handleModelNavigate} />
               <Paginator page={page} totalPages={totalPages} totalCount={sortedModels.length} pageSize={PAGE_SIZE}
                 onPageChange={(nextPage) => { setPage(nextPage); document.getElementById("directory")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }} />
             </>
@@ -339,8 +401,10 @@ function ModelExplorer({ models, loading }: { models: Model[]; loading: boolean 
         </section>
       </div>
 
-      <CompareTray models={comparedModels} onRemove={handleToggleCompare} onClear={() => { clearComparison(); setCompareModalOpen(false); }} onOpen={() => setCompareModalOpen(true)} />
-      <CompareModal models={comparedModels} open={compareModalOpen} onOpenChange={setCompareModalOpen} onRemove={handleToggleCompare} />
+      <div data-agent-hidden={hideBackgroundFromAgent}>
+        <CompareTray models={comparedModels} selectedCount={loading ? 0 : selectedIds.length} onRemove={handleToggleCompare} onClear={() => { clearComparison(); comparisonDialog.close(); }} controller={comparisonDialog} />
+      </div>
+      <CompareModal models={comparedModels} selectedIds={selectedIds} controller={comparisonDialog} onOpenChange={setComparisonOpen} onRemove={handleToggleCompare} onModelNavigate={handleModelNavigate} />
     </>
   );
 }
@@ -372,17 +436,17 @@ export default function Home() {
         </div>
 
         <div id="directory" className="scroll-mt-6">
-          <CatalogStatus fetchedAt={fetchedAt} loading={loading} revalidating={revalidating} error={error} excludedCount={excludedCount} onRefresh={() => void refresh()} />
+          <CatalogStatus fetchedAt={fetchedAt} loading={loading} revalidating={revalidating} error={error} excludedCount={excludedCount} onRefresh={refresh} />
           {error && fetchedAt === null ? (
-            <div role="alert" className="flex flex-col items-center rounded-xl border px-6 py-16 text-center">
+            <div role="alert" data-directory-state="error" data-agent-catalog="Catalog unavailable" className="flex flex-col items-center rounded-xl border px-6 py-16 text-center">
               <CircleAlert className="mb-4 size-7 text-destructive" aria-hidden="true" />
-              <h2 className="font-heading text-3xl">{error ? "Models could not be loaded" : "No models available"}</h2>
+              <h2 className="font-heading text-3xl">Models could not be loaded</h2>
               <p className="mt-3 text-sm text-muted-foreground">The model directory is unavailable right now. Please try again.</p>
-              <Button onClick={() => void refresh()} disabled={revalidating} className="mt-6 h-11">Try again</Button>
+              <Button onClick={refresh} disabled={revalidating} className="mt-6 h-11">Try again</Button>
             </div>
           ) : (
             <React.Suspense fallback={<p role="status" className="py-16 text-center text-muted-foreground">Loading model directory...</p>}>
-              <ModelExplorer models={models} loading={loading} />
+              <ModelExplorer models={models} loading={loading} excludedCount={excludedCount} />
             </React.Suspense>
           )}
         </div>

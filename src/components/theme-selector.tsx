@@ -6,7 +6,9 @@ import { useColorTheme } from "@/components/theme-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuGroupLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getThemesForMode, type ThemeMode } from "@/lib/themes";
@@ -60,56 +62,43 @@ export function ThemeSelector() {
         <span className="sr-only">Toggle theme</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 z-50 max-h-[70vh] overflow-y-auto">
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-          Mode
-        </div>
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          <Sun className="mr-2 h-4 w-4" />
-          Light
-          {theme === "light" && (
-            <Check className="ml-auto h-3.5 w-3.5 text-primary" />
-          )}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          <Moon className="mr-2 h-4 w-4" />
-          Dark
-          {theme === "dark" && (
-            <Check className="ml-auto h-3.5 w-3.5 text-primary" />
-          )}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          <Laptop className="mr-2 h-4 w-4" />
-          System
-          {theme === "system" && (
-            <Check className="ml-auto h-3.5 w-3.5 text-primary" />
-          )}
-        </DropdownMenuItem>
+        <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={(value) => { if (value) setTheme(value); }}>
+          <DropdownMenuGroupLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Mode</DropdownMenuGroupLabel>
+          {[
+            { id: "light", label: "Light", Icon: Sun },
+            { id: "dark", label: "Dark", Icon: Moon },
+            { id: "system", label: "System", Icon: Laptop },
+          ].map(({ id, label, Icon }) => (
+            <DropdownMenuRadioItem key={id} value={id} closeOnSelect>
+              <Icon className="mr-2 h-4 w-4" aria-hidden="true" />
+              {label}
+              {(theme ?? "system") === id && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
 
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-1">
-          Color Theme
-        </div>
-        {visibleThemes.map((t) => (
-          <DropdownMenuItem
-            key={t.id}
-            onClick={() => setColorTheme(t.id)}
-            className="flex items-center gap-2"
-          >
-            <span className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-border/70">
-              <span
-                className="absolute inset-0"
-                style={{ backgroundColor: getModeSwatchColor(t.swatch, mode) }}
-              />
-              <span
-                className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full border border-background"
-                style={{ backgroundColor: t.swatch.accent }}
-              />
-            </span>
-            {t.name}
-            {colorTheme === t.id && (
-              <Check className="ml-auto h-3.5 w-3.5 text-primary" />
-            )}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuRadioGroup value={selectedTheme?.id} onValueChange={(value) => {
+          const selection = visibleThemes.find((candidate) => candidate.id === value);
+          if (selection) setColorTheme(selection.id);
+        }}>
+          <DropdownMenuGroupLabel className="mt-1 px-2 py-1.5 text-xs font-medium text-muted-foreground">Color Theme</DropdownMenuGroupLabel>
+          {visibleThemes.map((t) => (
+            <DropdownMenuRadioItem key={t.id} value={t.id} closeOnSelect className="flex items-center gap-2">
+              <span aria-hidden="true" className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full border border-border/70">
+                <span
+                  className="absolute inset-0"
+                  style={{ backgroundColor: getModeSwatchColor(t.swatch, mode) }}
+                />
+                <span
+                  className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full border border-background"
+                  style={{ backgroundColor: t.swatch.accent }}
+                />
+              </span>
+              {t.name}
+              {selectedTheme?.id === t.id && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

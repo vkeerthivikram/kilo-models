@@ -51,10 +51,13 @@ test("additional usage round trips and malformed counts fall back to zero", () =
   assert.equal(result.images, 2);
   assert.equal(result.searches, 3);
   assert.equal(result.cacheWriteTokens, 500);
-  for (const value of ["-1", "0.5", "NaN", "Infinity", "9007199254740992"]) {
+  for (const value of ["-1", "0.5", "NaN", "Infinity", "9007199254740992", "0x10", "0b11", "1e-1000"]) {
     const invalid = parseCalculatorWorkload(`?images=${value}&searches=${value}&cacheWriteTokens=${value}`);
     assert.equal(invalid.images + invalid.searches + invalid.cacheWriteTokens, 0);
   }
+  assert.equal(parseCalculatorWorkload("?inputTokens=-0&cachePercent=-0").inputTokens, 0);
+  assert.equal(parseCalculatorWorkload("?inputTokens=-0&cachePercent=-0").cachePercent, 0);
+  assert.equal(parseCalculatorWorkload("?requests=2e3").requests, 2000);
 });
 
 test("workload warnings catch output and combined context limits, including provider caps", () => {

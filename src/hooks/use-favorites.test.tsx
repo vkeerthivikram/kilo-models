@@ -1,27 +1,58 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { useFavorites } from "./use-favorites";
+import { parseFavorites, useFavorites } from "./use-favorites";
 import { ThemeProvider } from "../components/theme-provider";
 
 function Probe() {
   const { isFavorite } = useFavorites();
   return <span>{String(isFavorite("test/model"))}</span>;
 }
-test("corrupt or blocked favorites storage cannot crash rendering", () => {
+test("a server render does not require favorites storage", () => {
   const oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const oldStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   try {
     Object.defineProperty(globalThis, "window", { configurable: true, value: {} });
-    for (const stored of ["null", "{}", "42", '["test/model",4]', '[]']) {
-      Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => stored } });
-      assert.doesNotThrow(() => renderToStaticMarkup(<Probe />));
-    }
     Object.defineProperty(globalThis, "localStorage", { configurable: true, get: () => { throw new Error("Storage denied"); } });
-    assert.doesNotThrow(() => renderToStaticMarkup(<Probe />));
+    assert.equal(renderToStaticMarkup(<Probe />), "<span>false</span>");
     assert.doesNotThrow(() => renderToStaticMarkup(<ThemeProvider><span>Ready</span></ThemeProvider>));
   } finally {
     if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow); else Reflect.deleteProperty(globalThis, "window");
     if (oldStorage) Object.defineProperty(globalThis, "localStorage", oldStorage); else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});
+
+test("favorites ignore malformed entries and retry a blocked write without losing changes from another tab", async () => {
+  assert.deepEqual(parseFavorites("{broken"), []);
+  assert.deepEqual(parseFavorites('[null,"provider/model",9,"provider/model",""]'), ["provider/model"]);
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const locksDescriptor = Object.getOwnPropertyDescriptor(navigator, "locks");
+  let stored = '{broken';
+  let unavailable = true;
+  let favorites: ReturnType<typeof useFavorites> | undefined;
+  function Actions({ capture }: { capture: (value: ReturnType<typeof useFavorites>) => void }) {
+    capture(useFavorites());
+    return null;
+  }
+  try {
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => stored, setItem: (_key: string, value: string) => {
+      if (unavailable) throw new Error("Storage unavailable");
+      stored = value;
+    } } });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { dispatchEvent: () => true } });
+    Object.defineProperty(navigator, "locks", { configurable: true, value: { request: (_key: string, _options: unknown, action: () => unknown) => action() } });
+    renderToStaticMarkup(<Actions capture={(value) => { favorites = value; }} />);
+    assert.ok(favorites);
+    await assert.rejects(favorites.setFavorite("this-tab/model", true), /could not save/);
+    assert.equal(stored, '{broken');
+    unavailable = false;
+    stored = '["other-tab/model"]';
+    await favorites.setFavorite("next/model", true);
+    assert.deepEqual(JSON.parse(stored), ["other-tab/model", "this-tab/model", "next/model"]);
+  } finally {
+    for (const [owner, key, descriptor] of [[globalThis, "localStorage", storageDescriptor], [globalThis, "window", windowDescriptor], [navigator, "locks", locksDescriptor]] as const) {
+      if (descriptor) Object.defineProperty(owner, key, descriptor); else Reflect.deleteProperty(owner, key);
+    }
   }
 });

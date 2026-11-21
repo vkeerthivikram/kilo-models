@@ -14,6 +14,7 @@ export function NumericFilterInput({ id, label, value, onChange, integer = false
   const [draft, setDraft] = React.useState<string | null>(null);
   const [badInput, setBadInput] = React.useState(false);
   const invalid = badInput || (draft !== null && draft !== "" && parseNumericFilter(draft, integer) === null);
+  const validationMessage = `Enter ${integer ? "a whole number" : "a finite number"} of 0 or more.`;
 
   return (
     <div className="space-y-1.5">
@@ -33,8 +34,16 @@ export function NumericFilterInput({ id, label, value, onChange, integer = false
             if (number !== null) onChange(number);
           }
         }}
+        onValueChange={(value, details) => {
+          if (details.source !== "agent") return;
+          const parsed = parseNumericFilter(value, integer);
+          if (value !== "" && parsed === null) throw new Error(`${label}: ${validationMessage}`);
+          setDraft(null);
+          setBadInput(false);
+          onChange(parsed);
+        }}
         onBlur={() => { setDraft(null); setBadInput(false); }} />
-      {invalid && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">Enter {integer ? "a whole number" : "a finite number"} of 0 or more.</p>}
+      {invalid && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">{validationMessage}</p>}
     </div>
   );
 }
