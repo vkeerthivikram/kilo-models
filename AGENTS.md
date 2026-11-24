@@ -1,55 +1,33 @@
-# This is NOT the Next.js you know
+# Kilo Models
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+Unofficial Next.js directory for browsing, comparing, and estimating the cost of Kilo Gateway AI models.
+
+## Critical
+
+- This is NOT the Next.js you know — the pinned rules block at the end of this file is auto-managed by `next dev` and must stay. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code.
 
 ## Commands
 
 - `bun install` — install dependencies
 - `bun dev` — dev server on `:3000`
-- `bun run lint` — ESLint (flat config, `eslint.config.mjs`)
-- `bun run build` — production build; also catches type errors
-- `bun test` (or `bun run test`) — Bun's built-in test runner; `.test.ts(x)` files use `node:test` imports, which Bun maps to its own runner and can execute JSX
+- `bun run lint` — ESLint, flat config, zero warnings
+- `bun test` — unit/component tests (Bun runner; `node:test` imports, JSX-capable)
+- `bun run build` — production build; also type-checks
 - No dedicated typecheck script; run `bunx tsc --noEmit` if needed
 
 ## Stack
 
-- **Next.js 16** App Router, **React 19**, **Tailwind CSS v4**, **UI SDK**
-- `nuqs` for URL search-param state — always wrap state in `NuqsAdapter` (already in root layout)
-- `recharts` for charts, `lucide-react` for icons
-- Path alias: `@/*` → `./src/*`
+Next.js 16 App Router · React 19 · Tailwind CSS v4 · UI SDK (`@ui-sdk/react`) · nuqs · recharts · lucide-react · Bun. Path alias `@/*` → `./src/*`.
 
-## Architecture
+## Detailed guidelines
 
-Single-page app with one API route:
+Read the ones relevant to your task before changing code:
 
-- `src/app/page.tsx` — main client component (`"use client"`); uses a fresh in-tab catalog snapshot or fetches from `/api/models`
-- `src/app/api/models/route.ts` — serves validated catalog snapshots with GET and refreshes them with POST; the upstream cache is managed in `src/lib/get-models.ts`
-- `src/app/models/[id]/page.tsx` — model detail page
-- `src/lib/types.ts` — `Model`, `ModelsResponse`, `ViewMode`, `ColorTheme` types
-- `src/hooks/` — `use-models.ts`, `use-model-filters.ts`, `use-favorites.ts`
-- `src/components/` — feature components; `ui/` subfolder contains the app’s styled UI SDK wrappers
-
-### Data flow
-
-The Kilo API is called server-side only. The client fetches from the local `/api/models` route. No `.env` files are needed; the gateway URL is selected by `resolveGatewayUrl` in `src/lib/catalog-freshness.ts`.
-
-## Conventions
-
-- `cn()` utility from `@/lib/utils` (clsx + tailwind-merge) for class composition
-- Theme palettes live in `src/lib/kilocode-theme-data.ts`; `src/lib/themes.ts` derives color variables for both first paint and the interactive theme picker.
-- Import UI SDK components from their individual entry points and style shared wrappers in `src/components/ui/`
-- ESLint uses the flat config format (`eslint.config.mjs`), not `.eslintrc`
-
-## UX: simple by default, advanced when needed
-
-- Make the everyday path easy for people: find a model, understand its price and capabilities, and compare it. Keep common actions visible and use plain labels.
-- Preserve advanced functionality behind clearly named disclosures such as Advanced filters, Advanced usage, and Manage setups. Do not expose every option or management action at once.
-- Start calculators with input tokens, output tokens, and request count. Put period, cache, image, search, and cache-write settings under Advanced usage.
-- Keep Save and Apply easy to reach. Group update, rename, delete, and backup actions under Manage setups.
-- Keep model summaries focused on provider, prices, context, key capabilities, and estimated cost. Put technical IDs, moderation details, and complete specifications on the detail page.
-- Make active advanced filters and usage discoverable, including values restored from URLs and saved setups. Show active summaries and preserve a clear way to remove or reset them.
-- Prefer fewer visible decisions over adding controls. Before adding a feature, decide whether it belongs in the everyday path or the advanced path, and reuse existing controls where possible.
-- Keep both paths accessible with keyboard controls, clear labels, visible focus, and mobile layouts. Simplification must not remove useful functionality or hide cost and suitability warnings.
+- [Architecture & data flow](docs/agent/architecture.md)
+- [Code conventions](docs/agent/conventions.md)
+- [UX: simple by default, advanced when needed](docs/agent/ux.md)
+- [Testing](docs/agent/testing.md)
+- [Model UI data display rules](REVIEW.md)
 
 <!-- BEGIN:nextjs-agent-rules -->
 
