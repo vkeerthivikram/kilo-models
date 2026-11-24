@@ -150,17 +150,27 @@ test("a fresh catalog is reused after returning from a model, but Refresh still 
   await expect.poll(() => methods).toEqual([...initial, "POST"]);
 });
 
-test("the catalog negotiates gzip without changing its response data", async ({ request }) => {
-  const plain = await request.get("/api/models", { headers: { "Accept-Encoding": "identity" } });
-  const compressed = await request.get("/api/models", { headers: { "Accept-Encoding": "gzip" } });
-  expect(plain.ok()).toBe(true);
-  expect(compressed.ok()).toBe(true);
-  expect(compressed.headers()["content-encoding"]).toBe("gzip");
-  expect(plain.headers()["content-encoding"]).toBeUndefined();
-  expect(await compressed.json()).toEqual(await plain.json());
-  const excluded = await request.get("/api/models", { headers: { "Accept-Encoding": "gzip;q=0" } });
-  expect(excluded.headers()["content-encoding"]).toBeUndefined();
-});
+for (const method of ["GET", "POST"]) {
+  test(`the catalog negotiates gzip for ${method} without changing its response data`, async ({ request }) => {
+    const plain = await request.fetch("/api/models", { method, headers: { "Accept-Encoding": "identity" } });
+    expect(plain.ok()).toBe(true);
+    expect(plain.headers()["content-encoding"]).toBeUndefined();
+    expect(plain.headers()["cache-control"]).toBe("no-store");
+    const { data } = await plain.json();
+    expect(data.length).toBeGreaterThan(0);
+
+    const compressed = await request.fetch("/api/models", { method, headers: { "Accept-Encoding": "gzip" } });
+    expect(compressed.ok()).toBe(true);
+    expect(compressed.headers()["content-encoding"]).toBe("gzip");
+    expect(compressed.headers()["cache-control"]).toBe("no-store");
+    expect((await compressed.json()).data).toEqual(data);
+
+    const excluded = await request.fetch("/api/models", { method, headers: { "Accept-Encoding": "gzip;q=0" } });
+    expect(excluded.ok()).toBe(true);
+    expect(excluded.headers()["content-encoding"]).toBeUndefined();
+    expect((await excluded.json()).data).toEqual(data);
+  });
+}
 
 test("legacy alias filters group models under the provider without changing their IDs", async ({ page }) => {
   await page.goto("/?providers=~fixture&search=Fixture+Model+60");
