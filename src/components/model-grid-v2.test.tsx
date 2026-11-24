@@ -53,4 +53,10 @@ for (const viewMode of ["grid", "list"] as const) {
     assert.match(html, /Remove Model 0 from comparison/);
     assert.match(html, /Compare up to 10 models/);
   });
+
+  test(`${viewMode} view marks retirement badge wrapper empty:hidden when clock is unhydrated`, () => {
+    const retiring = { ...models[0], expiration_date: "2099-01-01" };
+    const html = renderToStaticMarkup(<ModelGrid models={[retiring]} viewMode={viewMode} />);
+    assert.match(html, /<div class="[^"]*empty:hidden[^"]*"><\/div>/);
+  });
 }

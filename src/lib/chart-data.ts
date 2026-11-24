@@ -33,7 +33,10 @@ export function getCapabilityData(models: Model[]) {
   const contexts = models.map((model) => positive(chartContext(model)));
   const outputs = models.map((model) => positive(model.top_provider?.max_completion_tokens));
   const params = models.map((model) => Array.isArray(model.supported_parameters) ? model.supported_parameters.length : null);
-  const prices = models.map((model) => parsePrice(model.pricing?.prompt));
+  const prices = models.map((model) => {
+    const rate = parsePrice(model.pricing?.prompt);
+    return rate !== null && Number.isFinite(rate * 1_000_000) ? rate : null;
+  });
   const known = prices.filter((price): price is number => price !== null);
   const minPrice = Math.min(...known);
   const maxPrice = Math.max(...known);

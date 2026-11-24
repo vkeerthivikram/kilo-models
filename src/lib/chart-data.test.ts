@@ -61,3 +61,10 @@ test("specification profile distinguishes unknown values from confirmed zero", (
   assert.equal(rows[1].model1, 0);
   assert.equal(rows[3].model1, 0);
 });
+
+test("capability profile omits overflowing per-million prices consistently with Unknown value", () => {
+  const overflow = { ...models[0], id: "test/overflow", pricing: { prompt: "1e305", completion: "0" } };
+  const rows = getCapabilityData([overflow]);
+  assert.equal(rows.find((row) => row.capability === "Low input price")?.model0, null);
+  assert.equal(getSpecificationValue(overflow, "Low input price"), "Unknown");
+});

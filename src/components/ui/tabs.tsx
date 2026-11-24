@@ -80,4 +80,4 @@ function TabsContent({ className, ...props }: ComponentProps<typeof TabsPanel>) 
   )
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+export { Tabs, TabsList, TabsTrigger, TabsContent }

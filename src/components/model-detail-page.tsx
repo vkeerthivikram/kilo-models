@@ -47,6 +47,7 @@ export async function renderModelDetail(id: string, exact = false) {
   const similar = getSimilarModels(allModels, model);
 
   const provider = getModelProvider(model.id);
+  const createdDate = Number.isFinite(model.created) && model.created > 0 ? new Date(model.created * 1000) : null;
 
   return (
     <main className="min-h-screen">
@@ -66,9 +67,9 @@ export async function renderModelDetail(id: string, exact = false) {
               <RetirementBadge expirationDate={model.expiration_date} />
             </div>
             <div className="mt-3"><ModelDescription description={model.description} /></div>
-            {model.created > 0 && (
+            {createdDate && !Number.isNaN(createdDate.getTime()) && (
               <p className="text-xs text-muted-foreground mt-1">
-                Added {new Date(model.created * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                Added {createdDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })}
               </p>
             )}
           </div>

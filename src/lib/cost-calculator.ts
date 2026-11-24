@@ -18,7 +18,8 @@ export function calculateCost(pricing: ModelPricing | undefined, inputTokens: nu
   const uncachedCost = !validWrites ? null : cost(inputTokens - cachedTokens! - writes, pricing?.prompt);
   const cacheReadCost = cachedTokens === null ? null : cost(cachedTokens, pricing?.input_cache_read);
   const cacheWriteCost = validWrites ? cost(writes, pricing?.input_cache_write) : null;
-  const inputCost = uncachedCost === null || cacheReadCost === null || cacheWriteCost === null ? null : uncachedCost + cacheReadCost + cacheWriteCost;
+  const inputSum = uncachedCost === null || cacheReadCost === null || cacheWriteCost === null ? null : uncachedCost + cacheReadCost + cacheWriteCost;
+  const inputCost = inputSum !== null && Number.isFinite(inputSum) ? inputSum : null;
   const outputCost = cost(outputTokens, pricing?.completion);
   // The gateway publishes an image rate but does not establish a billable unit here.
   const imageCost = (extras.images ?? 0) === 0 ? 0 : null;

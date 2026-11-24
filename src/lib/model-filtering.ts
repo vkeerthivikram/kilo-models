@@ -30,6 +30,7 @@ export function parseNumericFilter(value: unknown, integer = false): number | nu
   if (typeof value !== "string" && typeof value !== "number") return null;
   if (typeof value === "string" && !/^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
   const number = Number(value);
+  if (number === 0 && typeof value === "string" && /[1-9]/.test(value.split(/[eE]/, 1)[0])) return null;
   if (!Number.isFinite(number) || number < 0 || (integer && !Number.isSafeInteger(number))) return null;
   return number;
 }

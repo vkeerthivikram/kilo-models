@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { addSavedSetup, applySavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, inspectSavedSetups, MAX_SETUP_BACKUP_SIZE, parseSavedSetups, readSavedSetups, renameSavedSetup, restoreDeletedSetup, sanitizeSavedSetupQuery, savedViewSummary, serializeSavedSetups, SETUP_BACKUP_TOO_LARGE, updateSavedSetup, writeSavedSetups } from "./saved-setups";
+import { addSavedSetup, applySavedSetup, deleteSavedSetup, exportSavedSetupsBackup, importSavedSetupsBackup, inspectSavedSetups, MAX_SETUP_BACKUP_SIZE, parseSavedSetups, readSavedSetups, renameSavedSetup, restoreDeletedSetup, sanitizeSavedSetupQuery, savedSetupMatches, savedViewSummary, serializeSavedSetups, SETUP_BACKUP_TOO_LARGE, updateSavedSetup, writeSavedSetups } from "./saved-setups";
 import { DEFAULT_WORKLOAD } from "./calculator-workload";
 
 test("a named workload and directory view survive storage without comparison or page state", () => {
@@ -336,3 +336,32 @@ for (const unicode of [false, true]) {
     assert.equal(writeSavedSetups({ getItem: () => previous, setItem: () => {} }, result.setups).ok, true);
   });
 }
+
+test("oversized directory filters are rejected by import, write, and export", () => {
+  const oversizedSetup = {
+    id: "oversized",
+    name: "Oversized Search",
+    workload: DEFAULT_WORKLOAD,
+    includesDirectoryView: true,
+    directoryQuery: `search=${"a".repeat(600)}`,
+  };
+  const backup = JSON.stringify({ format: "kilo-models-saved-setups", version: 1, setups: [oversizedSetup] });
+  const imported = importSavedSetupsBackup([], backup);
+  assert.equal(imported.ok, false);
+  const storage = { getItem: () => null, setItem: () => { throw new Error("should not write"); } };
+  assert.equal(writeSavedSetups(storage, [oversizedSetup]).ok, false);
+  assert.throws(() => exportSavedSetupsBackup([oversizedSetup]));
+});
+
+test("empty encoded array filter values match default view and omit empty summary sections", () => {
+  const emptyProvidersSetup = {
+    id: "empty-providers",
+    name: "Empty Providers",
+    workload: DEFAULT_WORKLOAD,
+    includesDirectoryView: true,
+    directoryQuery: "providers=values+%5B%5D",
+  };
+  assert.equal(savedSetupMatches(emptyProvidersSetup, DEFAULT_WORKLOAD, ""), true);
+  assert.equal(savedViewSummary("providers=values+%5B%5D"), "Default search, filters, and view");
+  assert.equal(savedViewSummary("inputModalities=values+%5B%5D&tools=true"), "Tool calling");
+});

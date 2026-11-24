@@ -27,7 +27,7 @@ export function ModelDetailActions({ model, catalog, catalogComplete = true }: M
   const { workload } = useCalculatorWorkload();
   const favorite = ready && isFavorite(model.id);
   const compared = ready && comparedModels.some((item) => item.id === model.id);
-  const limitReached = !compared && selectedIds.length >= COMPARE_LIMIT;
+  const limitReached = ready && !compared && selectedIds.length >= COMPARE_LIMIT;
   const [copying, setCopying] = React.useState(false);
   const [message, setMessage] = React.useState("");
   const comparisonUrl = new URL(buildComparisonUrl(new URL(directoryHref, "https://directory.local").href, selectedIds, workload));

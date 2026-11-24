@@ -47,3 +47,33 @@ test("returning from model details restores the actual directory scroll after re
     globalThis.window = previousWindow;
   }
 });
+
+test("restoreDirectoryPosition clears pending restore flag when returning to a non-matching URL", () => {
+  const previousWindow = globalThis.window;
+  const storage = new Map<string, string>();
+  const frames: FrameRequestCallback[] = [];
+  const browser = {
+    location: { pathname: "/", search: "?search=claude", hash: "", href: "https://models.test/?search=claude" },
+    scrollY: 500,
+    sessionStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
+    requestAnimationFrame: (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; },
+    cancelAnimationFrame: () => {},
+    scrollTo: () => {},
+  };
+  try {
+    globalThis.window = browser as unknown as Window & typeof globalThis;
+    rememberDirectoryPosition();
+    prepareDirectoryReturn();
+    browser.location.search = "?search=other";
+    browser.location.href = "https://models.test/?search=other";
+    restoreDirectoryPosition();
+    assert.equal(frames.length, 0);
+    // Returning later to the old search params must not restore the stale scroll.
+    browser.location.search = "?search=claude";
+    browser.location.href = "https://models.test/?search=claude";
+    restoreDirectoryPosition();
+    assert.equal(frames.length, 0);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});

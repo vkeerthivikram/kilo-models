@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { DEFAULT_WORKLOAD, parseCalculatorWorkload, getWorkloadWarnings, getBillingWarnings, WORKLOAD_PRESETS, buildWorkloadHref } from "./calculator-workload";
+import { DEFAULT_WORKLOAD, parseCalculatorWorkload, getWorkloadWarnings, getBillingWarnings, getBlockingBillingWarnings, WORKLOAD_PRESETS, buildWorkloadHref } from "./calculator-workload";
 import type { Model } from "./types";
 import { parseModelsResponse } from "./models-response";
 
@@ -26,6 +26,8 @@ test("discount warnings preserve tiny and fractional percentages as decimals", (
 
 test("missing billing rates take priority over discount notices", () => {
   assert.match(getBillingWarnings({ prompt: "-1", completion: "0", discount: 20 }, DEFAULT_WORKLOAD)[0], /No valid input token rate/);
+  assert.deepEqual(getBlockingBillingWarnings({ prompt: "0", completion: "0", discount: 20 }, DEFAULT_WORKLOAD), []);
+  assert.equal(getBlockingBillingWarnings({ prompt: "-1", completion: "0", discount: 20 }, DEFAULT_WORKLOAD).length, 1);
 });
 
 test("shared workloads preserve monthly volume and cached input, with safe defaults", () => {

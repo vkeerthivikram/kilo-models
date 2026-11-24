@@ -32,3 +32,9 @@ test("missing modalities are not positive evidence of similarity", () => {
   // A known output requirement still excludes unknown or incompatible candidates.
   assert.deepEqual(getSimilarModels([alsoUnknown, known], source).map((model) => model.id), [known.id]);
 });
+
+test("similarity ranking uses usable context including top_provider.context_length", () => {
+  const providerLimited = { ...source, id: "b/provider-limited", name: "Provider Limited", context_length: 128000, top_provider: { is_moderated: false, context_length: 4000, max_completion_tokens: 1000 } };
+  const matching = { ...source, id: "b/matching", name: "Matching", context_length: 200000, top_provider: { is_moderated: false, context_length: 128000, max_completion_tokens: 1000 } };
+  assert.deepEqual(getSimilarModels([providerLimited, matching], source).map((m) => m.id), [matching.id, providerLimited.id]);
+});

@@ -20,6 +20,9 @@ test("detail lookup preserves decoded percent IDs and catalog failures are not 4
     assert.match(html, /Cost Calculator/);
     assert.match(html, /<strong>Warning<\/strong>/);
     assert.doesNotMatch(html, /<\/div>0</, "an unknown creation date must not print a stray zero");
+    globalThis.fetch = (() => Promise.resolve(Response.json({ data: [{ ...model, created: 1704067200 }] }))) as typeof fetch;
+    const datedHtml = renderApp(<NuqsTestingAdapter>{await ModelPage(props)}</NuqsTestingAdapter>);
+    assert.match(datedHtml, /Added January 1, 2024/);
     globalThis.fetch = (() => Promise.resolve(Response.json({ error: "Unavailable" }, { status: 503 }))) as typeof fetch;
     await assert.rejects(ModelPage(props), /Failed to load model catalog/);
     globalThis.fetch = (() => Promise.resolve(Response.json({ data: {} }))) as typeof fetch;

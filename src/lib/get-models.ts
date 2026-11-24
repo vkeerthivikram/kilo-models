@@ -56,7 +56,3 @@ export function refreshCatalog(): Promise<CatalogEnvelope> {
   })().finally(() => { pendingRefresh = null; });
   return pendingRefresh;
 }
-
-export async function getModels(): Promise<Model[]> {
-  return (await getCatalog()).data;
-}

@@ -56,3 +56,47 @@ test("favorites ignore malformed entries and retry a blocked write without losin
     }
   }
 });
+
+test("an earlier failed write finishing after a later flush clears pendingFavorites does not leave storageWarning set", async () => {
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const locksDescriptor = Object.getOwnPropertyDescriptor(navigator, "locks");
+  let stored = "[]";
+  let lockCalls = 0;
+  const firstLock = Promise.withResolvers<void>();
+  let favorites: ReturnType<typeof useFavorites> | undefined;
+  function Actions({ capture }: { capture: (value: ReturnType<typeof useFavorites>) => void }) {
+    capture(useFavorites());
+    return null;
+  }
+  try {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: { getItem: () => stored, setItem: (_key: string, value: string) => { stored = value; } },
+    });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { dispatchEvent: () => true } });
+    Object.defineProperty(navigator, "locks", {
+      configurable: true,
+      value: {
+        request: (_key: string, _options: unknown, action: () => unknown) => {
+          lockCalls++;
+          if (lockCalls === 1) return firstLock.promise;
+          return Promise.resolve().then(action);
+        },
+      },
+    });
+    renderToStaticMarkup(<Actions capture={(value) => { favorites = value; }} />);
+    assert.ok(favorites);
+    const first = favorites.setFavorite("first/model", true);
+    await favorites.setFavorite("second/model", true);
+    assert.deepEqual(JSON.parse(stored), ["first/model", "second/model"]);
+    firstLock.reject(new Error("timed out"));
+    await assert.rejects(first, /could not save/);
+    renderToStaticMarkup(<Actions capture={(value) => { favorites = value; }} />);
+    assert.equal(favorites.storageWarning, null);
+  } finally {
+    for (const [owner, key, descriptor] of [[globalThis, "localStorage", storageDescriptor], [globalThis, "window", windowDescriptor], [navigator, "locks", locksDescriptor]] as const) {
+      if (descriptor) Object.defineProperty(owner, key, descriptor); else Reflect.deleteProperty(owner, key);
+    }
+  }
+});

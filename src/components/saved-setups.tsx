@@ -92,6 +92,7 @@ export function SavedSetups({ workload, onWorkloadChange, directoryQuery, onAppl
     const result = await deleteSetup(selected.id);
     if (!result.ok) fail(result.error);
     setSelectedId("");
+    setActiveId((current) => current === selected.id ? "" : current);
     setRenaming(false);
     setDeleted(result.deleted);
     setMessage(`Deleted “${selected.name}”.`);

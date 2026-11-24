@@ -22,7 +22,7 @@ function booleanLabel(value: boolean | null): string {
 function releaseDate(value: number): string | null {
   if (!Number.isFinite(value) || value <= 0) return null;
   const date = new Date(value * 1000);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().split("T", 1)[0];
 }
 
 function priceLabels(values: (number | null)[], labels: string[], precise: (value: number) => string, rawLabel: (value: number) => string): string[] {

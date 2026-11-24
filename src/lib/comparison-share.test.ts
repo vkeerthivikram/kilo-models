@@ -111,3 +111,18 @@ test("CSV and shared links retain image usage without guessing the rate's unit",
   assert.equal(url.searchParams.get("cacheWriteTokens"), "20");
   assert.equal(url.searchParams.get("images"), "2");
 });
+
+test("CSV never exports Infinity, zero completion limit, or blank tokenizer strings", () => {
+  const edgeModel: Model = {
+    ...model,
+    architecture: { ...model.architecture, tokenizer: "   " },
+    top_provider: { ...model.top_provider, max_completion_tokens: 0 },
+    pricing: { prompt: "1e308", completion: "0", input_cache_read: "1e308" },
+  };
+  const csv = comparisonCsv([edgeModel], { ...DEFAULT_WORKLOAD, inputTokens: 2, outputTokens: 0, requests: 1, cachePercent: 50 });
+  const [header, row] = csv.split("\r\n").map((line): string[] => line.match(/"(?:[^"]|"")*"/g) ?? []);
+  assert.equal(csv.includes("Infinity"), false);
+  assert.equal(row[header.indexOf('"Maximum output (tokens)"')], '"Unavailable"');
+  assert.equal(row[header.indexOf('"Tokenizer"')], '"Unavailable"');
+  assert.equal(row[header.indexOf('"Input cost/request (USD)"')], '"Unavailable"');
+});

@@ -39,7 +39,11 @@ export function savedSetupMatches(setup: SavedSetup, workload: CalculatorWorkloa
   const canonical = (params: URLSearchParams) => {
     for (const [key, value] of [...params.entries()]) {
       if (!value || (booleans.includes(key) && value === "false") || (key === "view" && value === "grid") || (key === "sort" && value === "name-asc")) params.delete(key);
-      else if (["providers", "inputModalities", "outputModalities"].includes(key)) params.set(key, encodeFilterValues([...new Set(key === "providers" ? decodeProviderFilters(value) : decodeFilterValues(value))].sort()));
+      else if (["providers", "inputModalities", "outputModalities"].includes(key)) {
+        const decoded = [...new Set(key === "providers" ? decodeProviderFilters(value) : decodeFilterValues(value))].sort();
+        if (decoded.length === 0) params.delete(key);
+        else params.set(key, encodeFilterValues(decoded));
+      }
       else if (["minContext", "maxInputPrice", "maxOutputPrice", "maxBudget"].includes(key)) params.set(key, String(Number(value)));
     }
     params.sort();
@@ -57,8 +61,14 @@ export function savedViewSummary(query: string): string {
     if (key === "search") return value ? `Search: ${value}` : "";
     if (key === "sort") return `Sort: ${sorts[value]}`;
     if (key === "view") return value === "list" ? "List view" : "";
-    if (key === "providers") return value ? `Providers: ${decodeProviderFilters(value).join(", ")}` : "";
-    if (key === "inputModalities" || key === "outputModalities") return value ? `${key === "inputModalities" ? "Input" : "Output"} types: ${decodeFilterValues(value).join(", ")}` : "";
+    if (key === "providers") {
+      const list = decodeProviderFilters(value);
+      return list.length ? `Providers: ${list.join(", ")}` : "";
+    }
+    if (key === "inputModalities" || key === "outputModalities") {
+      const list = decodeFilterValues(value);
+      return list.length ? `${key === "inputModalities" ? "Input" : "Output"} types: ${list.join(", ")}` : "";
+    }
     if (key === "minContext") return `Context ≥ ${Number(value).toLocaleString("en-US")} tokens`;
     if (key === "maxBudget") return `Total budget ≤ $${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 21 })}`;
     if (key === "maxInputPrice" || key === "maxOutputPrice") return `${key === "maxInputPrice" ? "Input" : "Output"} ≤ $${Number(value).toLocaleString("en-US", { maximumSignificantDigits: 21 })}/1M tokens`;
@@ -236,9 +246,14 @@ export function readSavedSetups(storage: SetupStorage): SavedSetup[] {
   }
 }
 
+function isValidSetup(setup: SavedSetup): boolean {
+  const parsed = parseSetupRecord(setup);
+  return Boolean(parsed && !parsed.viewError);
+}
+
 export function writeSavedSetups(storage: SetupStorage, setups: SavedSetup[]): { ok: true } | { ok: false; error: string } {
   try {
-    if (setups.length > MAX_SAVED_SETUPS || setups.some((setup) => !parseSetupRecord(setup)) ||
+    if (setups.length > MAX_SAVED_SETUPS || setups.some((setup) => !isValidSetup(setup)) ||
       backupSize(serializeBackup(setups)) > MAX_SETUP_BACKUP_SIZE) {
       return { ok: false, error: "These setups contain too much or invalid data. Shorten saved filters or delete a setup, then try again." };
     }
@@ -277,7 +292,7 @@ function backupSize(backup: string): number {
 }
 
 export function exportSavedSetupsBackup(setups: SavedSetup[]): string {
-  if (setups.length > MAX_SAVED_SETUPS || setups.some((setup) => !parseSetupRecord(setup))) throw new Error("Saved setups contain invalid data. Reload before exporting.");
+  if (setups.length > MAX_SAVED_SETUPS || setups.some((setup) => !isValidSetup(setup))) throw new Error("Saved setups contain invalid data. Reload before exporting.");
   const formatted = serializeBackup(setups, 2);
   if (backupSize(formatted) <= PRETTY_BACKUP_LIMIT) return formatted;
   const compact = serializeBackup(setups);
@@ -299,7 +314,7 @@ export function importSavedSetupsBackup(setups: SavedSetup[], backup: string): I
   const incoming: SavedSetup[] = [];
   for (const [index, entry] of payload.setups.entries()) {
     const parsed = parseSetupRecord(entry);
-    if (!parsed) return { ok: false, error: `Setup ${index + 1} in this backup has invalid data. Nothing was imported.` };
+    if (!parsed || parsed.viewError) return { ok: false, error: `Setup ${index + 1} in this backup has invalid data. Nothing was imported.` };
     incoming.push(parsed.setup);
   }
   const next = [...setups];

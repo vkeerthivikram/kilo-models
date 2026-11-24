@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Model } from "@/lib/types";
 import { withStorageLock } from "@/lib/storage-lock";
 
 const STORAGE_KEY = "kilo-models-favorites";
@@ -60,7 +59,6 @@ interface UseFavoritesResult {
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => Promise<void>;
   setFavorite: (id: string, selected: boolean) => Promise<void>;
-  favoriteModels: (models: Model[]) => Model[];
 }
 
 async function setFavorite(id: string, selected: boolean): Promise<void> {
@@ -79,8 +77,10 @@ async function setFavorite(id: string, selected: boolean): Promise<void> {
     });
   } catch {
     // Keep the session changes and retry them on the next edit.
-    saveFailed = true;
-    window.dispatchEvent(new Event(CHANGE_EVENT));
+    if (pendingFavorites.size > 0) {
+      saveFailed = true;
+      window.dispatchEvent(new Event(CHANGE_EVENT));
+    }
     throw new Error(saveError);
   }
 }
@@ -97,10 +97,5 @@ export function useFavorites(): UseFavoritesResult {
 
   const toggleFavorite = React.useCallback((id: string) => setFavorite(id, !parseFavorites(getSnapshot()).includes(id)), []);
 
-  const favoriteModels = React.useCallback(
-    (models: Model[]) => models.filter((m) => favorites.includes(m.id)),
-    [favorites]
-  );
-
-  return { favorites, storageWarning, isFavorite, toggleFavorite, setFavorite, favoriteModels };
+  return { favorites, storageWarning, isFavorite, toggleFavorite, setFavorite };
 }

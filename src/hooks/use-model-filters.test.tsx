@@ -341,3 +341,24 @@ test("facet counts respect other groups while retaining alternatives in the curr
   assert.equal(inspect("?reasoning=true", [], catalog).filterCounts.tools, 1);
   assert.equal(inspect("?tools=true", [], catalog).filterCounts.reasoning, 1);
 });
+
+test("URL array filters deduplicate and drop empty strings while applyDirectoryQuery omits empty arrays", () => {
+  const duplicateAndEmpty = inspect("?inputModalities=text,text,&providers=,");
+  assert.deepEqual(duplicateAndEmpty.inputModalities, ["text"]);
+  assert.deepEqual(duplicateAndEmpty.providers, []);
+  assert.equal(duplicateAndEmpty.activeFilterCount, 1);
+
+  const applied = updateQuery("?providers=alpha", (filters) => {
+    void filters.applyDirectoryQuery(new URLSearchParams("providers=values+%5B%5D&inputModalities=,"));
+  });
+  assert.equal(applied.has("providers"), false);
+  assert.equal(applied.has("inputModalities"), false);
+});
+
+test("numeric URL filters reject underflowed nonzero scientific notation", () => {
+  const result = inspect("?maxInputPrice=1e-400&maxOutputPrice=1e-400&maxBudget=1e-400");
+  assert.equal(result.maxInputPrice, null);
+  assert.equal(result.maxOutputPrice, null);
+  assert.equal(result.maxBudget, null);
+  assert.equal(result.activeFilterCount, 0);
+});

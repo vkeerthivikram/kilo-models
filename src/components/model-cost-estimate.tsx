@@ -1,6 +1,6 @@
 import type { Model } from "@/lib/types";
 import type { CalculatorWorkload } from "@/lib/calculator-workload";
-import { getBillingWarnings, getWorkloadSuitability } from "@/lib/calculator-workload";
+import { getBlockingBillingWarnings, getWorkloadSuitability } from "@/lib/calculator-workload";
 import { requestCount, workloadSummary } from "@/lib/workload-summary";
 import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
 
@@ -13,6 +13,6 @@ export function ModelCostEstimate({ model, workload }: { model: Model; workload:
       <strong className="font-semibold tabular-nums">{formatCost(total)}</strong>
     </p>
     <p className="text-muted-foreground">{requestCount(workload.requests)} · {suitability === "exceeds" ? "Hypothetical: workload exceeds limits" : suitability === "unknown" ? "Limits unknown" : "Fits published token limits"}</p>
-    {total === null && <p className="text-muted-foreground">{getBillingWarnings(model.pricing, workload)[0] ?? "Estimate exceeds supported numeric range. Reduce usage in the calculator."}</p>}
+    {total === null && <p className="text-muted-foreground">{getBlockingBillingWarnings(model.pricing, workload)[0] ?? "Estimate exceeds supported numeric range. Reduce usage in the calculator."}</p>}
   </div>;
 }

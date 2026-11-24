@@ -72,7 +72,7 @@ export function ModelGrid({ models, viewMode, workload, isComparedModels, compar
                       <Badge variant="secondary" className="ml-2 text-[9px]">FREE</Badge>
                     )}
                     <p className="mt-1 truncate text-xs text-muted-foreground">{getModelProvider(model.id)}</p>
-                    {model.expiration_date && <div className="mt-2"><RetirementBadge expirationDate={model.expiration_date} /></div>}
+                    {model.expiration_date && <div className="mt-2 empty:hidden"><RetirementBadge expirationDate={model.expiration_date} /></div>}
                     <p className="mt-1 text-xs text-muted-foreground md:hidden">{formatContext(getUsableContext(model))} context tokens</p>
                     <ModelCapabilities model={model} className="mt-2" />
                     {workload && <div className="mt-2"><ModelCostEstimate model={model} workload={workload} /></div>}

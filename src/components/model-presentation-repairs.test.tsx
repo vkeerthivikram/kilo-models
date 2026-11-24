@@ -42,3 +42,27 @@ test("34 detail specifications distinguish omitted, empty and populated capabili
   }
   assert.match(populated, /Supported Parameters<\/span><div[^>]*><span[^>]*>tools<\/span><span[^>]*>reasoning/);
 });
+
+test("detail specifications deduplicate lists, render dash for blank tokenizer, and safely format hugging_face_id", () => {
+  const base = catalog[0];
+  const html = renderToStaticMarkup(
+    <ModelSpecsCard
+      model={{
+        ...base,
+        architecture: { ...base.architecture, input_modalities: ["text", "text"], output_modalities: ["text", "text"], tokenizer: "   " },
+        supported_parameters: ["tools", "tools"],
+        default_parameters: ["temp", "temp"],
+        autoRouting: { models: ["m/1", "m/1"] },
+        hugging_face_id: " org name/model?v=1 ",
+      }}
+    />,
+  );
+  assert.equal((html.match(/>tools<\/span>/g) ?? []).length, 1);
+  assert.equal((html.match(/>temp<\/span>/g) ?? []).length, 1);
+  assert.equal((html.match(/>m\/1<\/span>/g) ?? []).length, 1);
+  assert.match(html, /Tokenizer<\/span><span[^>]*>—<\/span>/);
+  assert.match(html, /href="https:\/\/huggingface\.co\/org%20name\/model%3Fv%3D1"/);
+
+  const blankHf = renderToStaticMarkup(<ModelSpecsCard model={{ ...base, hugging_face_id: "   " }} />);
+  assert.doesNotMatch(blankHf, /Hugging Face/);
+});

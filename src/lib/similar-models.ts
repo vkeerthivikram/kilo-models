@@ -1,4 +1,5 @@
 import type { Model } from "./types";
+import { getUsableContext } from "./calculator-workload";
 import { parsePrice } from "./format-price";
 import { getModelProvider } from "./model-provider";
 
@@ -10,7 +11,7 @@ const overlap = (first: string[], second: string[]) => {
 const capabilities = (model: Model) => (model.supported_parameters ?? [])
   .filter((parameter) => ["tools", "reasoning", "include_reasoning", "response_format"].includes(parameter))
   .map((parameter) => parameter === "include_reasoning" ? "reasoning" : parameter);
-const context = (model: Model) => Number.isFinite(model.context_length) && model.context_length > 0 ? model.context_length : null;
+const context = (model: Model) => getUsableContext(model) ?? null;
 const price = (model: Model) => {
   const input = parsePrice(model.pricing?.prompt);
   const output = parsePrice(model.pricing?.completion);

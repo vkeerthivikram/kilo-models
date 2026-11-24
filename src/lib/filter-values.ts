@@ -5,10 +5,14 @@ const legacy = parseAsArrayOf(parseAsString);
 const exactPrefix = "values ";
 
 export function decodeFilterValues(value: string): string[] {
-  if (!value.startsWith(exactPrefix + "[")) return legacy.parse(value) ?? [];
+  if (!value.startsWith(exactPrefix + "[")) {
+    return [...new Set((legacy.parse(value) ?? []).filter((item) => item.length > 0))];
+  }
   try {
     const values: unknown = JSON.parse(value.slice(exactPrefix.length));
-    return Array.isArray(values) ? values.filter((item): item is string => typeof item === "string") : [];
+    return Array.isArray(values)
+      ? [...new Set(values.filter((item): item is string => typeof item === "string" && item.length > 0))]
+      : [];
   } catch {
     return [];
   }

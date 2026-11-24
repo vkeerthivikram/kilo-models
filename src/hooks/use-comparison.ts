@@ -21,7 +21,17 @@ function readStoredSelection(): string | null {
 
 function subscribeSelection(callback: () => void) {
   const syncSelection = (event: StorageEvent) => {
-    if (event.key === COMPARISON_STORAGE_KEY || event.key === null) callback();
+    if (event.key === COMPARISON_STORAGE_KEY || event.key === null) {
+      if (pendingSelection !== null) {
+        try {
+          localStorage.getItem(COMPARISON_STORAGE_KEY);
+          pendingSelection = null;
+        } catch {
+          // Keep pending selection while storage remains unreadable.
+        }
+      }
+      callback();
+    }
   };
   window.addEventListener("storage", syncSelection);
   window.addEventListener(SELECTION_EVENT, callback);

@@ -63,10 +63,12 @@ export function comparisonCsv(models: Model[], workload: CalculatorWorkload): st
     const costs = calculateWorkloadCost(model.pricing, workload);
     const warnings = getWorkloadWarnings(model, workload);
     const suitability = getWorkloadSuitability(model, workload);
-    const cost = (value: number | null) => value === null ? null : Number(value.toPrecision(15));
+    const cost = (value: number | null) => value === null || !Number.isFinite(value) ? null : Number(value.toPrecision(15));
+    const maxCompletion = model.top_provider?.max_completion_tokens;
+    const maxOutput = typeof maxCompletion === "number" && Number.isFinite(maxCompletion) && maxCompletion > 0 ? maxCompletion : undefined;
     return [
-      model.id, model.name, model.description, getModelProvider(model.id), getUsableContext(model), model.top_provider?.max_completion_tokens,
-      model.architecture?.input_modalities?.join(", "), model.architecture?.output_modalities?.join(", "), model.architecture?.tokenizer,
+      model.id, model.name, model.description, getModelProvider(model.id), getUsableContext(model), maxOutput,
+      model.architecture?.input_modalities?.join(", "), model.architecture?.output_modalities?.join(", "), model.architecture?.tokenizer?.trim() || null,
       model.supported_parameters?.join(", "), model.top_provider?.is_moderated, model.mayTrainOnYourPrompts,
       parsePrice(model.pricing?.prompt), parsePrice(model.pricing?.completion), parsePrice(model.pricing?.input_cache_read),
       parsePrice(model.pricing?.input_cache_write), costs.requestCost,

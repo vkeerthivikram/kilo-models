@@ -16,3 +16,14 @@ test("model details expose favorite, comparison, copy and a safe direct-load ret
   assert.match(back, /href="\/"/);
   assert.match(back, /Back to Directory/);
 });
+
+test("pre-hydration render does not show detail-compare-limit before ready is true", () => {
+  const catalog = Array.from({ length: 11 }, (_, index) => ({ id: `test/${index}` }));
+  const compareQuery = catalog.slice(0, 10).map((entry) => entry.id).join(",");
+  const html = renderApp(
+    <NuqsTestingAdapter searchParams={`?compare=${encodeURIComponent(compareQuery)}`}>
+      <ModelDetailActions model={{ id: "test/10", name: "Eleventh Model" }} catalog={catalog} />
+    </NuqsTestingAdapter>,
+  );
+  assert.doesNotMatch(html, /detail-compare-limit/);
+});

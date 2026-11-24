@@ -86,3 +86,12 @@ test("cached input replaces the regular input charge rather than adding to it", 
   assert.equal(calculateCost(prices, 100, 0, 1, 101).total, null);
   assert.equal(calculateCost(prices, 100, 0, 1, NaN).total, null);
 });
+
+test("overflowing inputCost sums become null instead of Infinity", () => {
+  const result = calculateCost({ prompt: "1e308", completion: "0", input_cache_read: "1e308" }, 2, 0, 1, 50);
+  assert.equal(result.uncachedCost, 1e308);
+  assert.equal(result.cacheReadCost, 1e308);
+  assert.equal(result.inputCost, null);
+  assert.equal(result.perRequest, null);
+  assert.equal(result.total, null);
+});

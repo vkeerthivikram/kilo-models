@@ -14,24 +14,28 @@ interface Props {
 }
 
 function listSummary(values: string[] | undefined) {
-  return values?.length ? values.join(", ") : values ? "None" : "Unknown";
+  const unique = values ? [...new Set(values)] : undefined;
+  return unique?.length ? unique.join(", ") : unique ? "None" : "Unknown";
 }
 
 function SpecificationList({ label, values, parameters = false }: { label: string; values?: string[]; parameters?: boolean }) {
+  const unique = values ? [...new Set(values)] : undefined;
   return <div>
     <span className="text-muted-foreground text-sm">{label}</span>
     <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {values?.length ? values.map((value) => (
+      {unique?.length ? unique.map((value) => (
         <Badge key={value} variant={parameters ? "secondary" : "outline"} className={parameters ? "text-xs font-mono" : "text-xs capitalize"}>
           {value}
         </Badge>
-      )) : <span>{listSummary(values)}</span>}
+      )) : <span>{listSummary(unique)}</span>}
     </div>
   </div>;
 }
 
 export function ModelSpecsCard({ model }: Props) {
-  const defaults = defaultParameterLabels(model.default_parameters);
+  const defaults = [...new Set(defaultParameterLabels(model.default_parameters))];
+  const autoRoutedModels = model.autoRouting?.models ? [...new Set(model.autoRouting.models)] : [];
+  const huggingFaceId = model.hugging_face_id?.trim();
   const context = getUsableContext(model);
   return (
     <Card className="p-6 space-y-4">
@@ -62,7 +66,7 @@ export function ModelSpecsCard({ model }: Props) {
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tokenizer</span>
           <span className="font-medium font-mono text-xs">
-            {model.architecture?.tokenizer ?? "—"}
+            {model.architecture?.tokenizer?.trim() || "—"}
           </span>
         </div>
         {model.architecture?.modality && (
@@ -104,11 +108,11 @@ export function ModelSpecsCard({ model }: Props) {
             </div>
           </div>
         )}
-        {model.autoRouting?.models && model.autoRouting.models.length > 0 && (
+        {autoRoutedModels.length > 0 && (
           <div>
             <span className="text-muted-foreground text-sm">Auto-Routed Models</span>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {model.autoRouting.models.map((m) => (
+              {autoRoutedModels.map((m) => (
                 <Badge key={m} variant="outline" className="text-xs font-mono">
                   {m}
                 </Badge>
@@ -169,16 +173,16 @@ export function ModelSpecsCard({ model }: Props) {
             <span className="font-medium font-mono text-xs">{model.canonical_slug}</span>
           </div>
         )}
-        {model.hugging_face_id && (
+        {huggingFaceId && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Hugging Face</span>
             <a
-              href={`https://huggingface.co/${model.hugging_face_id}`}
+              href={`https://huggingface.co/${huggingFaceId.split("/").map(encodeURIComponent).join("/")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium font-mono text-xs text-primary hover:underline"
             >
-              {model.hugging_face_id}
+              {huggingFaceId}
             </a>
           </div>
         )}

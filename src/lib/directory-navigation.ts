@@ -112,7 +112,13 @@ export function restoreDirectoryPosition(): () => void {
   }
   expected.searchParams.sort();
   actual.searchParams.sort();
-  if (expected.search !== actual.search) return () => {};
+  if (expected.search !== actual.search) {
+    memoryRestore = false;
+    try {
+      window.sessionStorage.removeItem(RESTORE_KEY);
+    } catch {}
+    return () => {};
+  }
 
   let frame = window.requestAnimationFrame(() => {
     frame = window.requestAnimationFrame(() => {

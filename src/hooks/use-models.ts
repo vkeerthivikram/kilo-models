@@ -27,6 +27,7 @@ export function useModels(): UseModelsResult {
   const [revalidating, setRevalidating] = React.useState(false);
   const client = React.useRef<ReturnType<typeof createCatalogClient> | null>(null);
   const pendingRefresh = React.useRef<Promise<void> | null>(null);
+  const refreshId = React.useRef(0);
 
   const showCatalog = React.useCallback((catalog: CatalogEnvelope) => {
     setModels(catalog.data);
@@ -35,12 +36,15 @@ export function useModels(): UseModelsResult {
     setLoading(false);
   }, []);
 
-  const load = React.useCallback((refresh = false) => {
+  const load = React.useCallback((refresh = false, id?: number) => {
     if (!client.current) client.current = createCatalogClient();
     const request = !refresh && lastCatalog && isFreshCatalog(lastCatalog)
       ? Promise.resolve(lastCatalog) : client.current.load(refresh);
     return request.then((catalog) => {
-      if (!catalog) return;
+      if (!catalog) {
+        if (refresh && id === refreshId.current) setRevalidating(false);
+        return;
+      }
       lastCatalog = catalog;
       setError(null);
       showCatalog(catalog);
@@ -49,15 +53,18 @@ export function useModels(): UseModelsResult {
       const failure = err instanceof Error ? err : new Error("Unable to load model catalog");
       setError(failure);
       setLoading(false);
-      setRevalidating(false);
+      if (!refresh || id === refreshId.current) setRevalidating(false);
       if (refresh) throw failure;
     });
   }, [showCatalog]);
 
   const refresh = React.useCallback(() => {
     if (pendingRefresh.current) return pendingRefresh.current;
+    const id = ++refreshId.current;
     setRevalidating(true);
-    pendingRefresh.current = load(true).finally(() => { pendingRefresh.current = null; });
+    pendingRefresh.current = load(true, id).finally(() => {
+      if (refreshId.current === id) pendingRefresh.current = null;
+    });
     return pendingRefresh.current;
   }, [load]);
 

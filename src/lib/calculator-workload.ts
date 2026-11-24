@@ -104,9 +104,8 @@ export function countCachedInputTokens(inputTokens: number, cachePercent: number
   return cachePercent === 100 ? inputTokens : Math.min(inputTokens, Math.round(inputTokens * cachePercent / 100));
 }
 
-export function getBillingWarnings(pricing: ModelPricing | undefined, workload: CalculatorWorkload): string[] {
+export function getBlockingBillingWarnings(pricing: ModelPricing | undefined, workload: CalculatorWorkload): string[] {
   const warnings: string[] = [];
-  const discount = pricing?.discount;
   const reads = countCachedInputTokens(workload.inputTokens, workload.cachePercent);
   if (workload.inputTokens - reads - workload.cacheWriteTokens > 0 && parsePrice(pricing?.prompt) === null) warnings.push("No valid input token rate is listed. Choose a model with a published input price or set input usage to zero.");
   if (workload.outputTokens > 0 && parsePrice(pricing?.completion) === null) warnings.push("No valid output token rate is listed. Choose a model with a published output price or set output usage to zero.");
@@ -122,6 +121,12 @@ export function getBillingWarnings(pricing: ModelPricing | undefined, workload: 
   ] as const) {
     if (units > 0 && parsePrice(rate) === null) warnings.push(`No ${label} rate is listed. Set this usage to zero to estimate the remaining charges.`);
   }
+  return warnings;
+}
+
+export function getBillingWarnings(pricing: ModelPricing | undefined, workload: CalculatorWorkload): string[] {
+  const warnings = getBlockingBillingWarnings(pricing, workload);
+  const discount = pricing?.discount;
   if (discount != null && discount > 0) warnings.push(`Estimates are pre-discount. The listed ${formatDiscount(discount)} discount is not applied because its billing scope is unspecified.`);
   return warnings;
 }

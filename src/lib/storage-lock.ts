@@ -22,7 +22,7 @@ function openFallbackDatabase(signal: AbortSignal): Promise<IDBDatabase> {
     signal.addEventListener("abort", abort, { once: true });
     request.onupgradeneeded = () => {
       if (stopped) request.transaction?.abort();
-      else request.result.createObjectStore(LOCK_STORE);
+      else if (!request.result.objectStoreNames.contains(LOCK_STORE)) request.result.createObjectStore(LOCK_STORE);
     };
     request.onerror = () => fail(request.error);
     request.onblocked = () => fail(new Error("The storage lock database is blocked by another tab."));
@@ -52,21 +52,38 @@ function waitForTransaction<T>(database: IDBDatabase, key: string, update: () =>
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(LOCK_STORE, "readwrite");
     const turn = transaction.objectStore(LOCK_STORE).get(key);
-    const cleanup = () => signal.removeEventListener("abort", abort);
+    let settled = false;
+    const finish = (complete: () => void) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener("abort", abort);
+      complete();
+    };
     function abort() {
-      reject(signal.reason);
+      finish(() => reject(signal.reason));
       // An independently failed transaction may already be ending.
       try { transaction.abort(); } catch {}
     }
     signal.addEventListener("abort", abort, { once: true });
     transaction.onabort = () => {
-      cleanup();
-      reject(transaction.error);
+      finish(() => reject(transaction.error ?? new Error("Storage lock transaction aborted.")));
+    };
+    transaction.onerror = () => {
+      finish(() => reject(transaction.error ?? new Error("Storage lock transaction failed.")));
+    };
+    turn.onerror = () => {
+      finish(() => reject(turn.error ?? transaction.error ?? new Error("Storage lock request failed.")));
     };
     turn.onsuccess = () => {
-      try { resolve(update()); } catch (error) { reject(error); } finally { cleanup(); }
+      finish(() => {
+        try { resolve(update()); } catch (error) { reject(error); }
+      });
     };
   });
+}
+
+function isInvalidStateError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "name" in error && error.name === "InvalidStateError";
 }
 
 /** Serialize localStorage read-modify-write operations across same-origin tabs. */
@@ -88,9 +105,18 @@ export async function withStorageLock<T>(key: string, update: () => T): Promise<
   try {
     if (navigator.locks) return await navigator.locks.request(key, { signal }, updateInTime);
     // A read-write transaction also serializes writes on insecure origins.
-    const database = await openFallbackDatabase(signal);
+    let database = await openFallbackDatabase(signal);
     checkDeadline();
-    return await waitForTransaction(database, key, updateInTime, signal);
+    try {
+      return await waitForTransaction(database, key, updateInTime, signal);
+    } catch (error) {
+      if (!isInvalidStateError(error) || signal.aborted) throw error;
+      if (fallbackDatabase === database) fallbackDatabase = undefined;
+      checkDeadline();
+      database = await openFallbackDatabase(signal);
+      checkDeadline();
+      return await waitForTransaction(database, key, updateInTime, signal);
+    }
   } catch (error) {
     throw signal.aborted ? signal.reason : error;
   } finally {

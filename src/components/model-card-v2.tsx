@@ -101,7 +101,7 @@ export function ModelCard({ model, workload, showEstimate = true, isCompared, co
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-5">
-        {model.expiration_date && <div><RetirementBadge expirationDate={model.expiration_date} /></div>}
+        {model.expiration_date && <div className="empty:hidden"><RetirementBadge expirationDate={model.expiration_date} /></div>}
         <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{model.description}</p>
 
         <dl className="grid grid-cols-3 divide-x divide-border rounded-lg border text-center">

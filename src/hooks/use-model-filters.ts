@@ -93,11 +93,9 @@ interface UseModelFiltersResult extends FilterState {
   directoryQuery: URLSearchParams;
   applyDirectoryQuery: (query: URLSearchParams) => Promise<unknown>;
   activeFilterCount: number;
-  filteredModels: Model[];
   sortedModels: Model[];
   paginatedModels: Model[];
   totalPages: number;
-  hasMore: boolean;
 }
 
 const numericParser = (integer = false) => createParser({
@@ -251,7 +249,10 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
   const applyDirectoryQuery = (query: URLSearchParams) => {
     setPendingSearch(null);
     cancelSearchWrite();
-    const values = Object.fromEntries(Object.entries(parsers).map(([key, parser]) => [key, query.has(key) ? parser.parse(query.get(key)!) : null]));
+    const values = Object.fromEntries(Object.entries(parsers).map(([key, parser]) => {
+      const parsed = query.has(key) ? parser.parse(query.get(key)!) : null;
+      return [key, Array.isArray(parsed) && parsed.length === 0 ? null : parsed];
+    }));
     const search = query.get("search");
     return setParams({ ...values, search: search?.trim() ? search : null, view: parsers.view.parse(query.get("view") ?? "") ?? "grid", page: null });
   };
@@ -319,8 +320,6 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     return sortedModels.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   }, [sortedModels, page]);
 
-  const hasMore = page < totalPages;
-
   return {
     search,
     searchDraft,
@@ -364,11 +363,9 @@ export function useModelFilters(models: Model[], favoriteIds: string[] = EMPTY_F
     directoryQuery,
     applyDirectoryQuery,
     activeFilterCount,
-    filteredModels,
     sortedModels,
     paginatedModels,
     totalPages,
-    hasMore,
   };
 }
 

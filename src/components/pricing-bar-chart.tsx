@@ -34,17 +34,20 @@ export function PricingBarChart({ models }: Props) {
       {models.map((model) => <li key={model.id}>{model.name}</li>)}
     </ol>
     <ResponsiveContainer width="100%" height={Math.max(300, models.length * 48)}>
-      <BarChart data={data} layout="vertical" margin={{ left: 0 }}>
+      <BarChart data={data} layout="vertical" margin={{ left: 0 }} accessibilityLayer>
         <XAxis type="number" tickFormatter={(v) => `$${v}`} />
         <YAxis type="category" dataKey="axisLabel" width={128} tick={{ fontSize: 12 }} />
         <Tooltip
-          labelFormatter={(label, payload) => payload[0]?.payload?.name ?? label}
+          labelFormatter={(label, payload) => payload?.[0]?.payload?.name ?? label}
           formatter={(value, name) => [formatPricingTooltip(value), name]}
           contentStyle={{
-            backgroundColor: isDark ? "#1e1e2e" : "#fff",
-            border: "none",
+            backgroundColor: "var(--popover)",
+            color: "var(--popover-foreground)",
+            border: "1px solid var(--border)",
             borderRadius: "8px",
           }}
+          labelStyle={{ color: "var(--popover-foreground)", fontWeight: 500 }}
+          itemStyle={{ color: "var(--popover-foreground)" }}
         />
         <Legend />
         <Bar dataKey="prompt" name="Input" fill={promptColor} radius={[0, 4, 4, 0]} />

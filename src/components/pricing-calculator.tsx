@@ -9,7 +9,7 @@ import { CalculatorInputs } from "./calculator-inputs";
 import { calculateWorkloadCost, formatCost } from "@/lib/cost-calculator";
 import { ChevronDown } from "lucide-react";
 import { useCalculatorWorkload } from "@/hooks/use-calculator-workload";
-import { getBillingWarnings, getWorkloadSuitability, getWorkloadWarnings } from "@/lib/calculator-workload";
+import { getBillingWarnings, getBlockingBillingWarnings, getWorkloadSuitability, getWorkloadWarnings } from "@/lib/calculator-workload";
 import { CostBreakdown } from "./cost-breakdown";
 import { SavedSetups } from "./saved-setups";
 import { parsePrice } from "@/lib/format-price";
@@ -22,6 +22,7 @@ export function PricingCalculator({ model, className }: { model: Model; classNam
   const costs = calculateWorkloadCost(model.pricing, workload);
   const warnings = getWorkloadWarnings(model, workload);
   const billingWarnings = getBillingWarnings(model.pricing, workload);
+  const blockingBillingWarnings = getBlockingBillingWarnings(model.pricing, workload);
   const suitability = getWorkloadSuitability(model, workload);
 
   return (
@@ -43,7 +44,7 @@ export function PricingCalculator({ model, className }: { model: Model; classNam
           {billingWarnings.map((warning) => <p key={warning}>{warning}</p>)}
         </div>}
         {suitability === "unknown" && <p className="text-sm text-muted-foreground">Limits unknown: published context or output limit is missing. Verify request size with the provider.</p>}
-        {costs.total === null && billingWarnings.length === 0 && <p role="status" className="text-sm text-muted-foreground">Estimate exceeds supported numeric range. Reduce usage to calculate a total.</p>}
+        {costs.total === null && blockingBillingWarnings.length === 0 && <p role="status" className="text-sm text-muted-foreground">Estimate exceeds supported numeric range. Reduce usage to calculate a total.</p>}
         <dl aria-live="polite" aria-atomic="true" className="space-y-3 border-t pt-4 text-sm">
           <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Per request</dt><dd className="font-semibold tabular-nums">{formatCost(costs.perRequest)}</dd></div>
           <div className="flex justify-between gap-4"><dt className="text-muted-foreground">{workload.period === "month" ? "Monthly total" : "Total"} ({requestCount(workload.requests)})</dt><dd className="font-semibold tabular-nums [overflow-wrap:anywhere]">{formatCost(costs.total)}</dd></div>

@@ -93,22 +93,4 @@ export interface Model {
   enkrypt?: EnkryptSafety;
 }
 
-export interface ModelsResponse {
-  data: Model[];
-}
-
 export type ViewMode = "grid" | "list";
-
-export type ColorTheme =
-  | "default"
-  | "catppuccin"
-  | "dracula"
-  | "nord"
-  | "gruvbox"
-  | "tokyo-night";
-
-export interface ThemeOption {
-  id: ColorTheme;
-  name: string;
-  colors: { light: string; dark: string; accent: string };
-}

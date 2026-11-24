@@ -53,3 +53,9 @@ test("missing metadata stays unknown and invalid release dates do not break comp
   assert.deepEqual(rows.find((row) => row.key === "input-modalities")?.values, ["Unknown"]);
   assert.deepEqual(rows.find((row) => row.key === "reasoning")?.values, ["Unknown"]);
 });
+
+test("expanded release years beyond 9999 format their full UTC date without truncation", () => {
+  const farFuture = { ...firstModel, created: 8_640_000_000_000 };
+  const rows = getVisibleComparisonRows([farFuture]);
+  assert.deepEqual(rows.find((row) => row.key === "released")?.values, ["+275760-09-13"]);
+});

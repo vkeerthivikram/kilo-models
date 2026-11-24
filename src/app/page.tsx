@@ -306,7 +306,7 @@ function ModelExplorer({ models, loading, excludedCount }: { models: Model[]; lo
             <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <Input ref={searchInput} aria-label="Search models" aria-keyshortcuts="/" title="Press / to search when not editing a field" placeholder="Search models, providers, or keywords..." value={searchDraft}
               onValueChange={setSearch} className="h-11 rounded-lg bg-card pl-11 pr-12 text-base placeholder:text-muted-foreground md:text-sm" />
-            {search && <ActionButton type="button" aria-label="Clear search" onClick={() => setSearch("")} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></ActionButton>}
+            {searchDraft && <ActionButton type="button" aria-label="Clear search" onClick={() => { setSearch(""); searchInput.current?.focus(); }} className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"><X className="size-4" /></ActionButton>}
           </div>
 
           {activeFilters.length > 0 && (

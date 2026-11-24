@@ -6,6 +6,7 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { DEFAULT_WORKLOAD } from "../lib/calculator-workload";
 import { PricingCalculator } from "./pricing-calculator";
 import { CompareCostTable } from "./compare-cost-table";
+import { ModelCostEstimate } from "./model-cost-estimate";
 import type { Model } from "../lib/types";
 
 const model = { id: "test/paid", name: "Paid", pricing: { prompt: "0.000003", completion: "0.000015" } } as Model;
@@ -85,4 +86,38 @@ test("calculators expose separate charge components without adding input subtota
     assert.match(html, /\$0\.4200/);
     assert.match(html, /\$0\.8400/);
   }
+});
+
+test("discounted models with numeric overflow still show the range overflow explanation", () => {
+  const discountedOverflow = {
+    ...model,
+    id: "test/discounted-overflow",
+    name: "Discounted Overflow",
+    pricing: { prompt: "1e308", completion: "0", discount: 10 },
+  };
+  const workload = { ...DEFAULT_WORKLOAD, inputTokens: 10, outputTokens: 0, requests: 1 };
+  const detail = renderToStaticMarkup(
+    <NuqsTestingAdapter searchParams="?inputTokens=10&outputTokens=0&requests=1">
+      <PricingCalculator model={discountedOverflow} />
+    </NuqsTestingAdapter>,
+  );
+  const compare = costTable(render(<CompareCostTable models={[discountedOverflow]} workload={workload} />));
+  const cardEstimate = renderToStaticMarkup(<ModelCostEstimate model={discountedOverflow} workload={workload} />);
+  assert.match(detail, /Estimate exceeds supported numeric range/);
+  assert.match(detail, /Estimates are pre-discount/);
+  assert.match(compare, /Estimate exceeds supported numeric range/);
+  assert.match(compare, /Estimates are pre-discount/);
+  assert.match(cardEstimate, /Estimate exceeds supported numeric range/);
+  assert.doesNotMatch(cardEstimate, /Its billing scope is unspecified/i);
+});
+
+test("comparison cost table orders multiple unavailable models deterministically by name", () => {
+  const unavailableA = { ...model, id: "test/a", name: "Alpha Model", pricing: { prompt: "-1", completion: "0" } };
+  const unavailableZ = { ...model, id: "test/z", name: "Zeta Model", pricing: { prompt: "-1", completion: "0" } };
+  const paid = { ...model, id: "test/paid", name: "Paid Model" };
+  const table = costTable(render(<CompareCostTable models={[unavailableZ, paid, unavailableA]} />));
+  const paidIndex = table.indexOf("Paid Model");
+  const alphaIndex = table.indexOf("Alpha Model");
+  const zetaIndex = table.indexOf("Zeta Model");
+  assert.ok(paidIndex < alphaIndex && alphaIndex < zetaIndex);
 });
